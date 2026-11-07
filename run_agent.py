@@ -507,10 +507,9 @@ class AIAgent(
 
     def _current_main_runtime(self) -> dict[str, str]:
         """Return the live main runtime for session-scoped auxiliary routing."""
-        return {
-            key: getattr(self, key, "") or ""
-            for key in ("model", "provider", "base_url", "api_key", "api_mode", "auth_mode", "session_id")
-        }
+        from agent.primary_runtime_snapshot import resolvable_base_url
+        runtime = {key: getattr(self, key, "") or "" for key in ("model", "provider", "api_key", "api_mode", "auth_mode", "session_id")}
+        return {**runtime, "base_url": resolvable_base_url(self)}
 
     _check_compression_model_feasibility = _forward("agent.conversation_compression", "check_compression_model_feasibility")
     _replay_compression_warning = _forward("agent.conversation_compression", "replay_compression_warning")

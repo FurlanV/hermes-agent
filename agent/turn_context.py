@@ -242,10 +242,12 @@ def _maybe_title_session_at_turn_start(
         # switches models before it fires.
         # ``session_id`` rides along so the background titler's OpenCode request carries the
         # same ``x-opencode-session`` affinity as the turn it belongs to (#112717).
+        from agent.primary_runtime_snapshot import resolvable_base_url
         main_runtime = {
             k: getattr(agent, k, None)
-            for k in ("model", "provider", "base_url", "api_key", "api_mode", "session_id")
+            for k in ("model", "provider", "api_key", "api_mode", "session_id")
         }
+        main_runtime["base_url"] = resolvable_base_url(agent)
         # See #19027.
         upgrade = maybe_auto_title(
             session_db,
