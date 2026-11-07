@@ -9,8 +9,18 @@ removed mid-session can't hand the session another account's key.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 from agent.custom_entry_pool import SNAPSHOT_OWNER_KEY, runtime_entry_owner
+
+
+def resolvable_base_url(agent) -> str:
+    """``agent.base_url`` with the client's ``default_query`` (Azure ``api-version``) put back: the
+    form the runtime resolver produced. Aux routing and forked agents re-resolve from a runtime
+    snapshot, and the bare client base_url 404s on endpoints that need the query."""
+    base_url = getattr(agent, "base_url", "") or ""
+    query = (getattr(agent, "_client_kwargs", None) or {}).get("default_query")
+    return f"{base_url}?{urlencode(query)}" if base_url and query else base_url
 
 
 def _snapshot_primary_runtime(agent):

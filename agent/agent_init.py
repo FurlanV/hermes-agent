@@ -976,18 +976,18 @@ def _host_default_headers_factory(base_url: str):
 
 
 def _client_kwargs_from_routed(client, timeout) -> dict[str, Any]:
-    """OpenAI-client kwargs mirroring a router-resolved client, keeping its provider headers
-    (SDK stores them in ``_custom_headers``; older/mocked clients expose ``default_headers``)."""
+    """OpenAI-client kwargs mirroring a router-resolved client, keeping its provider headers and query
+    (Azure ``api-version``). The SDK stores them in ``_custom_headers`` / ``_custom_query``; older or
+    mocked clients expose ``default_headers``."""
     kwargs = {"api_key": client.api_key, "base_url": str(client.base_url)}
     if timeout is not None:
         kwargs["timeout"] = timeout
-    headers = (
-        getattr(client, "_custom_headers", None)
-        or getattr(client, "default_headers", None)
-        or getattr(client, "_default_headers", None)
-    )
+    headers = (getattr(client, "_custom_headers", None) or getattr(client, "default_headers", None)
+               or getattr(client, "_default_headers", None))
     if headers:
         kwargs["default_headers"] = dict(headers)
+    if query := getattr(client, "_custom_query", None):
+        kwargs["default_query"] = dict(query)
     return kwargs
 
 
