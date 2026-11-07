@@ -14,6 +14,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
+from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
@@ -304,6 +305,27 @@ def _azure_inferred_api_mode(effective_model: str, api_mode: str) -> str:
         return _models.azure_foundry_model_api_mode(effective_model) or api_mode
     except Exception:
         return api_mode
+
+
+_AZURE_OPERATION_API_MODES = (("/chat/completions", "chat_completions"), ("/responses", "codex_responses"))
+
+
+def _azure_api_mode_and_base_url(effective_model: str, api_mode: str, base_url: str) -> tuple[str, str]:
+    """Final ``(api_mode, base_url)`` for Azure Foundry. The portal's "Target URI" names the
+    operation (``…/openai/responses?api-version=…``) that the SDK appends itself, so it is cut off
+    (the ``api-version`` query stays). On dated routes the operation also fixes the wire (``/openai``
+    serves only /responses, ``/openai/deployments/<d>`` only /chat/completions), so it outranks the
+    configured and model-inferred mode. Anthropic-style endpoints drop a trailing ``/v1``."""
+    api_mode = _azure_inferred_api_mode(effective_model, api_mode)
+    parsed = urlparse(base_url)
+    path = parsed.path.rstrip("/")
+    for operation, operation_mode in _AZURE_OPERATION_API_MODES:
+        if path.lower().endswith(operation):
+            api_mode, base_url = operation_mode, urlunparse(parsed._replace(path=path[: -len(operation)]))
+            break
+    if api_mode == "anthropic_messages":
+        base_url = re.sub(r"/v1/?$", "", base_url)
+    return api_mode, base_url
 
 
 def _configured_or_fallback_api_mode(provider: str, model_cfg: dict[str, Any], base_url: str, effective_model: Any, *,
@@ -619,8 +641,7 @@ def _pool_entry_mode_and_url(provider, entry, model_cfg, effective_model, base_u
         if _cfg_provider(model_cfg) == "azure-foundry":
             base_url = _config_base_url_for_provider(model_cfg, "azure-foundry") or base_url
             api_mode = _parse_api_mode(model_cfg.get("api_mode")) or api_mode
-        api_mode = _azure_inferred_api_mode(effective_model, api_mode)
-        return api_mode, (re.sub(r"/v1/?$", "", base_url) if api_mode == "anthropic_messages" else base_url)
+        return _azure_api_mode_and_base_url(effective_model, api_mode, base_url)
     # Missing and registry-default endpoints may use this provider's configured URL.
     # An explicit per-credential endpoint remains authoritative.
     pconfig = PROVIDER_REGISTRY.get(provider)

@@ -7,7 +7,6 @@ collaborators are resolved on the origin module at call time via :func:`_rp` so 
 from __future__ import annotations
 
 import os
-import re
 from typing import Any, Dict, Optional
 
 from agent.azure_identity_adapter import is_token_provider
@@ -82,9 +81,7 @@ def _resolve_azure_foundry_runtime(*, requested_provider: str, model_cfg: dict[s
         cfg_auth_mode = str(model_cfg.get("auth_mode") or "api_key").strip().lower() or "api_key"
         if isinstance(model_cfg.get("entra"), dict):
             cfg_entra = model_cfg["entra"]
-    # GPT-5.x / codex / o1-o4 deployments are Responses-API-only on Foundry.
     effective_model = str(target_model or model_cfg.get("default") or "").strip()
-    cfg_api_mode = rp._azure_inferred_api_mode(effective_model, cfg_api_mode)
     env_base_url = get_secret_str("AZURE_FOUNDRY_BASE_URL", "").strip().rstrip("/")
     base_url = explicit_base_url_clean or cfg_base_url or env_base_url
     if not base_url:
@@ -92,8 +89,8 @@ def _resolve_azure_foundry_runtime(*, requested_provider: str, model_cfg: dict[s
             "Azure Foundry requires a base URL. Set it via 'hermes model' or "
             "the AZURE_FOUNDRY_BASE_URL environment variable."
         )
-    if cfg_api_mode == "anthropic_messages":
-        base_url = re.sub(r"/v1/?$", "", base_url)
+    # GPT-5.x / codex / o1-o4 are Responses-only on Foundry; a pasted Target URI names its own wire.
+    cfg_api_mode, base_url = rp._azure_api_mode_and_base_url(effective_model, cfg_api_mode, base_url)
     if cfg_auth_mode == "entra_id":
         # --api-key on the CLI while config says entra_id: honour the explicit string (escape hatch
         # for one-off testing).

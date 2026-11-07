@@ -182,3 +182,20 @@ def test_openrouter_headers_no_cache_when_disabled(mock_openai):
     assert headers["HTTP-Referer"] == "https://hermes-agent.nousresearch.com"
     assert "X-OpenRouter-Cache" not in headers
     assert "X-OpenRouter-Cache-TTL" not in headers
+
+
+@patch("agent.process_bootstrap.OpenAI")
+def test_routed_client_preserves_openai_sdk_custom_query(mock_openai):
+    """An agent built without explicit credentials keeps the router's Azure ``api-version``."""
+    mock_openai.return_value = MagicMock()
+    routed_client = SimpleNamespace(
+        api_key="test-key",
+        base_url="https://res.openai.azure.com/openai/deployments/gpt-4o/",
+        _custom_query={"api-version": "2025-04-01-preview"},
+    )
+
+    with patch("agent.auxiliary_client.resolve_provider_client", return_value=(routed_client, "gpt-4o")):
+        agent = AIAgent(provider="azure-foundry", model="gpt-4o", quiet_mode=True,
+                        skip_context_files=True, skip_memory=True)
+
+    assert agent._client_kwargs["default_query"] == {"api-version": "2025-04-01-preview"}
