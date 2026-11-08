@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react'
 
+import { athenaStrings } from '@/athena/strings'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
@@ -106,8 +107,7 @@ export function SidebarLoadErrorState({ onRetry }: { onRetry: () => void }) {
   )
 }
 
-const SESSION_STORAGE_RECOVERY_URL =
-  'https://hermes-agent.nousresearch.com/docs/user-guide/session-storage-recovery#when-the-three-steps-do-not-work'
+const SESSION_STORAGE_RECOVERY_URL = athenaStrings.supportUrl
 
 interface SidebarStorageCorruptNoticeProps {
   openRecoveryGuide?: (url: string) => void

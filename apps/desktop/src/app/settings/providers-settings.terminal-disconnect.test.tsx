@@ -56,7 +56,7 @@ function connectedExternal(patch: Partial<OAuthProvider> = {}): OAuthProvider {
 
 beforeEach(() => {
   listOAuthProviders.mockResolvedValue({ providers: [connectedExternal()] })
-  disconnectOAuthProvider.mockResolvedValue({ ok: false, provider: 'nous' })
+  disconnectOAuthProvider.mockResolvedValue({ ok: false, provider: 'acme' })
   Object.defineProperty(window, 'hermesDesktop', {
     configurable: true,
     value: { terminal: {} }
@@ -97,19 +97,19 @@ describe('connected external provider row', () => {
     listOAuthProviders.mockResolvedValue({
       providers: [
         {
-          cli_command: 'hermes auth add nous',
+          cli_command: 'hermes auth add acme',
           disconnectable: true,
           docs_url: '',
           flow: 'device_code',
-          id: 'nous',
-          name: 'Nous Portal',
+          id: 'acme',
+          name: 'Acme Portal',
           status: { logged_in: true }
         }
       ]
     })
 
     await renderAccounts()
-    fireEvent.click(await screen.findByRole('button', { name: 'Remove Nous Portal' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Acme Portal' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Disconnect' }))
 
     await waitFor(() => expect(disconnectOAuthProvider).toHaveBeenCalled())

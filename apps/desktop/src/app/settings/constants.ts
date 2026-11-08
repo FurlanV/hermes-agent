@@ -1,5 +1,6 @@
 import { REASONING_EFFORTS } from '@hermes/shared'
 
+import { isHiddenProviderGroup } from '@/athena/strings'
 import {
   Box,
   Brain,
@@ -227,7 +228,7 @@ export const PROVIDER_GROUPS: ProviderPrefix[] = [
     docsUrl: 'https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-regions.html',
     priority: 23
   }
-]
+].filter(group => !isHiddenProviderGroup(group.prefix))
 
 // Schema-side select overrides for desktop-relevant enum fields whose
 // backend schema only declares a string type.

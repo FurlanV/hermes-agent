@@ -36,11 +36,16 @@
 // otherwise-good build (worst case: stock icon, not a broken app).
 
 import { resolve, join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 import { rcedit } from 'rcedit'
 
 import { isMain } from './utils.mjs'
+
+// Athena (SickKids) exe metadata from src/athena/branding.json; stock Hermes values otherwise.
+const athena = process.env.HERMES_DESKTOP_VARIANT === 'athena'
+  ? JSON.parse(readFileSync(new URL('../src/athena/branding.json', import.meta.url), 'utf8'))
+  : null
 
 // A real-time file scanner (AV/EDR) holds a short exclusive handle on a freshly
 // written exe; rcedit's resource commit then fails with "Unable to commit
@@ -86,10 +91,10 @@ async function stampExeIdentity(
   const options = {
     icon,
     'version-string': {
-      ProductName: 'Hermes',
-      FileDescription: 'Hermes',
-      CompanyName: 'Nous Research',
-      LegalCopyright: 'Copyright (c) 2026 Nous Research'
+      ProductName: athena?.display ?? 'Hermes',
+      FileDescription: athena?.display ?? 'Hermes',
+      CompanyName: athena?.organization ?? 'Nous Research',
+      LegalCopyright: athena?.copyright ?? 'Copyright (c) 2026 Nous Research'
     }
   }
 

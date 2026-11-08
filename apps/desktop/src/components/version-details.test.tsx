@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, type Mock, vi } from 'vitest'
 
+import { athenaStrings } from '@/athena/strings'
 import type { DesktopVersionInfo } from '@/global'
 import { I18nProvider } from '@/i18n'
 import { $previewTabs, closeRightRail } from '@/store/preview'
@@ -134,7 +135,7 @@ describe('VersionDetails', () => {
 
     await waitFor(() => {
       expect(openExternal).toHaveBeenCalledWith(
-        'https://github.com/NousResearch/hermes-agent/commit/d233b6d7a9c5b79288e48dfb3b29e2ead106ac73'
+        athenaStrings.supportUrl
       )
     })
     expect($previewTabs.get()).toHaveLength(0)

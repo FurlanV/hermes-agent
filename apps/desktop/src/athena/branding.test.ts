@@ -10,9 +10,11 @@ import path from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
+import { PROVIDER_GROUPS } from '@/app/settings/constants'
 import { BUILTIN_THEMES, DEFAULT_SKIN_NAME } from '@/themes/presets'
 
 import branding from './branding.json'
+import { athenaStrings, isHiddenProvider } from './strings'
 import { athenaTheme } from './theme'
 
 const desktop = path.resolve(import.meta.dirname, '../..')
@@ -108,8 +110,11 @@ describe('athena identity variant', () => {
       msixAppIdWithOrg: 'SickKids.Athena'
     })
     // cliName stays `hermes`: it is the payload CLI command, not a product name.
-    const { cliName, ...names } = athena
+    // The copyright credits Hermes Agent under MIT, as the licence requires.
+    const { cliName, copyright, ...names } = athena
     expect(cliName).toBe('hermes')
+    expect(copyright).toBe(branding.copyright)
+    expect(copyright).toMatch(/^© SickKids\. Includes Hermes Agent © Nous Research \(MIT\)\.$/)
     expect(JSON.stringify(names)).not.toMatch(/nousresearch|Hermes/i)
   })
 
@@ -185,5 +190,20 @@ describe('athena theme', () => {
     ]) {
       expect(contrast(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5)
     }
+  })
+})
+
+describe('Nous services', () => {
+  test('are switched off: no Nous Portal sign-in row or key group', () => {
+    expect(athenaStrings.hideNousServices).toBe(true)
+    expect(isHiddenProvider('nous')).toBe(true)
+    expect(isHiddenProvider('openrouter')).toBe(false)
+    expect(PROVIDER_GROUPS.map(group => group.prefix)).not.toContain('NOUS_')
+    expect(PROVIDER_GROUPS.length).toBeGreaterThan(5)
+  })
+
+  test('support links point at SickKids', () => {
+    expect(athenaStrings.supportUrl).toBe(branding.supportUrl)
+    expect(athenaStrings.organization).toBe('SickKids')
   })
 })

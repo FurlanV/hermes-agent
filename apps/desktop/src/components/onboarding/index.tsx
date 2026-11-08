@@ -2,6 +2,7 @@ import type { ModelOptionProvider } from '@hermes/shared'
 import { useStore } from '@nanostores/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { athenaStrings, isHiddenProvider } from '@/athena/strings'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
@@ -119,7 +120,7 @@ const API_KEY_OPTIONS: ApiKeyOption[] = [
     id: 'local',
     name: 'Local / custom endpoint',
     envKey: 'OPENAI_BASE_URL',
-    docsUrl: 'https://github.com/NousResearch/hermes-agent#bring-your-own-endpoint',
+    docsUrl: athenaStrings.supportUrl,
     placeholder: 'http://127.0.0.1:8000/v1'
   }
 ]
@@ -751,7 +752,8 @@ function KeyFormStep({
   onSelect: (provider: OAuthProvider) => void
   providers: OAuthProvider[]
 }) {
-  const nous = localEndpoint ? null : (providers.find(p => p.id === FEATURED_ID) ?? NOUS_FALLBACK)
+  const nous =
+    localEndpoint || isHiddenProvider(FEATURED_ID) ? null : (providers.find(p => p.id === FEATURED_ID) ?? NOUS_FALLBACK)
 
   return (
     <div className="grid gap-3">

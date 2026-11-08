@@ -7,6 +7,8 @@
 // Advisory contract: older backends never send this — every consumer must
 // keep working when it is absent (legacy string-sniffing stays as fallback).
 
+import { athenaStrings } from '@/athena/strings'
+
 export const ERROR_SURFACE_LAYERS = [
   'provider',
   'endpoint',
@@ -367,8 +369,8 @@ export interface ErrorCardActions {
 }
 
 export const ERROR_SETUP_GUIDE_URLS = {
-  tls: 'https://hermes-agent.nousresearch.com/docs/user-guide/security#tls-certificate-trust',
-  local: 'https://hermes-agent.nousresearch.com/docs/user-guide/local-models#using-your-own-llama-server'
+  tls: athenaStrings.supportUrl,
+  local: athenaStrings.supportUrl
 } as const
 
 /** Provider pages where the user fixes an account-level routing/privacy block. */

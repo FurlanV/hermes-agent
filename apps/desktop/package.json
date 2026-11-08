@@ -4,7 +4,8 @@
   "private": true,
   "version": "0.0.0",
   "description": "Native desktop shell for Hermes Agent.",
-  "author": "Nous Research",
+  "author": "SickKids",
+  "copyright": "© SickKids. Includes Hermes Agent © Nous Research (MIT).",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NousResearch/hermes-agent.git"

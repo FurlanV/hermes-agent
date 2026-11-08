@@ -4,4 +4,6 @@
  * (bundled installs with a damaged payload) and any future doc links point
  * at the same place.
  */
-export const DESKTOP_DOCS_URL = 'https://hermes-agent.nousresearch.com/docs/user-guide/desktop'
+import { athenaStrings } from '@/athena/strings'
+
+export const DESKTOP_DOCS_URL = athenaStrings.supportUrl

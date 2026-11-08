@@ -6,6 +6,7 @@
   "appIdPrefix": "ca.sickkids",
   "organization": "SickKids",
   "organizationLegal": "The Hospital for Sick Children",
+  "copyright": "© SickKids. Includes Hermes Agent © Nous Research (MIT).",
   "msixPublisher": "CN=SickKids-Athena-Placeholder",
   "msixPublisherDisplayName": "SickKids",
   "tagline": "SickKids research assistant",

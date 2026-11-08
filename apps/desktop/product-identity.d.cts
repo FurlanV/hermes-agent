@@ -17,6 +17,8 @@ interface ProductIdentity {
   cliName: string
   /** OS-level app identity w/ org prefix. e.g. "NousResearch.HermesLight" */
   msixAppIdWithOrg: string
+  /** About-panel copyright, set by the Athena variant; absent elsewhere. */
+  readonly copyright?: string
   /** R2 identity token on channel builds; absent on legacy products. */
   readonly token?: string
   /** Channel subscription for channel builds; legacy electron-updater label otherwise. Stable tags:

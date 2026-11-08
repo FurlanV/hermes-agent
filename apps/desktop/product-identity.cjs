@@ -82,6 +82,7 @@ const identity = {
   windowsExecutableName: kebabSuffix ? cliName : displayName,
   cliName,
   msixAppIdWithOrg: `${athena ? athena.organization : 'NousResearch'}.${name.pascal}${pascalSuffix}`,
+  ...(athena ? { copyright: athena.copyright } : {}),
   ...(store
     ? {
         storeMsix: {

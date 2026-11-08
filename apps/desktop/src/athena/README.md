@@ -68,6 +68,31 @@ The Windows MSIX tiles in `assets/appx/` stay stock (Windows is out of scope).
   place of core's "HERMES AGENT" intro; the Intro Splash toggle in Settings
   still turns it off.
 
+## SickKids instead of Nous Research
+
+`nous-inventory.md` lists every Nous mention in `apps/desktop` with its kind
+and action (replace / hide / keep, D05's rules), generated from the upstream
+base by `scripts/nous-inventory.mjs`:
+
+```sh
+node apps/desktop/src/athena/scripts/nous-inventory.mjs          # regenerate
+node apps/desktop/src/athena/scripts/nous-inventory.mjs --check  # stale? unclassified? replace left?
+```
+
+- **Replace**: maker / publisher / ids now read `branding.json` (About panel
+  copyright through the identity, `package.json` author and copyright, MSIX
+  publisher, Linux maintainer, Windows exe metadata). Docs and support links on
+  the demo path point at `supportUrl` through `strings.ts`.
+- **Hide**: Nous-hosted services are never renamed. `strings.ts`
+  (`hideNousServices`) filters the Nous Portal provider at its choke points:
+  `sortProviders` (every OAuth provider list, onboarding and Settings), the
+  onboarding key form's featured row, and the Settings key groups. Free-tier,
+  billing and cloud surfaces only appear with a Nous account, which the Athena
+  profile never enables (`nous.guest: false`). Rows marked `p10` are off the
+  demo path and not patched yet.
+- **Keep**: MIT licence and copyright credits, comments, identifiers, tests,
+  developer docs, and the stock-variant fallback literals.
+
 ## What the `athena` variant changes
 
 `HERMES_DESKTOP_VARIANT=athena` selects a bootstrap-shaped build (no bundled
@@ -110,3 +135,12 @@ Keep the diff to these, plus this folder (D05 › Upstream files touched).
 | `src/themes/{backend-sync,classic-skin,persist-accent}.test.*` | Read the default skin from `DEFAULT_SKIN_NAME` instead of hard-coding `'nous'` |
 | `src/components/assistant-ui/thread/index.tsx` | Fresh draft shows the `chat.empty` slot (the Athena splash) instead of core's intro. Not in D05's list: `chat.empty` only mounts for existing sessions, so the splash could not reach the launch screen otherwise |
 | `src/plugins/athena-brand/plugin.tsx` | New: one-line re-export that joins the bundled-plugin glob |
+| `product-identity.d.cts` | Optional `copyright` field (Athena variant only) |
+| `package.json` | `author: "SickKids"`, `copyright` crediting Hermes Agent (MIT) |
+| `electron-builder.config.cjs` | Athena `copyright` and Linux maintainer from `branding.json` |
+| `electron/main.ts` | About panel copyright from the identity (two places) |
+| `scripts/set-exe-identity.mjs` | Windows exe name, company and copyright from `branding.json` for the Athena variant |
+| `src/components/onboarding/providers.tsx` | `sortProviders` drops hidden (Nous) providers: the choke point for every OAuth provider list |
+| `src/components/onboarding/index.tsx` | No featured Nous row on the key form; custom-endpoint docs link → `supportUrl` |
+| `src/app/settings/constants.ts` | Hidden provider key groups filtered (Nous Portal) |
+| `src/lib/docs.ts`, `src/lib/error-surface.ts`, `src/app/chat/sidebar/section-states.tsx`, `src/components/version-details.tsx` | Docs / support / commit links → `supportUrl` |

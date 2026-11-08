@@ -76,6 +76,7 @@ module.exports = {
   electronVersion,
   appId,
   productName: displayName,
+  ...(athena ? { copyright: athena.copyright } : {}),
   executableName: displayName,
   protocols: [
     {
@@ -282,7 +283,7 @@ module.exports = {
   },
   linux: {
     category: 'Development',
-    maintainer: 'Nous Research <support@nousresearch.com>',
+    maintainer: athena ? athena.organization : 'Nous Research <support@nousresearch.com>',
     synopsis: light
       ? 'Remote-only desktop client for Hermes Agent.'
       : 'Native desktop shell for Hermes Agent.',

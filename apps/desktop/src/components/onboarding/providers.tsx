@@ -1,3 +1,4 @@
+import { isHiddenProvider } from '@/athena/strings'
 import { RowButton } from '@/components/ui/row-button'
 import { useI18n } from '@/i18n'
 import { Check, ChevronRight, Terminal } from '@/lib/icons'
@@ -23,7 +24,7 @@ export const providerTitle = (p: OAuthProvider) => PROVIDER_DISPLAY_NAMES[p.id] 
 const orderOf = (p: OAuthProvider) => PROVIDER_ORDER[p.id] ?? 99
 
 export const sortProviders = (providers: OAuthProvider[]) =>
-  [...providers].sort((a, b) => orderOf(a) - orderOf(b) || a.name.localeCompare(b.name))
+  providers.filter(p => !isHiddenProvider(p.id)).sort((a, b) => orderOf(a) - orderOf(b) || a.name.localeCompare(b.name))
 
 export function FeaturedProviderRow({
   onSelect,

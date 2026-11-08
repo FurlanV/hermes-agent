@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import type { ReactNode } from 'react'
 
+import { athenaStrings } from '@/athena/strings'
 import type { DesktopVersionInfo, RuntimeSource } from '@/global'
 import { useI18n } from '@/i18n'
 import { distributionLabelKey } from '@/lib/distribution-label'
@@ -107,11 +108,7 @@ export function VersionDetails({ version, channelAction }: { version: DesktopVer
         <div className="flex justify-between gap-4">
           <dt className="text-muted-foreground">{u.versionDetailsCommit}</dt>
           <dd className="break-all text-right">
-            <ExternalLink
-              className="break-all font-mono text-xs"
-              href={`https://github.com/NousResearch/hermes-agent/commit/${version.commit}`}
-              native
-            >
+            <ExternalLink className="break-all font-mono text-xs" href={athenaStrings.supportUrl} native>
               {version.commit.slice(0, 14)}
             </ExternalLink>
             {version.dirty && <span className="text-warning"> {u.versionDetailsUncommittedChanges}</span>}

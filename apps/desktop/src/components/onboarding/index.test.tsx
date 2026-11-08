@@ -48,22 +48,16 @@ afterEach(() => {
 })
 
 describe('onboarding Picker', () => {
-  it('features Nous Portal and hides other providers behind a disclosure', () => {
+  // Athena hides Nous-hosted services (src/athena/strings.ts): the Nous Portal
+  // row is never offered, so the remaining providers show without a disclosure.
+  it('never offers Nous Portal (Athena)', () => {
     setProviders([makeOAuthProvider('anthropic', 'Anthropic Claude'), makeOAuthProvider('nous', 'Nous Portal')])
     render(<Picker ctx={ctx} />)
 
-    expect(screen.getByText('Nous Portal')).toBeTruthy()
-    expect(screen.getByText('Recommended')).toBeTruthy()
-    // Fireworks stays behind the disclosure with the other alternatives; only
-    // Nous Portal is visible before the user expands the list.
-    expect(screen.queryByText('Fireworks AI')).toBeNull()
-    expect(screen.queryByText('Anthropic Account')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Other providers' }))
-
+    expect(screen.queryByText('Nous Portal')).toBeNull()
+    expect(screen.queryByText('Recommended')).toBeNull()
     expect(screen.getByText('Fireworks AI')).toBeTruthy()
     expect(screen.getByText('Anthropic Account')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Collapse' })).toBeTruthy()
   })
 
   it('shows every provider directly when Nous Portal is absent', () => {
@@ -92,14 +86,14 @@ describe('onboarding Picker', () => {
     expect(window.localStorage.getItem('hermes-onboarding-skipped-v1')).toBe('1')
   })
 
-  it('keeps Nous Portal on top of the key form when the provider list failed to load', () => {
+  it('puts no Nous Portal row on the key form when the provider list failed to load (Athena)', () => {
     // A failed/empty OAuth list drops the picker onto the key form with no way back.
     setProviders([])
     $desktopOnboarding.set({ ...$desktopOnboarding.get(), mode: 'apikey' })
     render(<Picker ctx={ctx} />)
 
-    expect(screen.getByText('Nous Portal')).toBeTruthy()
-    expect(screen.getByText('Recommended')).toBeTruthy()
+    expect(screen.queryByText('Nous Portal')).toBeNull()
+    expect(screen.queryByText('Recommended')).toBeNull()
     expect(screen.getByText('Fireworks AI')).toBeTruthy()
     cleanup()
 
