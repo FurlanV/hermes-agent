@@ -24,6 +24,33 @@ To run it against the pinned hermes, start it through the Athena launcher
 app would then try the GitHub bootstrap. `build-mac-dev.sh --launch` does
 both steps when `ATHENA_REPO` (or `ATHENA_DESKTOP_LAUNCHER`) is set.
 
+## Icons
+
+`assets/source/sickkids-logo.svg` is a byte copy of
+`athena/shared/logo/The_Hospital_for_Sick_Children_Logo.svg` (the athena
+repo is the source of truth; `branding.json` pins its sha256 as `logoSha256`).
+The logo is a wordmark with no separable emblem, so the square mark is the
+full wordmark on a rounded tile on the macOS icon grid:
+
+- `assets/source/athena-mark.svg`: white tile, logo colours (the app icon);
+- `assets/source/athena-mark-dark.svg`: Athena dark tile, wordmark reversed to white.
+
+The mark is pending sign-off from SickKids communications.
+
+```sh
+apps/desktop/src/athena/scripts/make-icons.sh          # rewrite every icon file
+apps/desktop/src/athena/scripts/make-icons.sh --check  # fail if any icon is stale
+```
+
+It renders with `rsvg-convert`, packs `.icns` with `iconutil` and `.ico`
+with a few lines of Python, and writes over the upstream paths
+(`assets/icon.*`, `assets/icon-dark.*`, `assets/icon-mac.png`, the
+`assets/icon.icon` layers and `public/apple-touch-icon.png`). Output is
+byte-for-byte repeatable. The Icon Composer package keeps the upstream
+`icon.json`; electron-builder compiles it only with `actool` from Xcode 26,
+otherwise it packs `icon.icns` alone (which `after-pack.mjs` restores anyway).
+The Windows MSIX tiles in `assets/appx/` stay stock (Windows is out of scope).
+
 ## What the `athena` variant changes
 
 `HERMES_DESKTOP_VARIANT=athena` selects a bootstrap-shaped build (no bundled
@@ -57,3 +84,5 @@ Keep the diff to these, plus this folder (D05 › Upstream files touched).
 | `scripts/write-build-stamp.mjs` | `athena` → `updateMechanism: 'external'`, payload `bootstrap`, stamp field `brand: 'athena'` |
 | `scripts/bundle-electron-main.mjs` | Re-derive the `athena` identity from the stamp's `brand` (the stamp payload stays `bootstrap`). Not in D05's original list; needed so the baked runtime identity is Athena, not Hermes |
 | `electron-builder.config.cjs` | MSIX publisher from `branding.json` |
+| `assets/icon.{icns,ico,png}`, `assets/icon-dark.{icns,ico,png}`, `assets/icon-mac.png`, `assets/icon.icon/Assets/*.png` | Binary replace by `make-icons.sh` |
+| `public/apple-touch-icon.png` | Binary replace by `make-icons.sh` |

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Athena app-icon mark (dark). The SickKids wordmark reversed to white on a
+     tile in the Athena dark background, same grid as athena-mark.svg.
+     Pending SickKids communications sign-off. Rendered by ../../scripts/make-icons.sh. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="reverse" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+      <feFlood flood-color="#ffffff"/>
+      <feComposite in2="SourceAlpha" operator="in"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#0b1f33"/>
+  <image href="sickkids-logo.svg" x="172" y="402.67" width="680" height="218.67" preserveAspectRatio="xMidYMid meet" filter="url(#reverse)"/>
+</svg>

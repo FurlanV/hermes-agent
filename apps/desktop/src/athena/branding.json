@@ -11,6 +11,7 @@
   "tagline": "SickKids research assistant",
   "supportUrl": "https://www.sickkids.ca/",
   "logo": "assets/source/sickkids-logo.svg",
+  "logoSha256": "ba80ae4790d3d5f015bce43f92f912a2214fa9783d1e6fb72a350a018f991620",
   "colors": {
     "brandPrimary": "#005ba8",
     "brandSecondary": "#00b3e2",

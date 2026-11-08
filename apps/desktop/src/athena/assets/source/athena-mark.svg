@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Athena app-icon mark (light). The full SickKids wordmark (sickkids-logo.svg,
+     unmodified) on a white rounded tile laid out on the macOS icon grid
+     (824 px tile, 185 px corner radius, 100 px margin). The logo has no
+     separable emblem, so this is D05's documented fallback. Pending SickKids
+     communications sign-off. Rendered by ../../scripts/make-icons.sh. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="#ffffff"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" ry="183" fill="none" stroke="#c9d9ea" stroke-width="4"/>
+  <image href="sickkids-logo.svg" x="172" y="402.67" width="680" height="218.67" preserveAspectRatio="xMidYMid meet"/>
+</svg>

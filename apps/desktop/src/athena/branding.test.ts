@@ -4,6 +4,8 @@
 // (updater owned externally). Identity and stamp are evaluated in fresh Node
 // processes so no variant leaks between cases.
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { describe, expect, test } from 'vitest'
@@ -40,7 +42,7 @@ function stamp(variant: string, platform: string): Record<string, unknown> {
 describe('branding.json', () => {
   test('has the fields the build and the renderer read', () => {
     for (const key of ['display', 'kebab', 'pascal', 'artifactPascal', 'appIdPrefix', 'organization', 'organizationLegal',
-      'msixPublisher', 'msixPublisherDisplayName', 'tagline', 'supportUrl', 'logo', 'fontStack'] as const) {
+      'msixPublisher', 'msixPublisherDisplayName', 'tagline', 'supportUrl', 'logo', 'logoSha256', 'fontStack'] as const) {
       expect(typeof branding[key], key).toBe('string')
       expect(branding[key].length, key).toBeGreaterThan(0)
     }
@@ -56,6 +58,14 @@ describe('branding.json', () => {
         expect(value).toMatch(/^#[0-9a-f]{6}$/i)
       }
     }
+  })
+})
+
+describe('icon sources', () => {
+  test('the logo copy is byte-identical to the pinned athena/shared/logo file', () => {
+    const logo = readFileSync(path.join(import.meta.dirname, branding.logo))
+
+    expect(createHash('sha256').update(logo).digest('hex')).toBe(branding.logoSha256)
   })
 })
 
