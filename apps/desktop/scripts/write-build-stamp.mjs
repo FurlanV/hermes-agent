@@ -253,7 +253,8 @@ export function buildStampPayload(stamp, env = process.env, platform = process.p
     bootstrap: 'self',
     store: 'microsoft-store',
     bundled: { win32: 'app-installer', darwin: 'electron-updater' }[platform] || 'external',
-    light: platform === 'darwin' ? 'electron-updater' : 'external'
+    light: platform === 'darwin' ? 'electron-updater' : 'external',
+    athena: 'external'
   }[variant]
   if (!updateMechanism) throw new Error(`Unknown desktop variant: ${variant}`)
   if (channelBuild && updateMechanism === 'external') throw new Error('Channel builds require a supported native update owner')
@@ -263,8 +264,10 @@ export function buildStampPayload(stamp, env = process.env, platform = process.p
   }
   return {
     ...base,
-    payload: variant === "store" ? "bundled" : variant || "bootstrap",
+    payload: variant === "store" ? "bundled" : variant === "athena" ? "bootstrap" : variant || "bootstrap",
     distribution: "desktop-app",
+    // bundle-electron-main.mjs re-derives the baked identity from the stamp.
+    ...(variant === "athena" ? { brand: "athena" } : {}),
 
     updateMechanism: commitBuild ? 'external' : updateMechanism,
     tag: channelBuild?.receiverCandidate ? channelBuild.releaseTag : env.HERMES_PAYLOAD_TAG || null,

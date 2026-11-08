@@ -1,0 +1,21 @@
+{
+  "display": "Athena",
+  "kebab": "athena",
+  "pascal": "Athena",
+  "artifactPascal": "SickKidsAthena",
+  "appIdPrefix": "ca.sickkids",
+  "organization": "SickKids",
+  "organizationLegal": "The Hospital for Sick Children",
+  "msixPublisher": "CN=SickKids-Athena-Placeholder",
+  "msixPublisherDisplayName": "SickKids",
+  "tagline": "SickKids research assistant",
+  "supportUrl": "https://www.sickkids.ca/",
+  "logo": "assets/source/sickkids-logo.svg",
+  "colors": {
+    "brandPrimary": "#005ba8",
+    "brandSecondary": "#00b3e2",
+    "light": { "background": "#ffffff", "foreground": "#0b1f33", "accent": "#005ba8", "accentForeground": "#ffffff" },
+    "dark": { "background": "#0b1f33", "foreground": "#e8f1fa", "accent": "#00b3e2", "accentForeground": "#0b1f33" }
+  },
+  "fontStack": "-apple-system, 'Segoe UI', system-ui, sans-serif"
+}

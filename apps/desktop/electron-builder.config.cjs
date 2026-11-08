@@ -53,6 +53,8 @@ function mustStoreMsix(value) {
 // never drift (see scripts/msix-shared.mjs).
 const { OUT_OF_STORE_PUBLISHER, channelBuildRequest, stageChannelManifest } = require('../../scripts/msix-shared.mjs')
 const { macIconResource } = require('./scripts/mac-icon.cjs')
+// Athena (SickKids) MSIX publisher; the subject must equal the signing cert's (P09).
+const athena = process.env.HERMES_DESKTOP_VARIANT === 'athena' ? require('./src/athena/branding.json') : null
 const channelRequest = channelBuildRequest()
 
 /** @typedef {import("app-builder-lib").Configuration} Configuration */
@@ -249,8 +251,8 @@ module.exports = {
     identityName: store ? mustStoreMsix(storeMsixWhenStore).identityName : msixAppIdWithOrg,
     applicationId: appNamePascal,
     displayName,
-    publisher: store ? mustStoreMsix(storeMsixWhenStore).publisher : OUT_OF_STORE_PUBLISHER,
-    publisherDisplayName: store ? mustStoreMsix(storeMsixWhenStore).publisherDisplayName : 'Nous Research',
+    publisher: store ? mustStoreMsix(storeMsixWhenStore).publisher : athena ? athena.msixPublisher : OUT_OF_STORE_PUBLISHER,
+    publisherDisplayName: store ? mustStoreMsix(storeMsixWhenStore).publisherDisplayName : athena ? athena.msixPublisherDisplayName : 'Nous Research',
     // The native quad is the build time (scripts/msix-shared.mjs::nativeQuad),
     // baked into the manifest template, so the builder's own build-number
     // override would stamp a second, conflicting version.

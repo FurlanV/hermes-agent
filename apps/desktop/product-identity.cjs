@@ -23,9 +23,13 @@ const variants = {
 }
 
 const variant = process.env.HERMES_DESKTOP_VARIANT || ''
-if (!['', 'light', 'bundled', 'store'].includes(variant)) {
-  throw new Error(`Unknown HERMES_DESKTOP_VARIANT ${variant}. expected one of (empty), light, bundled, store`)
+if (!['', 'light', 'bundled', 'store', 'athena'].includes(variant)) {
+  throw new Error(`Unknown HERMES_DESKTOP_VARIANT ${variant}. expected one of (empty), light, bundled, store, athena`)
 }
+
+// Athena (SickKids) branding: a bootstrap-shaped build whose names come from
+// src/athena/branding.json. No release feed; the hospital's MDM owns updates.
+const athena = variant === 'athena' ? require('./src/athena/branding.json') : null
 
 // 'store' is a Store-submission packaging identity layered on the bundled
 // variant: same Electron app (displayName/appId/appNamePascal -> shared
@@ -33,7 +37,9 @@ if (!['', 'light', 'bundled', 'store'].includes(variant)) {
 // MSIX package identity. The Store re-signs on submission.
 const store = variant === 'store'
 const light = variant === 'light'
-const name = variants[store ? 'bundled' : (variant || '')]
+const name = athena
+  ? { display: athena.display, kebab: athena.kebab, pascal: athena.pascal }
+  : variants[store ? 'bundled' : (variant || '')]
 
 // The electron-updater feed channel this build PUBLISHES to. A canary
 // tag (vX.Y.Z+canary.YYYYMMDDTHHMMSSZ) writes canary.yml / light-canary.yml;
@@ -66,14 +72,16 @@ const identity = {
   store,
   light,
   displayName,
-  appId: `com.nousresearch.${name.kebab}${kebabSuffix}`,
-  // Store and commit builds do not publish a release feed.
-  channel: store || buildCommit ? null : light ? (canary ? 'light-canary' : 'light') : (canary ? 'canary' : 'latest'),
+  appId: `${athena ? athena.appIdPrefix : 'com.nousresearch'}.${name.kebab}${kebabSuffix}`,
+  // Store, commit and Athena builds do not publish a release feed.
+  channel: store || buildCommit || athena ? null : light ? (canary ? 'light-canary' : 'light') : (canary ? 'canary' : 'latest'),
   appNamePascal: `${name.pascal}${pascalSuffix}`,
-  artifactNamePascal: name.pascal,
+  // Athena's artifact prefix differs from its app name so the runtime pins its
+  // own userData and app name (electron/product-identity.ts), like a nonstable build.
+  artifactNamePascal: athena ? athena.artifactPascal : name.pascal,
   windowsExecutableName: kebabSuffix ? cliName : displayName,
   cliName,
-  msixAppIdWithOrg: `NousResearch.${name.pascal}${pascalSuffix}`,
+  msixAppIdWithOrg: `${athena ? athena.organization : 'NousResearch'}.${name.pascal}${pascalSuffix}`,
   ...(store
     ? {
         storeMsix: {
