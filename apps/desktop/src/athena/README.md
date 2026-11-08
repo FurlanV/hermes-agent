@@ -51,6 +51,23 @@ byte-for-byte repeatable. The Icon Composer package keeps the upstream
 otherwise it packs `icon.icns` alone (which `after-pack.mjs` restores anyway).
 The Windows MSIX tiles in `assets/appx/` stay stock (Windows is out of scope).
 
+## Colours and splash
+
+- `theme.ts` is the `athena` skin, built from `branding.colors` (neutrals are
+  mixed from foreground into background). It is the default skin
+  (`DEFAULT_SKIN_NAME`), so a fresh profile paints Athena; other skins stay
+  pickable in Settings. Its typography sets `fontUrl: ''` so the Nous skin's
+  Google Fonts stylesheet underneath is never fetched.
+- `index.html` pre-paints the Athena background (`#ffffff` / `#0b1f33` until
+  the first theme apply stores the real one), sets `theme-color` and the page
+  title, so the first window shows no white flash.
+- `brand-plugin.tsx` (bundled through `src/plugins/athena-brand/plugin.tsx`)
+  contributes `splash.tsx` to `chat.empty` with the lowest order, so cards
+  other plugins add to that area, such as the Athena sign-in card, render
+  below it. The thread shows the `chat.empty` slot on a fresh draft too, in
+  place of core's "HERMES AGENT" intro; the Intro Splash toggle in Settings
+  still turns it off.
+
 ## What the `athena` variant changes
 
 `HERMES_DESKTOP_VARIANT=athena` selects a bootstrap-shaped build (no bundled
@@ -86,3 +103,10 @@ Keep the diff to these, plus this folder (D05 › Upstream files touched).
 | `electron-builder.config.cjs` | MSIX publisher from `branding.json` |
 | `assets/icon.{icns,ico,png}`, `assets/icon-dark.{icns,ico,png}`, `assets/icon-mac.png`, `assets/icon.icon/Assets/*.png` | Binary replace by `make-icons.sh` |
 | `public/apple-touch-icon.png` | Binary replace by `make-icons.sh` |
+| `electron/main.ts` | The four main-window `title: 'Hermes'` literals → `APP_NAME`; the Windows AUMID fallback → the identity `appId` |
+| `electron/challenge-window.ts` | Window title from the identity display name. Not in D05's list; it was the last `'Hermes'` window-title literal in the main process |
+| `index.html` | Title, `theme-color`, pre-paint fallback colours |
+| `src/themes/presets.ts` | Register the `athena` skin; `DEFAULT_SKIN_NAME = 'athena'` |
+| `src/themes/{backend-sync,classic-skin,persist-accent}.test.*` | Read the default skin from `DEFAULT_SKIN_NAME` instead of hard-coding `'nous'` |
+| `src/components/assistant-ui/thread/index.tsx` | Fresh draft shows the `chat.empty` slot (the Athena splash) instead of core's intro. Not in D05's list: `chat.empty` only mounts for existing sessions, so the splash could not reach the launch screen otherwise |
+| `src/plugins/athena-brand/plugin.tsx` | New: one-line re-export that joins the bundled-plugin glob |

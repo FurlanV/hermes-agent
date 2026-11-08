@@ -10,14 +10,22 @@ import path from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
+import { BUILTIN_THEMES, DEFAULT_SKIN_NAME } from '@/themes/presets'
+
 import branding from './branding.json'
+import { athenaTheme } from './theme'
 
 const desktop = path.resolve(import.meta.dirname, '../..')
 
 function node(args: string[], variant: string): string {
   const env: NodeJS.ProcessEnv = { ...process.env, HERMES_DESKTOP_VARIANT: variant }
 
-  for (const key of ['HERMES_PAYLOAD_TAG', 'HERMES_BUILD_COMMIT', 'HERMES_PAYLOAD_VERSION', '_HERMES_CHANNEL_REQUEST_JSON']) {
+  for (const key of [
+    'HERMES_PAYLOAD_TAG',
+    'HERMES_BUILD_COMMIT',
+    'HERMES_PAYLOAD_VERSION',
+    '_HERMES_CHANNEL_REQUEST_JSON'
+  ]) {
     delete env[key]
   }
 
@@ -26,7 +34,10 @@ function node(args: string[], variant: string): string {
 
 function identity(variant: string): Record<string, unknown> {
   return JSON.parse(
-    node(['-e', 'console.log(JSON.stringify(require(process.argv[1])))', path.join(desktop, 'product-identity.cjs')], variant)
+    node(
+      ['-e', 'console.log(JSON.stringify(require(process.argv[1])))', path.join(desktop, 'product-identity.cjs')],
+      variant
+    )
   )
 }
 
@@ -41,8 +52,22 @@ function stamp(variant: string, platform: string): Record<string, unknown> {
 
 describe('branding.json', () => {
   test('has the fields the build and the renderer read', () => {
-    for (const key of ['display', 'kebab', 'pascal', 'artifactPascal', 'appIdPrefix', 'organization', 'organizationLegal',
-      'msixPublisher', 'msixPublisherDisplayName', 'tagline', 'supportUrl', 'logo', 'logoSha256', 'fontStack'] as const) {
+    for (const key of [
+      'display',
+      'kebab',
+      'pascal',
+      'artifactPascal',
+      'appIdPrefix',
+      'organization',
+      'organizationLegal',
+      'msixPublisher',
+      'msixPublisherDisplayName',
+      'tagline',
+      'supportUrl',
+      'logo',
+      'logoSha256',
+      'fontStack'
+    ] as const) {
       expect(typeof branding[key], key).toBe('string')
       expect(branding[key].length, key).toBeGreaterThan(0)
     }
@@ -94,9 +119,71 @@ describe('athena identity variant', () => {
 
   test('stamps an externally owned bootstrap build on every platform', () => {
     for (const platform of ['darwin', 'win32', 'linux']) {
-      expect(stamp('athena', platform)).toMatchObject({ payload: 'bootstrap', updateMechanism: 'external', brand: 'athena' })
+      expect(stamp('athena', platform)).toMatchObject({
+        payload: 'bootstrap',
+        updateMechanism: 'external',
+        brand: 'athena'
+      })
     }
 
     expect(stamp('', 'darwin')).not.toHaveProperty('brand')
+  })
+})
+
+function luminance(hex: string): number {
+  const value = Number.parseInt(hex.slice(1), 16)
+
+  const [r, g, b] = [(value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff].map(channel => {
+    const c = channel / 255
+
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+describe('athena theme', () => {
+  test('is the default built-in skin', () => {
+    expect(DEFAULT_SKIN_NAME).toBe('athena')
+    expect(BUILTIN_THEMES[DEFAULT_SKIN_NAME]).toBe(athenaTheme)
+  })
+
+  test('fetches no web font (an empty fontUrl masks the Nous skin underneath)', () => {
+    expect(athenaTheme.typography?.fontUrl).toBe('')
+    expect(athenaTheme.typography?.fontSans).toContain(branding.fontStack)
+  })
+
+  test('paints the branding seeds', () => {
+    expect(athenaTheme.colors).toMatchObject({
+      background: branding.colors.light.background,
+      primary: branding.colors.light.accent
+    })
+    expect(athenaTheme.darkColors).toMatchObject({
+      background: branding.colors.dark.background,
+      primary: branding.colors.dark.accent
+    })
+  })
+
+  test.each([
+    ['light', athenaTheme.colors],
+    ['dark', athenaTheme.darkColors!]
+  ])('%s text pairs pass WCAG AA (4.5:1)', (_mode, colors) => {
+    for (const [ink, surface] of [
+      [colors.foreground, colors.background],
+      [colors.mutedForeground, colors.background],
+      [colors.mutedForeground, colors.muted],
+      [colors.primaryForeground, colors.primary],
+      [colors.primary, colors.background],
+      [colors.foreground, colors.userBubble!],
+      [colors.destructiveForeground, colors.destructive]
+    ]) {
+      expect(contrast(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5)
+    }
   })
 })

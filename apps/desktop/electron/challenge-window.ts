@@ -1,5 +1,6 @@
 import type { BrowserWindow, BrowserWindowConstructorOptions, Session } from 'electron'
 
+import { PRODUCT_IDENTITY } from './product-identity'
 import { createWindowOpenHandler } from './window-open-policy'
 
 /**
@@ -115,7 +116,7 @@ export function challengeWindowOptions(session: Session): BrowserWindowConstruct
     width: 520,
     height: 720,
     show: false,
-    title: 'Hermes — quick check',
+    title: `${PRODUCT_IDENTITY.displayName} — quick check`,
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
