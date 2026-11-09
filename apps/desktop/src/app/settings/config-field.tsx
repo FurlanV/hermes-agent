@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 
+import { athenaConfigField } from '@/athena/managed/max-turns-field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
@@ -88,6 +89,11 @@ export function ConfigField({
   // point at one setting (`[data-tour="field-model"]`) without hunting through
   // the section for an nth-child path. See lib/tour.
   const dataTour = `field-${schemaKey}`
+  const athenaField = athenaConfigField(schemaKey, { dataTour, description: descriptionNode, label, onChange, value })
+
+  if (athenaField) {
+    return athenaField
+  }
 
   const row = (action: ReactNode) => (
     <ListRow action={action} data-tour={dataTour} description={descriptionNode} title={label} />

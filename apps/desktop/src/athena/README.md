@@ -424,6 +424,7 @@ override with `ATHENA_F02_BASE`).
 | `src/app/capabilities/index.tsx` | `CapabilitiesView` renders the Athena catalog page while `managed.tools` is enforce or report; the stock view is `StockCapabilitiesView`, unchanged (slice 28) |
 | `electron/main.ts` | Installs the Capabilities tool switches (`installAthenaToolPrefs`, `athena:tool-prefs:get`/`set`) (slice 28) |
 | `electron/main.ts` | Imports `athena/ipc-guard-install` first (policy IPC channels follow the flags); `toggleDevTools`, `devtools-opened` and the View menu's DevTools item ask the DevTools seam; the menu is rebuilt on a policy change (slice 17) |
+| `src/app/settings/config-field.tsx` | `ConfigField` returns `athenaConfigField(…)` when it gives a control: Max agent steps (`agent.max_turns`) takes 10 to the role's `models.max_turns_limit` (`managed/max-turns-field.tsx`, slice 24) |
 | `src/app/contrib/wiring.tsx` | Stock onboarding (S109) is not decided or mounted; the usage-stats consent (S49) and free-tier sign-in (S110) dialogs are not mounted (slice 18) |
 | `src/app/contrib/controller.tsx` | The free-tier terms bar asks `dialog:portal-terms` (S110, slice 18) |
 | `src/app/chat/composer/status-stack/index.tsx` | The free-tier notice and usage-stats consent strips ask the filter (S110, S49, slice 18) |
