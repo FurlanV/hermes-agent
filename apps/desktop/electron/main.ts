@@ -77,6 +77,7 @@ import {
   guardedIpcMain,
   refuseRestRequest
 } from './athena/policy-seams'
+import { installAthenaToolPrefs } from './athena/tool-prefs'
 import { stopBackendChild as stopBackendChildImpl, waitForBackendExit } from './backend-child'
 import {
   execText,
@@ -15249,6 +15250,9 @@ installAthenaClientConfig({
   ipcMain,
   log: rememberLog
 })
+
+// Athena (F02 slice 28): the Capabilities page's tool switches run `athena config tool` (tool-prefs.json + apply).
+installAthenaToolPrefs({ hermesHome: HERMES_HOME, ipcMain, log: rememberLog })
 
 // Privileged channels (Hermes Cloud, updates) register through the Athena
 // policy seam: a channel the policy refuses is never registered.

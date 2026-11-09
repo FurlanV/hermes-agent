@@ -279,6 +279,33 @@ a real filter.
     deep links, toasts, slash replies, Bot Mode and the terminal, and holds a
     tripwire on each upstream hook.
 
+- The curated catalog in Capabilities (slice 28): while `managed.tools` is
+  `enforce` or `report`, `CapabilitiesView` renders `catalog/catalog-page.tsx`
+  instead of the Skills, Plugins, Connectors and Toolsets tabs (`off`, or no
+  client config at all, keeps the stock page).
+  - `catalog/catalog.json` is a byte copy of athena's
+    `client/catalog/catalog.json`; `catalog-bundle.test.ts` compares them when
+    a checkout is present (`ATHENA_REPO`). Re-copy it after
+    `athena-build-catalog`.
+  - Cards are the config's `tools.available` (in that order, grouped by the
+    entry's `group`): title, version, summary, the "Sends:" line from
+    `permissions.data`, and a switch. `locked_on` entries and entries with
+    `user_toggle: false` say "Managed" with no switch; `status: experimental`
+    shows a badge. On/off mirrors the applier (`tool_pins.is_on`).
+  - A switch calls `window.athenaDesktop.tools.set(id, on)` →
+    `athena:tool-prefs:set` → `electron/athena/tool-prefs.ts`, which runs
+    `athena config tool <id> on|off` (writes `$HERMES_HOME/athena/tool-prefs.json`
+    and re-applies managed scope), one toggle at a time. The CLI is
+    `ATHENA_CLI` (the dev launcher sets it), else `athena` on the PATH the app
+    was launched with (captured before the login-shell PATH merge). With no CLI,
+    main writes the file in the CLI's format and the next sync applies it.
+    `athena:tool-prefs:get` reads the file.
+  - Learned skills (`catalog/learned-skills.tsx`): local skills that managed
+    scope leaves on and the catalog did not install, viewed through
+    `/api/skills/content` and deleted with the stock archive
+    (`DELETE /api/learning/node`). No add, import, URL or editor.
+  - "Ask Research IT" shows only when the config has `tools.request_url`.
+
 - Backend refusals (slice 17): a disabled feature is refused, not just
   hidden. Rows also list their backend surfaces: `rest:<path>`,
   `rest:<METHOD> <path>` and `rest:WRITE <path>` (any method but GET/HEAD),
@@ -367,4 +394,6 @@ override with `ATHENA_F02_BASE`).
 | `src/store/profile-share.ts` | `runImportProfileFlow` asks the filter |
 | `src/app/profiles/create-profile-dialog.tsx` | The create/import dialog opens only while allowed |
 | `src/store/send-diagnostics.ts` | `requestSendDiagnostics` asks the filter |
+| `src/app/capabilities/index.tsx` | `CapabilitiesView` renders the Athena catalog page while `managed.tools` is enforce or report; the stock view is `StockCapabilitiesView`, unchanged (slice 28) |
+| `electron/main.ts` | Installs the Capabilities tool switches (`installAthenaToolPrefs`, `athena:tool-prefs:get`/`set`) (slice 28) |
 | `electron/main.ts` | Imports `athena/ipc-guard-install` first (policy IPC channels follow the flags); `toggleDevTools`, `devtools-opened` and the View menu's DevTools item ask the DevTools seam; the menu is rebuilt on a policy change (slice 17) |
