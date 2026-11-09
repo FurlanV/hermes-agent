@@ -14,6 +14,7 @@ import { notify } from '@/store/notifications'
 
 import { settingsLocationEntries } from '../../../electron/athena/app-locations'
 
+import { decideUse } from './feature-use'
 import type { FeatureFilter } from './features'
 import {
   isSettingsLocationAllowed,
@@ -69,6 +70,15 @@ interface SettingsRouteGuardOptions {
 export function useSettingsRouteGuard({ filter, navGroups, openHome, search }: SettingsRouteGuardOptions): void {
   const verdict = settingsRouteVerdict(search, filter)
   const view = new URLSearchParams(search).get('tab')
+
+  // Opening a Settings page is a use (slice 19), recorded like any other (feature-use.ts).
+  useEffect(() => {
+    const params = new URLSearchParams(search)
+
+    if (params.get('tab')) {
+      decideUse(settingsLocationEntries(params), 'route', `/settings?${params}`)
+    }
+  }, [search])
 
   useEffect(() => {
     if (verdict === 'ok') {

@@ -10,15 +10,19 @@
 
 import { appPathAllowed, appPathEntries } from '../../../electron/athena/app-locations'
 
+import { decideUse } from './feature-use'
 import { $featureFilter, allowedEntries, type FeatureFilter } from './features'
 
 const current = (): FeatureFilter => $featureFilter.get()
 
 export const keybindEntryId = (actionId: string) => `keybind:${actionId}`
 
-/** A shortcut (or a plugin's `runAction`) may run. A refused one drops out of the panel and does nothing. */
-export function isKeybindAllowed(actionId: string, filter: FeatureFilter = current()): boolean {
-  return filter(keybindEntryId(actionId))
+/**
+ * A shortcut (or a plugin's `runAction`) may run. A refused one drops out of the panel and does nothing. Without a
+ * filter it is a use (the dispatch): decided under the master switch and recorded (feature-use.ts).
+ */
+export function isKeybindAllowed(actionId: string, filter?: FeatureFilter): boolean {
+  return filter ? filter(keybindEntryId(actionId)) : decideUse([keybindEntryId(actionId)], 'keybind', actionId)
 }
 
 /** An in-app path (`/cron`, `/settings?tab=billing`, `/command-center?section=usage`) may be opened. */
@@ -39,9 +43,22 @@ export function allowedOpenPath(path: string | null): string | null {
 
 export const SLASH_NOT_AVAILABLE = 'Not available in Athena.'
 
-/** A slash command (by its typed name or canonical name) may run. */
-export function isSlashCommandAllowed(names: readonly (string | undefined)[], filter: FeatureFilter = current()) {
-  return names.every(name => !name || filter(`slash:${name.replace(/^\//, '').toLowerCase()}`))
+const slashEntries = (names: readonly (string | undefined)[]) =>
+  names.filter((name): name is string => Boolean(name)).map(name => `slash:${name.replace(/^\//, '').toLowerCase()}`)
+
+/**
+ * A slash command (by its typed name or canonical name) may run. Without a filter it is a use (the composer sent
+ * it): decided under the master switch and recorded.
+ */
+export function isSlashCommandAllowed(names: readonly (string | undefined)[], filter?: FeatureFilter) {
+  const entries = slashEntries(names)
+
+  return filter ? entries.every(filter) : decideUse(entries, 'slash', names.find(Boolean) ?? '')
+}
+
+/** A slash command may be suggested (a list, not a use: nothing is recorded). */
+export function isSlashCommandOffered(names: readonly (string | undefined)[], filter: FeatureFilter = current()) {
+  return slashEntries(names).every(filter)
 }
 
 export function isErrorActionAllowed(actionId: string, filter: FeatureFilter = current()): boolean {

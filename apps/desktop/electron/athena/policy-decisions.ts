@@ -15,9 +15,15 @@
 //    "mode": "enforce"|"report"|"off", "surface": <entry kind, or rest/rpc/ipc>,
 //    "target"?: <what was called, optional>}
 //
-// The same decision repeated within `coalesceMs` (a page polling a refused
-// endpoint) is written once. Past `maxBytes` the file is started over; the
-// Shipper notices the truncation.
+// One use often crosses several surfaces (a slash command is checked in the
+// composer and again as the `command.dispatch` it sends; a shortcut opens a
+// page) and a page may poll a refused endpoint, so the same decision (kind,
+// id, action, mode) within `coalesceMs` is written once: the first surface's
+// line stands for it. Refusals coalesce over `refusedCoalesceMs` (10 min):
+// under `enforce` the stock app still polls some refused methods in the
+// background (`free_tier.status` with the status snapshot), and one line per
+// feature per window is the record, not a stream. Past `maxBytes` the file is
+// started over; the Shipper notices the truncation.
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -43,6 +49,8 @@ export type PolicyDecisionInput = Omit<PolicyDecisionLine, 'source' | 'ts'>
 export interface PolicyDecisionLogOptions {
   /** Default 5 s. */
   coalesceMs?: number
+  /** For `refused` decisions; default 10 min (and never shorter than `coalesceMs`). */
+  refusedCoalesceMs?: number
   file: string
   log?: (line: string) => void
   /** Default 1 MiB. */
@@ -86,12 +94,14 @@ export function parsePolicyDecision(value: unknown): null | PolicyDecisionInput 
 
 export class PolicyDecisionLog {
   private readonly coalesceMs: number
+  private readonly refusedCoalesceMs: number
   private readonly lastWritten = new Map<string, number>()
   private readonly maxBytes: number
   private readonly now: () => number
 
   constructor(private readonly options: PolicyDecisionLogOptions) {
     this.coalesceMs = options.coalesceMs ?? 5000
+    this.refusedCoalesceMs = Math.max(this.coalesceMs, options.refusedCoalesceMs ?? (options.coalesceMs === 0 ? 0 : 600_000))
     this.maxBytes = options.maxBytes ?? 1024 * 1024
     this.now = options.now ?? Date.now
   }
@@ -103,10 +113,12 @@ export class PolicyDecisionLog {
   /** Append one decision (from main, or a renderer record that `parsePolicyDecision` accepted). Never throws. */
   record(decision: PolicyDecisionInput): boolean {
     const now = this.now()
-    const key = [decision.kind, decision.id, decision.action, decision.mode, decision.surface, decision.target].join('\u0000')
+    const key = [decision.kind, decision.id, decision.action, decision.mode].join('\u0000')
     const last = this.lastWritten.get(key)
 
-    if (last !== undefined && now - last < this.coalesceMs) {
+    const window = decision.action === 'refused' ? this.refusedCoalesceMs : this.coalesceMs
+
+    if (last !== undefined && now - last < window) {
       return false
     }
 
@@ -128,7 +140,7 @@ export class PolicyDecisionLog {
 
       if (this.lastWritten.size > 500) {
         for (const [entry, at] of this.lastWritten) {
-          if (now - at >= this.coalesceMs) {
+          if (now - at >= this.refusedCoalesceMs) {
             this.lastWritten.delete(entry)
           }
         }

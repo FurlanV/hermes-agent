@@ -669,19 +669,32 @@ export function exportedFeatureRegistry() {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
+export type MasterSwitch = 'features' | 'models' | 'tools'
+
 /**
- * The master switch for feature filtering (`managed.features`). `report` is
- * treated as `enforce` until slice 19 adds would-be-block logging: the
- * restrictive reading, never a silent opening.
+ * A master switch (`managed.features`, `managed.models`, `managed.tools`; plan
+ * section C), as the effective client config sets it (server config, then the
+ * dev override, layered by main):
+ * - `enforce`: hide and refuse;
+ * - `report`: hide and refuse nothing, but record each use of what `enforce`
+ *   would refuse (an `athena:policy_decision`);
+ * - `off`: stock behaviour for that area, and nothing recorded.
+ * A missing or unknown value reads as `enforce`: the restrictive reading,
+ * never a silent opening. Slices 20 and 27 read `models` and `tools` here too.
  */
-export function featureMode(config: unknown): FeatureMode {
-  const mode = isRecord(config) && isRecord(config.managed) ? config.managed.features : undefined
+export function managedMode(config: unknown, area: MasterSwitch): FeatureMode {
+  const mode = isRecord(config) && isRecord(config.managed) ? config.managed[area] : undefined
 
   return mode === 'off' || mode === 'report' ? mode : 'enforce'
 }
 
+/** The master switch for feature filtering (`managed.features`). */
+export function featureMode(config: unknown): FeatureMode {
+  return managedMode(config, 'features')
+}
+
 export interface FeatureStates {
-  /** Whether filtering applies (false when the master switch is `off`). */
+  /** Whether filtering applies (only under `enforce`; `report` and `off` hide nothing but remove rows). */
   filtering: boolean
   /** The row's own flag, whatever the master switch says (remove rows and unknown ids: false). */
   flag: (rowId: string) => boolean
@@ -710,10 +723,10 @@ export function featureStates(config: unknown): FeatureStates {
   const flag = (rowId: string) => FEATURE_ROW_BY_ID.get(rowId)?.mark !== 'remove' && states.get(rowId) === true
 
   return {
-    filtering: mode !== 'off',
+    filtering: mode === 'enforce',
     flag,
     mode,
-    // With the master switch off nothing is filtered, except remove rows: they are not in this variant.
+    // With the master switch `report` or `off` nothing is filtered, except remove rows: they are not in this variant.
     on: rowId => {
       const mark = FEATURE_ROW_BY_ID.get(rowId)?.mark
 
@@ -721,7 +734,7 @@ export function featureStates(config: unknown): FeatureStates {
         return false
       }
 
-      return mode === 'off' || states.get(rowId) === true
+      return mode !== 'enforce' || states.get(rowId) === true
     }
   }
 }

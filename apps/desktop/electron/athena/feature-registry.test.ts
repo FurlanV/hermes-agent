@@ -124,7 +124,7 @@ describe('evaluating flags', () => {
     expect(states.on('S999')).toBe(false)
   })
 
-  test('master switch: off means no filtering (remove rows still off); report reads as enforce for now', () => {
+  test('master switch: report and off mean no filtering (remove rows still off); the flags stay readable', () => {
     expect(featureMode({})).toBe('enforce')
     expect(featureMode({ managed: { features: 'nonsense' } })).toBe('enforce')
 
@@ -134,7 +134,9 @@ describe('evaluating flags', () => {
 
     const report = featureStates({ managed: { features: 'report' } })
     expect(report.mode).toBe('report')
-    expect(report.on('S82')).toBe(false)
+    expect(report.filtering).toBe(false)
+    expect(['S82', 'S77'].map(report.on)).toEqual([true, false])
+    expect(['S82', 'S17'].map(report.flag)).toEqual([false, true])
   })
 
   test('entries: exact beats a prefix, the longest prefix wins, unlisted entries are left alone', () => {

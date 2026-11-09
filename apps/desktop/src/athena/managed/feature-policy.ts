@@ -14,6 +14,7 @@ import { featureDecider, rpcEntries } from '../../../electron/athena/backend-pol
 import { featureEntryFilter } from '../../../electron/athena/feature-registry'
 
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
+import { setFeatureDecider } from './feature-use'
 import { ALLOW_ALL_FEATURES, setFeatureFilter } from './features'
 import { recordPolicyDecision } from './policy-decisions'
 import { ALLOW_ALL_RPC, type RpcPolicy, setRpcPolicy } from './rpc-seam'
@@ -46,11 +47,13 @@ export function installFeaturePolicy(): () => void {
   const off = $clientConfig.subscribe(snapshot => {
     setFeatureFilter(filterForSnapshot(snapshot))
     setRpcPolicy(rpcPolicyForSnapshot(snapshot))
+    setFeatureDecider(snapshot?.variant === 'stock' ? null : featureDecider(snapshot?.config ?? {}))
   })
 
   return () => {
     off()
     setFeatureFilter(null)
     setRpcPolicy(null)
+    setFeatureDecider(null)
   }
 }

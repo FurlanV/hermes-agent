@@ -12,7 +12,10 @@ import { $pluginRecords, patchPlugin, pluginActive, pluginPolicyHandle } from '@
 import { registry } from '@/contrib/registry'
 import { SIDEBAR_NAV_PREFS_AREA, type SidebarNavPrefsContribution } from '@/store/sidebar-nav'
 
+import { appPathEntries } from '../../../electron/athena/app-locations'
+
 import { appRouteVerdict } from './entry-points'
+import { decideUse } from './feature-use'
 import { $featureFilter, type FeatureFilter, useFeatureFilter } from './features'
 import { notifyFeatureUnavailable } from './settings-route-guard'
 
@@ -71,6 +74,14 @@ export function installEntryPointPolicies(): () => void {
 /** App pages outside Settings: a refused one (typed, linked or open when the config changed) goes to a new chat. */
 export function useAppRouteGuard(pathname: string, search: string, goHome: () => void): void {
   const verdict = appRouteVerdict(pathname, search, useFeatureFilter())
+
+  // Opening a page is a use (slice 19): refused pages are recorded under `enforce`, pages a disabled row owns
+  // under `report`. Settings has its own guard.
+  useEffect(() => {
+    if (pathname !== '/settings' && !pathname.startsWith('/settings/')) {
+      decideUse(appPathEntries(`${pathname}${search}`), 'route', `${pathname}${search}`)
+    }
+  }, [pathname, search])
 
   useEffect(() => {
     if (verdict === 'home') {

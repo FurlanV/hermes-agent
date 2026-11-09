@@ -227,9 +227,8 @@ a real filter.
   while any row listing it is on; an entry no row lists is left alone.
   - Flags: build default < bundled default config < server config < dev
     override; main layers the documents, `featureStates(config)` reads
-    `features` (exceptions, `"on"`/`"off"`). `managed.features: off` turns
-    filtering off (remove rows stay off); `report` reads as `enforce` until
-    slice 19.
+    `features` (exceptions, `"on"`/`"off"`). `managed.features: report` and
+    `off` turn filtering off (remove rows stay off); see slice 19 below.
   - `managed/feature-policy.ts` installs `featureEntryFilter(config)` as the
     feature filter on every `$clientConfig` change (build defaults until the
     first snapshot, and on hosts with no Electron bridge).
@@ -371,6 +370,37 @@ a real filter.
     and a Settings walk and sees only loopback.
   - Tests: `managed/removed-features.test.tsx`.
 
+- Master switches and report mode (slice 19): `managedMode(config, area)`
+  (`electron/athena/feature-registry.ts`) reads `managed.features`,
+  `managed.models` and `managed.tools` (`enforce` | `report` | `off`; missing
+  or unknown is `enforce`), for slices 20 and 27 too. For features:
+  - `enforce`: hide and refuse (slices 15-18), and record each refusal;
+  - `report`: hide and refuse nothing (remove rows stay out), pin nothing
+    (`athena config apply` pins only remove rows), and record each *use* of a
+    feature an `enforce` config would refuse as `allowed_in_report`;
+  - `off`: stock behaviour for features, nothing recorded.
+  - A list (nav, palette, search, the key map, card buttons) asks the
+    visibility filter; a use asks the decider: REST, IPC (each invoke of a
+    tracked channel), DevTools and deep links in main; JSON-RPC, slash
+    commands, shortcuts and page opens (the route guards) in the renderer
+    (`managed/feature-use.ts`, `decideUse`). Slash suggestions are a list
+    (`isSlashCommandOffered`).
+  - Records: Electron main appends one JSON line per decision to
+    `$HERMES_HOME/athena/policy-decisions.jsonl`:
+    `{"ts", "source": "desktop", "kind": "feature", "id": <row>, "action":
+    "refused"|"allowed_in_report", "mode", "surface", "target"}` (the renderer
+    sends its own over `athena:policy-decision`; main validates and stamps
+    them). The same feature decision within 5 s is written once (one use
+    crosses several surfaces; pages poll), a refusal once per 10 min (the
+    stock app polls some refused methods in the background). Past 1 MiB the
+    file starts over.
+    The athena Shipper tails it into `athena:policy_decision` events
+    (`athena_guard` writes the same file with `source: "guard"`).
+  - Tests: `electron/athena/report-mode.test.ts`, `managed/report-mode.test.tsx`;
+    `managed/settings-lists.test.tsx` checks that with every master switch
+    `off` the Settings nav and palette equal the D05 lists less the removed
+    features.
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -435,3 +465,4 @@ override with `ATHENA_F02_BASE`).
 | `src/components/error-boundary.tsx` | The crash screen's Send diagnostics is not offered (S117, slice 18) |
 | `src/components/assistant-ui/thread/assistant-message.tsx` | The error card's Send diagnostics is not offered (S117, slice 18) |
 | `src/app/settings/index.tsx` | `billing.state` / `subscription.state` are read only while Billing is allowed (S77, slice 18) |
+| `src/lib/desktop-slash-commands.ts` | Slash suggestions ask `isSlashCommandOffered` (a list, not a use: nothing recorded) (slice 19) |

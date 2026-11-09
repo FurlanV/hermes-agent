@@ -313,7 +313,7 @@ describe('the upstream hooks are in place', () => {
     ['app/shell/hooks/use-statusbar-items.tsx', /allowedStatusbarItems\(\[\.\.\.extraRightItems/],
     ['app/command-palette/index.tsx', /allowedPaletteGroups\(\[\.\.\.baseGroups, \.\.\.searchGroups, \.\.\.branchGroup\]/],
     ['app/session/hooks/use-prompt-actions/slash.ts', /if \(!isSlashCommandAllowed\(\[name, resolvedCommand\?\.name\]\)\)/],
-    ['lib/desktop-slash-commands.ts', /if \(!isSlashCommandAllowed\(\[normalized, canonicalDesktopSlashCommand/],
+    ['lib/desktop-slash-commands.ts', /if \(!isSlashCommandOffered\(\[normalized, canonicalDesktopSlashCommand/],
     ['components/assistant-ui/thread/assistant-message.tsx', /useFeatureEntry\(`error-action:\$\{action\}`\)/],
     ['store/notifications.ts', /action: allowedNotificationAction\(input\.action\)/],
     ['app/command-center/index.tsx', /SECTIONS\.filter\(value => featureFilter\(`command-center:\$\{value\}`\)\)/],

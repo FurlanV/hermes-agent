@@ -17,6 +17,10 @@ import type * as WebAccess from '@/app/settings/web-access-settings'
 import type * as HermesApi from '@/hermes'
 import { $commandPaletteOpen, $commandPalettePage } from '@/store/command-palette'
 
+import { BUNDLED_DEFAULT_CONFIG } from '../../../electron/athena/bundled-config-data'
+import { toolsMode } from '../catalog/catalog'
+
+import { filterForSnapshot } from './feature-policy'
 import { setFeatureFilter } from './features'
 
 const navCapture = vi.hoisted(() => ({ groups: [] as OverlayNavGroup[] }))
@@ -276,5 +280,55 @@ describe('one denied entry id leaves every Settings list at once', () => {
     const search = await searchCatalog()
     expect(search.configEntries).not.toContain('config-field:timezone')
     expect(search.configEntries).toContain('config-field:model_context_length')
+  })
+})
+
+describe('with every master switch off (slice 19)', () => {
+  const allOff = {
+    config: {
+      ...(BUNDLED_DEFAULT_CONFIG as Record<string, unknown>),
+      managed: { features: 'off', models: 'off', tools: 'off' }
+    },
+    configVersion: null,
+    devOverridesActive: true,
+    error: null,
+    role: null,
+    source: 'bundled' as const,
+    verifiedAt: null
+  }
+
+  const minus = <T,>(rows: T[], gone: (row: T) => boolean): T[] => rows.filter(row => !gone(row))
+
+  const navMinus = (rows: NavRow[], gone: Set<string>): NavRow[] =>
+    rows
+      .filter(row => !gone.has(row.id))
+      .map(row => (row.children ? { ...row, children: navMinus(row.children, gone) } : row))
+
+  // What the Athena variant leaves out (remove rows) of the D05 build's lists.
+  const REMOVED_NAV = new Set(['billing', 'web-access', 'pview:accounts', 'pview:keys'])
+  const REMOVED_PALETTE = /^(set|sp)-(billing|web-access|providers&pview=(accounts|keys))/
+
+  test('Settings nav and palette equal the D05 lists, less the removed features; Capabilities is the stock page', async () => {
+    const d05Nav = await renderSettingsNav()
+    cleanup()
+    const d05Root = await renderPaletteSettingsRows(null)
+    cleanup()
+    $commandPaletteOpen.set(false)
+    const d05Page = await renderPaletteSettingsRows('settings')
+    cleanup()
+    $commandPaletteOpen.set(false)
+
+    setFeatureFilter(filterForSnapshot(allOff))
+    expect(await renderSettingsNav()).toEqual(navMinus(d05Nav, REMOVED_NAV))
+    cleanup()
+    expect(await renderPaletteSettingsRows(null)).toEqual(minus(d05Root, row => REMOVED_PALETTE.test(row.value)))
+    cleanup()
+    $commandPaletteOpen.set(false)
+    expect(await renderPaletteSettingsRows('settings')).toEqual(minus(d05Page, row => REMOVED_PALETTE.test(row.value)))
+
+    // The D05 lists themselves are the recorded snapshot (the first describe pins them).
+    expect(d05Nav.map(row => row.id)).toContain('billing')
+    // Capabilities: `managed.tools: off` keeps the stock page (catalog-page.tsx useCuratedCapabilities).
+    expect(toolsMode(allOff.config)).toBe('off')
   })
 })

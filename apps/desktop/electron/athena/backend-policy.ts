@@ -20,7 +20,7 @@
 // override, so the app's own env editor could otherwise point
 // `HERMES_MANAGED_DIR` elsewhere and unpin the running daemon (spike 05).
 
-import { featureStates, rowsForEntry } from './feature-registry'
+import { FEATURE_ROW_BY_ID, featureStates, rowsForEntry } from './feature-registry'
 
 export interface RestCall {
   body?: unknown
@@ -171,27 +171,43 @@ export interface FeatureDecision {
 export type FeatureDecider = (entries: readonly string[], surface: string, target: string) => FeatureDecision
 
 /**
- * Decide calls under one effective client config. `enforce` refuses (and
- * records the refusal); `off` lets everything through but remove rows, and
- * records nothing.
+ * Decide calls under one effective client config (master switch
+ * `managed.features`):
+ * - `enforce`: a call reaching an entry whose rows are all off is refused,
+ *   and the refusal recorded;
+ * - `report`: it goes through, and the use is recorded (`allowed_in_report`);
+ * - `off`: it goes through, and nothing is recorded.
+ * Remove rows are not in the Athena variant: a call reaching only remove rows
+ * is refused in every mode (recorded under `enforce` and `report`).
  */
 export function featureDecider(config: unknown): FeatureDecider {
   const states = featureStates(config)
+  const mode = states.mode
+  const isRemove = (id: string) => FEATURE_ROW_BY_ID.get(id)?.mark === 'remove'
 
   return (entries, surface, target) => {
+    let reported: FeatureDecisionRecord | null = null
+
     for (const entry of entries) {
       const rows = rowsForEntry(entry)
 
-      if (rows === null || rows.some(states.on)) {
+      if (rows === null || rows.some(states.flag)) {
         continue
       }
 
-      return {
-        allowed: false,
-        record: states.filtering ? { action: 'refused', id: rows[0], mode: states.mode, surface, target } : null
+      // `enforce` would refuse this entry.
+      if (mode === 'enforce' || rows.every(isRemove)) {
+        return {
+          allowed: false,
+          record: mode === 'off' ? null : { action: 'refused', id: rows[0], mode, surface, target }
+        }
+      }
+
+      if (mode === 'report' && !reported) {
+        reported = { action: 'allowed_in_report', id: rows.find(id => !isRemove(id)) ?? rows[0], mode, surface, target }
       }
     }
 
-    return { allowed: true, record: null }
+    return { allowed: true, record: reported }
   }
 }

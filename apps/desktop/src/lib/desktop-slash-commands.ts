@@ -1,4 +1,4 @@
-import { isSlashCommandAllowed } from '@/athena/managed/entry-points'
+import { isSlashCommandOffered } from '@/athena/managed/entry-points'
 import { translateNow } from '@/i18n/runtime'
 import { peekCachedSlashCompletion } from '@/lib/slash-completion-cache'
 
@@ -802,7 +802,7 @@ export function isDesktopSlashSuggestionWithOptions(command: string, options: { 
   const normalized = normalizeCommand(command)
 
   // Athena (F02): commands the feature policy refuses are not offered.
-  if (!isSlashCommandAllowed([normalized, canonicalDesktopSlashCommand(normalized)])) {
+  if (!isSlashCommandOffered([normalized, canonicalDesktopSlashCommand(normalized)])) {
     return false
   }
 
