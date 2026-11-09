@@ -173,6 +173,19 @@ describe('verifying the signed client config', () => {
     expect(Date.parse(status.updated_at)).toBe(NOW)
   })
 
+  test('desktop-status.json is refreshed every minute even when nothing changes', () => {
+    let now = NOW
+    const cc = source({ now: () => now })
+    const read = () => JSON.parse(readFileSync(path.join(athenaDir, 'desktop-status.json'), 'utf8'))
+
+    now += 30_000
+    cc.refresh()
+    expect(Date.parse(read().updated_at)).toBe(NOW)
+    now += 31_000
+    cc.refresh()
+    expect(Date.parse(read().updated_at)).toBe(NOW + 61_000)
+  })
+
   test('the subject is the access token oid, or an explicit oid key', () => {
     expect(signedInSubject(athenaDir)).toBe(OID)
     writeFileSync(path.join(athenaDir, 'token.json'), JSON.stringify({ access_token: 'opaque', oid: OTHER_OID }))

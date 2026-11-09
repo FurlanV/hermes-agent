@@ -44,6 +44,9 @@ export const SCHEMA_MAJOR = 1
 /** How long past `expires_at` a last good config still stands in. */
 export const LAST_GOOD_GRACE_MS = 7 * 24 * 60 * 60 * 1000
 
+/** How often `desktop-status.json` is rewritten while nothing changes (the Shipper ignores it after 10 min). */
+export const STATUS_REFRESH_MS = 60_000
+
 export const CLIENT_CONFIG_FILE = 'client-config.jws'
 export const DESKTOP_STATUS_FILE = 'desktop-status.json'
 export const TOKEN_FILE = 'token.json'
@@ -292,6 +295,7 @@ export class AthenaClientConfig {
   private versionSeen: number
   private current: ClientConfigSnapshot
   private statusWritten = ''
+  private statusWrittenAt = 0
   private signatures = ''
   private timer: NodeJS.Timeout | null = null
   private lastRefreshAt = 0
@@ -466,7 +470,8 @@ export class AthenaClientConfig {
   private writeStatus(): void {
     const key = `${this.current.devOverridesActive}:${this.versionSeen}`
 
-    if (key === this.statusWritten) {
+    // Rewritten at least once a minute: the Shipper treats a status older than ten minutes as stale.
+    if (key === this.statusWritten && this.now() - this.statusWrittenAt < STATUS_REFRESH_MS) {
       return
     }
 
@@ -477,6 +482,7 @@ export class AthenaClientConfig {
         updated_at: new Date(this.now()).toISOString()
       })
       this.statusWritten = key
+      this.statusWrittenAt = this.now()
     } catch (error) {
       this.log(`[athena] could not write ${this.statusFile}: ${String(error)}`)
     }
