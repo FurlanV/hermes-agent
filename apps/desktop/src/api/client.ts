@@ -8,6 +8,7 @@ import {
 } from '@hermes/shared'
 import { map, type MapStore } from 'nanostores'
 
+import { assertRpcAllowed } from '@/athena/managed/rpc-seam'
 import type { HermesApiRequest } from '@/global'
 
 import { CanonicalDesktopProtocol, canonicalProfile, canonicalPromptParams, canonicalSessionKey, openGatewaySocket, recordCanonicalOwner, splitRewindSubmit } from './canonical-protocol'
@@ -422,6 +423,7 @@ export class HermesGateway extends JsonRpcGatewayClient {
   }
 
   override async request<T>(method: string, params: Record<string, unknown> = {}, timeoutMs?: number, signal?: AbortSignal): Promise<T> {
+    assertRpcAllowed(method, params)
     const generation = this.connectionGeneration
     const deadline = requestDeadline(timeoutMs)
 

@@ -65,6 +65,7 @@ import {
 } from './app-version'
 import { runAppInstallerChecker } from './appinstaller-checker'
 import { installApplicationMenuAfterFirstWindow } from './application-menu-startup'
+import { ATHENA_POLICY_REFUSED, deepLinkAllowed, guardedIpcMain, refuseRestRequest } from './athena/policy-seams'
 import { stopBackendChild as stopBackendChildImpl, waitForBackendExit } from './backend-child'
 import {
   execText,
@@ -15212,29 +15213,33 @@ ipcMain.handle('hermes:connection-config:oauth-logout', async (_event, rawUrl) =
   return { ok: true, connected }
 })
 
+// Privileged channels (Hermes Cloud, updates) register through the Athena
+// policy seam: a channel the policy refuses is never registered.
+const athenaIpc = guardedIpcMain(ipcMain)
+
 // --- Hermes Cloud (cloud-auto-discovery Phase 3) ---
 // One portal login in the OAuth partition powers both discovery and the silent
 // per-agent cascade. See the discovery/cascade helpers above.
-ipcMain.handle('hermes:cloud:status', async () => ({
+athenaIpc.handle('hermes:cloud:status', async () => ({
   portalBaseUrl: resolvePortalBaseUrl(),
   signedIn: await hasLivePortalSession()
 }))
-ipcMain.handle('hermes:cloud:login', async () => {
+athenaIpc.handle('hermes:cloud:login', async () => {
   await openPortalLoginWindow()
 
   return { ok: true, signedIn: await hasLivePortalSession() }
 })
-ipcMain.handle('hermes:cloud:logout', async () => {
+athenaIpc.handle('hermes:cloud:logout', async () => {
   await clearOauthSession(resolvePortalBaseUrl())
 
   return { ok: true, signedIn: await hasLivePortalSession() }
 })
-ipcMain.handle('hermes:cloud:discover', async (_event, org) => {
+athenaIpc.handle('hermes:cloud:discover', async (_event, org) => {
   // Returns { agents } or { needsOrgSelection: true, orgs }. `org` (optional)
   // scopes discovery to a chosen org for multi-org users.
   return discoverCloudAgents(typeof org === 'string' && org ? org : undefined)
 })
-ipcMain.handle('hermes:cloud:agent-sign-in', async (_event, dashboardUrl) => {
+athenaIpc.handle('hermes:cloud:agent-sign-in', async (_event, dashboardUrl) => {
   // Silent per-agent sign-in via the shared portal session. Returns the agent's
   // gateway baseUrl + whether its session cookie landed; the renderer then
   // saves a cloud-mode connection pointed at this dashboardUrl.
@@ -15936,6 +15941,14 @@ function formatApiRequestFailure(
 }
 
 ipcMain.handle('hermes:api', async (_event, request) => {
+  const refusal = refuseRestRequest(request)
+
+  if (refusal) {
+    rememberLog(`[athena] ${refusal[ATHENA_POLICY_REFUSED]}`)
+
+    return refusal
+  }
+
   // Hold the deletion gate for BOTH profile deletes and renames: a concurrent
   // renderer reconnect entering ensureBackend() mid-mutation would otherwise
   // respawn the old-name backend and recreate its HERMES_HOME (#45474).
@@ -16899,7 +16912,7 @@ const terminalIpc = registerTerminalIpc({
 
 const disposeTerminalSession = terminalIpc.disposeTerminalSession
 
-ipcMain.handle(
+athenaIpc.handle(
   'hermes:updates:check',
   async (_event: Electron.IpcMainInvokeEvent, opts?: { force?: boolean }): Promise<UpdaterStatusWire> =>
     checkUpdates({ force: Boolean(opts?.force) }).catch((error: Error): UpdaterStatusWire => ({
@@ -16911,7 +16924,7 @@ ipcMain.handle(
     }))
 )
 
-ipcMain.handle('hermes:updates:apply', async (_event, payload) =>
+athenaIpc.handle('hermes:updates:apply', async (_event, payload) =>
   applyUpdates().catch(error => ({
     ok: false,
     error: 'apply-failed',
@@ -16920,7 +16933,7 @@ ipcMain.handle('hermes:updates:apply', async (_event, payload) =>
 )
 
 // About ▸ Updates channel selector; source checkouts only (packages bake their channel).
-ipcMain.handle('hermes:updates:channel:set', async (_event, name: unknown): Promise<UpdaterStatusWire> => {
+athenaIpc.handle('hermes:updates:channel:set', async (_event, name: unknown): Promise<UpdaterStatusWire> => {
   assertSourceUpdateChannel(INSTALL_STAMP)
 
   return resolveCheckoutUpdateStrategy().check({ force: true, setChannel: sourceChannelName(name) })
@@ -17399,6 +17412,12 @@ function handleDeepLink(url) {
     params[k] = v
   })
   const payload = { kind, name, params }
+
+  if (!deepLinkAllowed(payload)) {
+    rememberLog(`[deeplink] refused by policy: ${kind}/${name}`)
+
+    return
+  }
 
   // Route the Windows Copilot hardware key (registered by the MSIX
   // copilotkeyprovider fragment). quick-entry is the eventual summon; for

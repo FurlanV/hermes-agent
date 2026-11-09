@@ -162,6 +162,19 @@ a real filter.
   config field, and the search rows' own ids (`setting:<view>.<kebab>`,
   `credential:<KEY>`, `plugin:desktop:<id>`, `plugin:agent:<key>`). A denied
   page takes its children, fields and search rows with it.
+- Seams that refuse, not just hide (allow-all today):
+  - REST, IPC and deep links in main: `electron/athena/policy-seams.ts`
+    (`setMainPolicySeams`). A refused REST call resolves a sentinel that
+    preload rethrows as `refused_by_policy: rest <METHOD> <path>`; a refused IPC
+    channel is never registered (`GUARDED_IPC_CHANNELS`: plugin install,
+    Hermes Cloud, updates; web access is REST only); a refused deep link is
+    dropped with a log line.
+  - JSON-RPC in the renderer: `managed/rpc-seam.ts` (`setRpcPolicy`), asked
+    first by `HermesGateway.request`, so desktop plugins' `host.request` and
+    `requestProfile` pass it too. The renderer dials the gateway's `/api/ws`
+    itself; main only mints the one-use ticket, so main never sees JSON-RPC.
+  - `managed/policy-refusal.ts`: `PolicyRefusedError` (`code`, `kind`,
+    `target`); `PolicyRefusedError.from(error)` reads a bridged REST refusal.
 
 ### Upstream files touched (F02)
 
@@ -177,3 +190,7 @@ override with `ATHENA_F02_BASE`).
 | `src/app/settings/helpers.ts` | `sectionFieldEntries` (config section field lists, page and search) asks per field |
 | `src/app/settings/use-settings-search.ts` | Every settings-search list goes through `allowedSettingsSearchEntries` |
 | `src/app/command-palette/index.tsx` | Settings rows (root and Settings page) ask the filter |
+| `electron/main.ts` | `hermes:api` asks the REST seam first; `handleDeepLink` asks the deep-link seam before routing; Hermes Cloud and updates channels register through `guardedIpcMain` |
+| `electron/fs-ipc.ts` | Plugin install channels (`hermes:plugin:probe`, `hermes:plugin:installDesktop`) register through `guardedIpcMain` |
+| `electron/preload.ts` | `api` turns a REST refusal sentinel into the rejection (`unwrapPolicyRefusal`) |
+| `src/api/client.ts` | `HermesGateway.request` asks the JSON-RPC seam first |
