@@ -57,6 +57,13 @@ const row = (id: string, mark: FeatureMark, area: string, title: string, entries
 const cf = (...keys: string[]) => keys.map(key => `config-field:${key}`)
 const st = (view: string, ...keys: string[]) => keys.map(key => `setting:${view}.${key}`)
 const cred = (...keys: string[]) => keys.map(key => `credential:${key}`)
+// Backend surfaces (slice 17), refused while every row listing them is off:
+// - `rest:<path>` (any method), `rest:<METHOD> <path>`, `rest:WRITE <path>` (any method but GET/HEAD);
+// - `rpc:<method>`, `rpc:<method>/<action>` (backend-policy.ts names the action of a multiplexed method);
+// - `ipc:<channel>`: the channel is not registered in Electron main.
+const rest = (...paths: string[]) => paths.map(path => `rest:${path}`)
+const rpc = (...methods: string[]) => methods.map(method => `rpc:${method}`)
+const ipc = (...channels: string[]) => channels.map(channel => `ipc:${channel}`)
 
 // Containers: pages and subpages holding several rows. Listed under each row on them (any on → reachable).
 const MODEL_MAIN = 'settings:config:model/main'
@@ -100,20 +107,36 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   // ── Model ──
   row('S05', 'disable', 'Model', 'Main model › Provider', [MODEL_MAIN, 'settings-control:main-provider']),
   row('S06', 'keep', 'Model', 'Main model › Model', [MODEL_MAIN]),
-  row('S07', 'remove', 'Model', 'Main model › Set up provider / API key', [MODEL_MAIN]),
+  row('S07', 'remove', 'Model', 'Main model › Set up provider / API key', [
+    MODEL_MAIN,
+    ...rpc('model.save_key'),
+    ...rest('/api/providers/validate')
+  ]),
   row('S08a', 'keep', 'Model', 'Reasoning effort', [MODEL_MAIN]),
   row('S08b', 'disable', 'Model', 'Speed / Fast (service tier)', [MODEL_MAIN, 'settings-control:main-speed']),
   row('S09', 'disable', 'Model', 'Context window override', [MODEL_MAIN, ...cf('model_context_length')]),
   row('S10', 'disable', 'Model', 'Fallback models', ['settings:config:model/fallbacks', ...cf('fallback_providers')]),
-  row('S11', 'disable', 'Model', 'Auxiliary models', ['settings:config:model/auxiliary']),
-  row('S12', 'disable', 'Model', 'Mixture of Agents', ['settings:config:model/moa', ...cf('moa.*')]),
-  row('S13', 'disable', 'Model', 'Subagents › Routing', [MODEL_DELEGATION, 'settings-control:delegation-routing']),
+  row('S11', 'disable', 'Model', 'Auxiliary models', [
+    'settings:config:model/auxiliary',
+    ...rest('WRITE /api/model/auxiliary')
+  ]),
+  row('S12', 'disable', 'Model', 'Mixture of Agents', [
+    'settings:config:model/moa',
+    ...cf('moa.*'),
+    ...rest('WRITE /api/model/moa')
+  ]),
+  row('S13', 'disable', 'Model', 'Subagents › Routing', [
+    MODEL_DELEGATION,
+    'settings-control:delegation-routing',
+    ...rest('WRITE /api/delegation/*')
+  ]),
   row('S14', 'remove', 'Model', 'Subagents › "Install plugin" (Advanced Delegation)', [
     'settings-control:delegation-install-plugin'
   ]),
   row('S15', 'disable', 'Model', 'Subagents › model, provider, limits, timeout, effort', [
     MODEL_DELEGATION,
-    ...cf('delegation.*')
+    ...cf('delegation.*'),
+    ...rest('WRITE /api/delegation/*')
   ]),
   row('S16', 'keep', 'Model', 'Restart backend (shown on version skew)', [MODEL_MAIN]),
 
@@ -131,7 +154,8 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     ...st('appearance', 'theme')
   ]),
   row('S24', 'remove', 'Appearance', 'Search and install VS Code Marketplace themes', [
-    'settings-control:marketplace-themes'
+    'settings-control:marketplace-themes',
+    ...ipc('hermes:vscode-theme:search', 'hermes:vscode-theme:fetch')
   ]),
   row('S25', 'keep', 'Appearance', 'UI scale, chat text size, chat font, terminal font', [
     APPEARANCE_TYPOGRAPHY,
@@ -178,9 +202,11 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S37', 'disable', 'Appearance', 'Pet: choose, size, roam, rename, export, uninstall', [
     'settings:config:appearance/pet',
     ...st('appearance', 'pet'),
-    'palette:appearance-pets'
+    'palette:appearance-pets',
+    // Writes only: the floating pet and the gallery read pet.info / pet.gallery whatever the flag.
+    ...rpc('pet.select', 'pet.disable', 'pet.scale', 'pet.export', 'pet.rename', 'pet.remove', 'pet.hatch', 'pet.cancel')
   ]),
-  row('S38', 'remove', 'Appearance', 'Generate pet (palette)', ['palette:appearance-generate-pet']),
+  row('S38', 'remove', 'Appearance', 'Generate pet (palette)', ['palette:appearance-generate-pet', ...rpc('pet.generate*')]),
 
   // ── Workspace ──
   row('S39', 'keep', 'Workspace', 'Default working directory', [WORKSPACE_PROJECTS, ...cf('terminal.cwd')]),
@@ -206,7 +232,10 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S47', 'disable', 'Safety', 'Redact secrets', [SAFETY_PRIVACY, ...cf('security.redact_secrets')]),
   row('S48', 'disable', 'Safety', 'Allow private URLs', [SAFETY_PRIVACY, ...cf('security.allow_private_urls')]),
   row('S49', 'remove', 'Safety', 'Share usage stats with Nous (and the composer consent strip)', [
-    'settings-control:shared-metrics'
+    'settings-control:shared-metrics',
+    'dialog:shared-metrics-consent',
+    ...rpc('shared_metrics.*'),
+    ...ipc('hermes:desktop-metrics:set-enabled')
   ]),
   row('S50', 'keep', 'Safety', 'File checkpoints', [
     'settings:config:safety/checkpoints',
@@ -226,10 +255,11 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
 
   // ── Passwords & Logins ──
-  row('S53', 'disable', 'Passwords & Logins', 'Saved credentials', [VAULT, 'settings:vault/credentials']),
+  row('S53', 'disable', 'Passwords & Logins', 'Saved credentials', [VAULT, 'settings:vault/credentials', ...rpc('vault.*')]),
   row('S54', 'disable', 'Passwords & Logins', 'Password managers (Bitwarden, 1Password, local)', [
     VAULT,
-    'settings:vault/sources'
+    'settings:vault/sources',
+    ...rpc('vault.*')
   ]),
 
   // ── Memory & Context ──
@@ -243,7 +273,8 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
   row('S57', 'disable', 'Memory & Context', 'Memory provider and connect', [
     MEMORY_PERSISTENT,
-    ...cf('memory.provider')
+    ...cf('memory.provider'),
+    ...rest('WRITE /api/memory/providers/*')
   ]),
   row('S58', 'keep', 'Memory & Context', 'Memory layers summary', [MEMORY_PERSISTENT]),
   row('S59', 'disable', 'Memory & Context', 'Context engine and compression', [
@@ -255,7 +286,8 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S60', 'disable', 'Voice', 'Voice chat mode (including GPT Live)', [
     VOICE,
     VOICE_CONVERSATION,
-    ...cf('voice.voice_chat_mode', 'voice.gpt_live.*')
+    ...cf('voice.voice_chat_mode', 'voice.gpt_live.*'),
+    ...rest('/api/audio/voice-live/*')
   ]),
   row('S61', 'disable', 'Voice', 'Speech-to-text provider and options', [
     VOICE,
@@ -272,14 +304,21 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
 
   // ── Advanced ──
   row('S64', 'keep', 'Advanced', 'Keep computer awake', [ADVANCED_DESKTOP, ...st('advanced', 'keep-awake')]),
-  row('S65', 'disable', 'Advanced', 'Disable F12 DevTools', [ADVANCED_DESKTOP, ...st('advanced', 'disable-f12')]),
+  // Off: DevTools do not open (F12, the inspect chord, the View menu item) and the renderer cannot change the
+  // F12 preference; on (dev override): the stock behaviour and preference (main-policy.ts).
+  row('S65', 'disable', 'Advanced', 'Disable F12 DevTools', [
+    ADVANCED_DESKTOP,
+    ...st('advanced', 'disable-f12'),
+    'devtools:open',
+    ...ipc('hermes:devtools:disable-f12')
+  ]),
   row('S66', 'keep', 'Advanced', 'Always open links in external browser', [ADVANCED_DESKTOP]),
   row('S67', 'keep', 'Advanced', 'Quick entry and its shortcut', [
     ADVANCED_DESKTOP,
     ...st('advanced', 'quick-entry', 'quick-entry-shortcut')
   ]),
-  row('S68', 'remove', 'Advanced', 'Run onboarding again', ['settings-control:rerun-onboarding']),
-  row('S69', 'remove', 'Advanced', 'In-app update local changes', cf('updates.*')),
+  row('S68', 'remove', 'Advanced', 'Run onboarding again', ['settings-control:rerun-onboarding', ...rpc('onboarding.start', 'onboarding.set_run')]),
+  row('S69', 'remove', 'Advanced', 'In-app update local changes', [...cf('updates.*'), ...ipc('hermes:updates:apply')]),
   row('S70a', 'keep', 'Advanced', 'Max agent steps', [ADVANCED_RUNTIME, ...cf('agent.max_turns')]),
   row('S70b', 'disable', 'Advanced', 'API retries, service tier', [
     ADVANCED_RUNTIME,
@@ -289,6 +328,7 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S72', 'disable', 'Advanced', 'Tool-use enforcement', [ADVANCED_TOOLS, ...cf('agent.tool_use_enforcement')]),
   row('S73', 'disable', 'Advanced', 'Terminal backend (local, docker, singularity, modal, daytona, ssh)', [
     'settings:config:advanced/terminal',
+    ...rest('WRITE /api/tools/terminal/backend'),
     ...cf(
       'terminal.backend',
       'terminal.timeout',
@@ -326,7 +366,9 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
 
   // ── Billing ──
   row('S77', 'remove', 'Billing', 'Billing page: balance, plans, credits, auto-reload, portal, usage', [
-    'settings:billing'
+    'settings:billing',
+    ...rpc('billing.*', 'subscription.*'),
+    ...rest('/api/portal*', '/api/providers/oauth/nous/*')
   ]),
   row(
     'S78',
@@ -348,13 +390,26 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S79', 'remove', 'Providers', 'Accounts (OAuth sign-in to model vendors)', [
     PROVIDERS,
     'settings:providers/accounts',
-    'error-action:sign_in_again'
+    'error-action:sign_in_again',
+    ...rest('/api/providers/oauth*'),
+    ...rpc('model.disconnect')
   ]),
-  row('S80', 'remove', 'Providers', 'API keys', [PROVIDERS, 'settings:providers/keys', 'error-action:update_api_key']),
-  row('S81', 'disable', 'Providers', 'Custom endpoints', [PROVIDERS, 'settings:providers/custom-endpoints']),
+  // `env:*`: an /api/env write (or reveal) of a key no `credential:` entry names: vendor and tool API keys.
+  row('S80', 'remove', 'Providers', 'API keys', [
+    PROVIDERS,
+    'settings:providers/keys',
+    'error-action:update_api_key',
+    'env:*'
+  ]),
+  row('S81', 'disable', 'Providers', 'Custom endpoints', [
+    PROVIDERS,
+    'settings:providers/custom-endpoints',
+    ...rest('/api/providers/custom-endpoints*')
+  ]),
   row('S82', 'disable', 'Providers', 'Local models (Hugging Face downloads, local server)', [
     PROVIDERS,
-    'settings:providers/local'
+    'settings:providers/local',
+    ...rest('/api/local-models/*')
   ]),
 
   // ── Gateways ──
@@ -366,26 +421,35 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     'statusbar:gateway-switcher'
   ]),
   row('S84', 'remove', 'Gateways', 'Hermes Cloud (sign-in, org picker, agents)', [
-    'settings-control:gateway-mode-cloud'
+    'settings-control:gateway-mode-cloud',
+    ...ipc('hermes:cloud:*')
   ]),
   row('S85', 'disable', 'Gateways', 'Remote gateway (URL, auth, test)', [
     GATEWAY,
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
     'settings-control:gateway-mode-remote',
-    'statusbar:gateway-switcher'
+    'statusbar:gateway-switcher',
+    ...ipc(
+      'hermes:connection-config:probe',
+      'hermes:connection-config:test',
+      'hermes:connection-config:oauth-login',
+      'hermes:connection-config:oauth-logout'
+    )
   ]),
   row('S86', 'disable', 'Gateways', 'SSH connection', [
     GATEWAY,
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
     'settings-control:gateway-mode-ssh',
-    'statusbar:gateway-switcher'
+    'statusbar:gateway-switcher',
+    ...ipc('hermes:ssh-config:*')
   ]),
   row('S87', 'disable', 'Gateways', 'Encrypt saved secrets with the OS keychain', [
     GATEWAY,
     GATEWAY_CONNECTION,
-    ...st('gateway', 'keychain-encryption')
+    ...st('gateway', 'keychain-encryption'),
+    ...ipc('hermes:secret-storage:set')
   ]),
   row('S88', 'keep', 'Gateways', 'Diagnostics › Open logs', [
     GATEWAY,
@@ -397,10 +461,17 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     'settings:gateway/devices',
     'statusbar:gateway-switcher'
   ]),
-  row('S90', 'disable', 'Gateways', 'Remote updates (managed SSH)', [GATEWAY, 'settings:gateway/managed-updates']),
+  row('S90', 'disable', 'Gateways', 'Remote updates (managed SSH)', [
+    GATEWAY,
+    'settings:gateway/managed-updates',
+    ...ipc('hermes:connections:update-managed', 'hermes:connections:update-all')
+  ]),
 
   // ── Web access ──
-  row('S91', 'remove', 'Web access', 'Web access (serve the app on the network)', ['settings:web-access']),
+  row('S91', 'remove', 'Web access', 'Web access (serve the app on the network)', [
+    'settings:web-access',
+    ...rest('/api/webapp-access/*')
+  ]),
 
   // ── Keyboard Shortcuts ──
   row('S92', 'keep', 'Keyboard Shortcuts', 'Key bindings', ['settings:keybinds', 'settings:keybinds/shortcuts']),
@@ -416,7 +487,11 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
 
   // ── Tools & Keys ──
-  row('S95', 'disable', 'Tools & Keys', 'Tool API keys (Exa, Firecrawl, Tavily, Brave, GitHub, …)', [KEYS, KEYS_TOOLS]),
+  row('S95', 'disable', 'Tools & Keys', 'Tool API keys (Exa, Firecrawl, Tavily, Brave, GitHub, …)', [
+    KEYS,
+    KEYS_TOOLS,
+    'env:*'
+  ]),
   row('S96', 'remove', 'Tools & Keys', 'Nous tool gateway URLs and token', cred('TOOL_GATEWAY_*')),
   row('S97', 'remove', 'Tools & Keys', 'SUDO_PASSWORD', cred('SUDO_PASSWORD')),
   row('S98', 'disable', 'Tools & Keys', 'Prefill messages file, ephemeral system prompt', [
@@ -448,37 +523,48 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   // ── About ──
   row('S104', 'keep', 'About', 'Version and details', ['settings:about', ABOUT_UPDATES]),
   row('S105', 'keep', 'About', 'Updates card', ['settings:about', ABOUT_UPDATES, ...st('about', 'updates')]),
-  row('S106', 'remove', 'About', 'Update channel', ['settings-control:update-channel']),
+  row('S106', 'remove', 'About', 'Update channel', ['settings-control:update-channel', ...ipc('hermes:updates:channel:set')]),
   row('S107', 'disable', 'About', 'Backend update card', ['settings-control:backend-update-card']),
   row('S108', 'disable', 'About', 'Uninstall', [
     'settings:about',
     'settings:about/uninstall',
-    'settings-control:uninstall'
+    'settings-control:uninstall',
+    ...ipc('hermes:uninstall:*')
   ]),
 
   // ── Surfaces outside Settings (entries: slice 16) ──
   row('S109', 'remove', 'Surfaces outside Settings', 'Stock onboarding (provider picker, key entry)'),
   row('S110', 'remove', 'Surfaces outside Settings', 'Free-tier sign-in dialog, intro and terms bar', [
     'statusbar:free-tier',
-    'error-action:sign_in_free_tier'
+    'error-action:sign_in_free_tier',
+    ...rpc('free_tier.*'),
+    ...ipc('hermes:freeTierChallenge:run')
   ]),
   row('S111', 'disable', 'Surfaces outside Settings', 'Messaging page (Telegram, WhatsApp, Slack, relay, pairing)', [
     'route:/messaging',
     'keybind:nav.messaging',
     'palette:nav-messaging',
-    'nav:messaging'
+    'nav:messaging',
+    ...rest('/api/messaging/*', '/api/pairing*')
   ]),
-  row('S112', 'disable', 'Surfaces outside Settings', 'Webhooks page', ['route:/webhooks', 'statusbar:webhooks']),
+  row('S112', 'disable', 'Surfaces outside Settings', 'Webhooks page', [
+    'route:/webhooks',
+    'statusbar:webhooks',
+    ...rest('/api/webhooks*')
+  ]),
   row('S113', 'disable', 'Surfaces outside Settings', 'Scheduled jobs (cron)', [
     'route:/cron',
     'keybind:nav.cron',
     'palette:nav-cron',
     'nav:cron',
-    'statusbar:cron'
+    'statusbar:cron',
+    ...rest('/api/cron/*'),
+    ...rpc('cron.manage')
   ]),
   row('S114', 'remove', 'Surfaces outside Settings', 'Command Center › Update Hermes', [
     'command-center:update-hermes',
-    'palette:cc-update-hermes'
+    'palette:cc-update-hermes',
+    ...rest('/api/hermes/update*')
   ]),
   row('S115', 'keep', 'Surfaces outside Settings', 'Command Center › Restart gateway', [
     'command-center:restart-gateway',
@@ -486,20 +572,25 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
   row('S116', 'disable', 'Surfaces outside Settings', 'Command Center › Usage analytics', [
     'command-center:usage',
-    'palette:cc-usage'
+    'palette:cc-usage',
+    ...rest('/api/analytics/*')
   ]),
   row('S117', 'remove', 'Surfaces outside Settings', 'Send diagnostics to Nous; /debug', [
     'slash:debug',
-    'dialog:send-diagnostics'
+    'dialog:send-diagnostics',
+    ...rpc('diagnostics.share_nous'),
+    ...rest('/api/ops/debug-share')
   ]),
   row('S118a', 'disable', 'Surfaces outside Settings', '/approvals', ['slash:approvals']),
-  row('S118b', 'remove', 'Surfaces outside Settings', '/yolo', ['slash:yolo']),
+  row('S118b', 'remove', 'Surfaces outside Settings', '/yolo', ['slash:yolo', ...rpc('config.set/yolo')]),
   row('S119', 'disable', 'Surfaces outside Settings', '/tools', ['slash:tools']),
   row('S120', 'keep', 'Surfaces outside Settings', '/reasoning', ['slash:reasoning']),
   row('S121', 'keep', 'Surfaces outside Settings', '/personality, /skin', ['slash:personality', 'slash:skin']),
   row('S122', 'disable', 'Surfaces outside Settings', 'Profiles: create, import', [
     'keybind:profile.create',
-    'dialog:create-profile'
+    'dialog:create-profile',
+    ...rest('POST /api/profiles', '/api/profiles/import'),
+    ...rpc('profiles.create')
   ]),
   row('S123', 'disable', 'Surfaces outside Settings', 'Bot Mode (bundled hermes-bots plugin)', ['plugin:hermes-bots']),
   row('S124', 'disable', 'Surfaces outside Settings', 'In-app terminal pane', [
@@ -509,7 +600,8 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     'keybind:view.nextTerminal',
     'keybind:view.prevTerminal',
     'statusbar:terminal',
-    'palette:view.showTerminal'
+    'palette:view.showTerminal',
+    ...ipc('hermes:terminal:*')
   ])
 ])
 
@@ -520,7 +612,29 @@ export function buildDefault(mark: FeatureMark): FeatureFlag | null {
   return mark === 'keep' ? 'on' : mark === 'disable' ? 'off' : null
 }
 
-/** The registry as the admin API validates it (`features.json`): ids, marks and build defaults. */
+/**
+ * Config fields that are not hermes config keys: the Settings schema invents them and the backend maps them
+ * (`model_context_length` is written as `model.context_length`, 0 = auto, key removed). Not pinned: hermes has
+ * no default for the real key, so there is no Athena value to pin it at.
+ */
+const VIRTUAL_CONFIG_FIELDS: ReadonlySet<string> = new Set(['model_context_length'])
+
+/**
+ * The hermes config keys a row's managed-scope pins cover while it is off (slice 17): its `config-field:` entries,
+ * as dotted keys. A trailing `*` covers every key with that prefix (`moa.*` is the whole `moa` section,
+ * `desktop.repo_scan_*` every `desktop.repo_scan_…` key). `athena config apply` pins them at the Athena value.
+ */
+export function rowConfigKeys(r: Pick<FeatureRow, 'entries'>): string[] {
+  return r.entries
+    .filter(entry => entry.startsWith('config-field:'))
+    .map(entry => entry.slice('config-field:'.length))
+    .filter(key => !VIRTUAL_CONFIG_FIELDS.has(key))
+}
+
+/**
+ * The registry as the server sees it (`features.json`): ids, marks and build defaults (the admin API validates
+ * `features` against them), and per row the config keys `athena config apply` pins while the row is off.
+ */
 export function exportedFeatureRegistry() {
   return {
     schema_version: 1,
@@ -530,7 +644,8 @@ export function exportedFeatureRegistry() {
       mark: r.mark,
       default: buildDefault(r.mark),
       area: r.area,
-      title: r.title
+      title: r.title,
+      config_keys: rowConfigKeys(r)
     }))
   }
 }
@@ -554,7 +669,10 @@ export function featureMode(config: unknown): FeatureMode {
 export interface FeatureStates {
   /** Whether filtering applies (false when the master switch is `off`). */
   filtering: boolean
+  /** The row's own flag, whatever the master switch says (remove rows and unknown ids: false). */
+  flag: (rowId: string) => boolean
   mode: FeatureMode
+  /** Whether the row is reachable under the master switch (what every surface filters by). */
   on: (rowId: string) => boolean
 }
 
@@ -575,8 +693,11 @@ export function featureStates(config: unknown): FeatureStates {
     states.set(r.id, flag !== null && (override === 'on' || override === 'off' ? override : flag) === 'on')
   }
 
+  const flag = (rowId: string) => FEATURE_ROW_BY_ID.get(rowId)?.mark !== 'remove' && states.get(rowId) === true
+
   return {
     filtering: mode !== 'off',
+    flag,
     mode,
     // With the master switch off nothing is filtered, except remove rows: they are not in this variant.
     on: rowId => {

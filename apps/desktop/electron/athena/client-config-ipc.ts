@@ -4,15 +4,22 @@
 // - `athena:client-config:snapshot` (sendSync): the current snapshot, read by
 //   preload before the first paint so the first frame is already filtered;
 // - `athena:client-config:get` (invoke): the same, on demand;
-// - `athena:client-config:changed` (main → every window): each new snapshot.
+// - `athena:client-config:changed` (main → every window): each new snapshot;
+// - `athena:policy-decision` (renderer → main, send): a decision the renderer
+//   made (a JSON-RPC refusal, a report-mode use), appended to the decisions
+//   file (policy-decisions.ts) with main's timestamp.
+
+import path from 'node:path'
 
 import type { BrowserWindow, IpcMain } from 'electron'
 
 import { AthenaClientConfig, type ClientConfigSnapshot, devOverridesFromEnv } from './client-config'
-import { applyMainPolicies } from './main-policy'
+import { applyMainPolicies, configureMainPolicies } from './main-policy'
+import { parsePolicyDecision, POLICY_DECISIONS_FILE, PolicyDecisionLog } from './policy-decisions'
 
 export const CLIENT_CONFIG_CHANNELS = Object.freeze({
   changed: 'athena:client-config:changed',
+  decision: 'athena:policy-decision',
   get: 'athena:client-config:get',
   snapshot: 'athena:client-config:snapshot'
 } as const)
@@ -37,6 +44,8 @@ export interface InstallClientConfigOptions {
 
 export function installAthenaClientConfig(options: InstallClientConfigOptions): AthenaClientConfig {
   const devOverrides = devOverridesFromEnv(options.env ?? process.env, options.installStamp)
+  const decisions = new PolicyDecisionLog({ file: path.join(options.athenaDir, POLICY_DECISIONS_FILE), log: options.log })
+  configureMainPolicies({ decisions, log: options.log })
 
   if (devOverrides.allowed) {
     options.log(`[athena] dev overrides honoured from ${devOverrides.file} (unmanaged build, ATHENA_DEV_OVERRIDES=1)`)
@@ -62,6 +71,13 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
     event.returnValue = source.snapshot()
   })
   options.ipcMain.handle(CLIENT_CONFIG_CHANNELS.get, () => source.snapshot())
+  options.ipcMain.on(CLIENT_CONFIG_CHANNELS.decision, (_event, value) => {
+    const decision = parsePolicyDecision(value)
+
+    if (decision) {
+      decisions.record(decision)
+    }
+  })
   source.start()
   installed = source
   const first = source.snapshot()

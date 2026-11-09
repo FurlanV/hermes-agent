@@ -1,3 +1,6 @@
+// Athena (F02 slice 17): first, so every later ipcMain registration of a policy channel is tracked.
+import './athena/ipc-guard-install'
+
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
 
 import type { GatewayEndpoint } from './local-gateway'
@@ -66,7 +69,14 @@ import {
 import { runAppInstallerChecker } from './appinstaller-checker'
 import { installApplicationMenuAfterFirstWindow } from './application-menu-startup'
 import { installAthenaClientConfig } from './athena/client-config-ipc'
-import { ATHENA_POLICY_REFUSED, deepLinkAllowed, guardedIpcMain, refuseRestRequest } from './athena/policy-seams'
+import { onMainPoliciesChanged } from './athena/main-policy'
+import {
+  ATHENA_POLICY_REFUSED,
+  deepLinkAllowed,
+  devToolsAllowed,
+  guardedIpcMain,
+  refuseRestRequest
+} from './athena/policy-seams'
 import { stopBackendChild as stopBackendChildImpl, waitForBackendExit } from './backend-child'
 import {
   execText,
@@ -6392,6 +6402,8 @@ function buildApplicationMenu() {
       {
         label: 'Toggle Developer Tools',
         accelerator: process.platform === 'darwin' ? 'Alt+Cmd+I' : 'Ctrl+Shift+I',
+        // Athena (F02 slice 17): absent while the policy refuses DevTools (S65); rebuilt on change.
+        visible: devToolsAllowed(),
         click: (_menuItem, browserWindow) => toggleDevTools(browserWindow || mainWindow)
       },
       { type: 'separator' },
@@ -6440,6 +6452,14 @@ function toggleDevTools(window) {
   // increase versus a much better support story when WS connection or
   // CSP issues surface in the field.
   const { webContents } = window
+
+  // Athena (F02 slice 17): DevTools stay shut while the policy refuses them (S65 off).
+  if (!devToolsAllowed()) {
+    webContents.closeDevTools()
+    rememberLog('[athena] devtools refused by policy')
+
+    return
+  }
 
   if (webContents.isDevToolsOpened()) {
     webContents.closeDevTools()
@@ -11878,6 +11898,12 @@ async function startHermes(requestedProfile?: string, inheritsPrimary = false) {
 function wireCommonWindowHandlers(win, { zoom = true }: { zoom?: boolean } = {}) {
   installPreviewShortcut(win)
   installDevToolsShortcut(win)
+  // Athena (F02 slice 17): DevTools opened by any other route close again while the policy refuses them.
+  win.webContents.on('devtools-opened', () => {
+    if (!devToolsAllowed()) {
+      win.webContents.closeDevTools()
+    }
+  })
   installBrowserNavGestures(win)
 
   // Claim Ctrl/Cmd+F in the main process — on Pop!_OS / GNOME-based Linux
@@ -17727,6 +17753,12 @@ app.whenReady().then(() => {
     buildMenu: buildApplicationMenu,
     setApplicationMenu: menu => Menu.setApplicationMenu(menu),
     createWindow
+  })
+  // Athena (F02 slice 17): a policy change rebuilds the menu, so its DevTools item follows S65.
+  onMainPoliciesChanged(() => {
+    if (Menu.getApplicationMenu()) {
+      Menu.setApplicationMenu(buildApplicationMenu())
+    }
   })
 
   // Win/Linux cold start: the launching hermes:// URL is in our own argv.

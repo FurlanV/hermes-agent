@@ -6,6 +6,7 @@
  */
 
 import { connectClientConfig } from './client-config'
+import { installDesktopPins } from './desktop-pins'
 import { installEntryPointPolicies } from './entry-point-guards'
 import { installFeaturePolicy } from './feature-policy'
 import { installHiddenRowsStyle } from './hidden-rows'
@@ -13,6 +14,7 @@ import { installHiddenRowsStyle } from './hidden-rows'
 installFeaturePolicy()
 connectClientConfig()
 installEntryPointPolicies()
+installDesktopPins()
 
 if (typeof document !== 'undefined') {
   installHiddenRowsStyle()

@@ -12,16 +12,22 @@ import {
   deepLinkAllowed,
   GUARDED_IPC_CHANNELS,
   guardedIpcMain,
+  installIpcPolicyGuard,
   policyRefusalMessage,
   refuseRestRequest,
+  resetIpcTrackingForTests,
   setMainPolicySeams,
+  trackedIpcChannels,
   unwrapPolicyRefusal
 } from './policy-seams'
 
 const electronDir = path.resolve(import.meta.dirname, '..')
 const source = (file: string) => readFileSync(path.join(electronDir, file), 'utf8')
 
-afterEach(() => setMainPolicySeams(null))
+afterEach(() => {
+  setMainPolicySeams(null)
+  resetIpcTrackingForTests()
+})
 
 describe('REST seam', () => {
   test('forwards every request by default', () => {
@@ -60,7 +66,7 @@ describe('REST seam', () => {
 })
 
 describe('IPC seam', () => {
-  const fakeIpc = () => ({ handle: vi.fn() })
+  const fakeIpc = () => ({ handle: vi.fn(), removeHandler: vi.fn() })
 
   test('registers every guarded channel by default', () => {
     const ipc = fakeIpc()
@@ -82,6 +88,77 @@ describe('IPC seam', () => {
     expect(guarded.handle('hermes:cloud:login', () => null)).toBe(false)
     expect(guarded.handle('hermes:cloud:status', () => null)).toBe(true)
     expect(ipc.handle.mock.calls.map(([channel]) => channel)).toEqual(['hermes:cloud:status'])
+  })
+
+  test('a policy change unregisters a refused channel and re-registers it when it is allowed again', () => {
+    let refused = true
+    setMainPolicySeams({ ipcChannel: channel => !(refused && channel === 'hermes:cloud:login') })
+    const ipc = fakeIpc()
+    const listener = vi.fn(() => 'ok')
+    const guarded = guardedIpcMain(ipc)
+
+    expect(guarded.handle('hermes:cloud:login', listener)).toBe(false)
+    expect(guarded.handle('hermes:cloud:status', () => null)).toBe(true)
+    expect(ipc.handle).toHaveBeenCalledTimes(1)
+
+    refused = false
+    setMainPolicySeams({ ipcChannel: channel => !(refused && channel === 'hermes:cloud:login') })
+    expect(ipc.handle.mock.calls.map(([channel]) => channel)).toEqual(['hermes:cloud:status', 'hermes:cloud:login'])
+    expect(trackedIpcChannels()).toEqual([
+      { channel: 'hermes:cloud:login', registered: true },
+      { channel: 'hermes:cloud:status', registered: true }
+    ])
+
+    // The handler Electron holds runs the original listener (and tells the policy it was used).
+    const ipcUse = vi.fn()
+    setMainPolicySeams({ ipcUse })
+    const registered = ipc.handle.mock.calls[1][1] as (...args: unknown[]) => unknown
+    expect(registered('event', 'arg')).toBe('ok')
+    expect(listener).toHaveBeenCalledWith('event', 'arg')
+    expect(ipcUse).toHaveBeenCalledWith('hermes:cloud:login')
+
+    refused = true
+    setMainPolicySeams({ ipcChannel: channel => !(refused && channel === 'hermes:cloud:login') })
+    expect(ipc.removeHandler.mock.calls).toEqual([['hermes:cloud:login']])
+    expect(trackedIpcChannels()[0]).toEqual({ channel: 'hermes:cloud:login', registered: false })
+  })
+
+  test('installIpcPolicyGuard tracks policy channels registered straight on ipcMain, and passes others through', () => {
+    const handle = vi.fn()
+    const on = vi.fn()
+    const removeHandler = vi.fn()
+    const removeListener = vi.fn()
+    const ipc = { handle, on, removeHandler, removeListener } as unknown as Parameters<typeof installIpcPolicyGuard>[0]
+    installIpcPolicyGuard(ipc, channel => channel.startsWith('hermes:terminal:') || channel === 'hermes:devtools:x')
+    setMainPolicySeams({ ipcChannel: channel => channel !== 'hermes:terminal:start' && channel !== 'hermes:devtools:x' })
+
+    ipc.handle('hermes:terminal:start', () => null)
+    ipc.handle('hermes:terminal:write', () => null)
+    ipc.handle('hermes:version', () => null)
+    ipc.on('hermes:devtools:x', () => null)
+
+    expect(handle.mock.calls.map(([channel]) => channel)).toEqual(['hermes:terminal:write', 'hermes:version'])
+    expect(on).not.toHaveBeenCalled()
+
+    setMainPolicySeams(null)
+    expect(handle.mock.calls.map(([channel]) => channel)).toEqual([
+      'hermes:terminal:write',
+      'hermes:version',
+      'hermes:terminal:start'
+    ])
+    expect(on.mock.calls.map(([channel]) => channel)).toEqual(['hermes:devtools:x'])
+
+    // A module swapping its own handler leaves no stale tracked copy.
+    ipc.removeHandler('hermes:terminal:write')
+    expect(removeHandler).toHaveBeenCalledWith('hermes:terminal:write')
+    expect(trackedIpcChannels().map(entry => entry.channel)).not.toContain('hermes:terminal:write')
+  })
+
+  test('main.ts imports the IPC guard before anything else', () => {
+    const main = source('main.ts')
+    const firstImport = main.split('\n').find(line => line.startsWith('import '))
+
+    expect(firstImport).toBe("import './athena/ipc-guard-install'")
   })
 
   test('main.ts and fs-ipc.ts register each guarded channel through the seam', () => {

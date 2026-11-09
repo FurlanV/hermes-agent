@@ -1,0 +1,587 @@
+{
+  "catalog_version": "2026.11.2",
+  "entries": {
+    "browser": {
+      "default_on": false,
+      "group": "Research",
+      "icon": "globe",
+      "id": "browser",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [
+          "page addresses and form input to the sites it opens"
+        ],
+        "executes_code": true,
+        "filesystem": "read",
+        "network": [
+          "*"
+        ]
+      },
+      "provides": {
+        "tools": [
+          "browser_exec",
+          "browser_cdp",
+          "browser_dialog",
+          "browser_vault"
+        ],
+        "toolsets": [
+          "browser"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Local browser only; any site, so experimental and researcher-only."
+      },
+      "roles": [
+        "researcher"
+      ],
+      "sha256": "c81ba3a426ff9d0a80a4bb6f76e90c362bd1d2254d22a8a48d4aba49eaf7a35c",
+      "source": {
+        "config": {},
+        "hermes_toolset": "browser"
+      },
+      "status": "experimental",
+      "summary": "Opens pages in a local browser the agent controls.",
+      "title": "Browser",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "clarify": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "message-question",
+      "id": "clarify",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "clarify"
+        ],
+        "toolsets": [
+          "clarify"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Added in F02 slice 28: without it hermes cannot ask the user a question, so it is locked on for every role (slice 26 found the toolset disabled). The question and the answer stay in the chat. Awaiting human review (Q4)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "521b59a698558bd39b5011dab3527a097d309bc51a60b591801560e45d1b1573",
+      "source": {
+        "config": {},
+        "hermes_toolset": "clarify"
+      },
+      "status": "stable",
+      "summary": "Lets the agent ask you a question, multiple-choice or open-ended, before it carries on.",
+      "title": "Ask clarifying questions",
+      "user_toggle": false,
+      "version": "1.0.0"
+    },
+    "data-cleaning-pandas": {
+      "default_on": true,
+      "group": "Research",
+      "icon": "table",
+      "id": "data-cleaning-pandas",
+      "kind": "skill",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Placeholder content (Q4: skills not named yet); experimental."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "11c0b07d9e4e588e803e7ff745785da3e5de9224d66e2993a280fbe730a5bfdd",
+      "source": {
+        "path": "skills/data-cleaning-pandas",
+        "sha256": "701b5f0a078d2414d539c96fd4bbe9d4b08d3e131e85cc48a9c4b17e793804aa"
+      },
+      "status": "experimental",
+      "summary": "Cleans a tabular dataset with pandas and reports every change.",
+      "title": "Data cleaning in pandas",
+      "user_toggle": true,
+      "version": "0.1.0"
+    },
+    "desktop-projects": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "folder-open",
+      "id": "desktop-projects",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "read",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "desktop_project"
+        ],
+        "toolsets": [
+          "project"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Added in F02 slice 28: the Desktop's Projects need it (the GUI gateway adds the toolset to every Desktop session; slice 26 found it disabled), so it is locked on for every role. It records projects in the Profile's projects.db and points the session at a folder; file access itself stays with Files. Awaiting human review (Q4)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "bfec728a32b69278d3e8745141bca895db1d6b943442c57c17c7c9f7d6567afd",
+      "source": {
+        "config": {},
+        "hermes_toolset": "project"
+      },
+      "status": "stable",
+      "summary": "Lets the agent create and switch the named project workspaces in the sidebar.",
+      "title": "Desktop projects",
+      "user_toggle": false,
+      "version": "1.0.0"
+    },
+    "files": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "file-text",
+      "id": "files",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "write",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "read_file",
+          "write_file",
+          "patch",
+          "search_files"
+        ],
+        "toolsets": [
+          "file"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "0487b35082bff33b13f9f4b84cef4678b4f38338e625444f4c9e64f72232a1bd",
+      "source": {
+        "config": {},
+        "hermes_toolset": "file"
+      },
+      "status": "stable",
+      "summary": "Read, write and search files in your project.",
+      "title": "Files",
+      "user_toggle": false,
+      "version": "1.0.0"
+    },
+    "learned-skills": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "sparkles",
+      "id": "learned-skills",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "write",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "skills_list",
+          "skill_view",
+          "skill_manage"
+        ],
+        "toolsets": [
+          "skills"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). skill_manage limited to the user's own skill folder (athena_guard, slice 27)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "6ce3fde08fcc3b6fc663b8a168944defe392766c1e46b14288c6601c92436656",
+      "source": {
+        "config": {},
+        "hermes_toolset": "skills"
+      },
+      "status": "stable",
+      "summary": "Skills the agent writes for you, kept in your own skill folder.",
+      "title": "Learned skills",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "literature-search": {
+      "default_on": true,
+      "group": "Research",
+      "icon": "book-search",
+      "id": "literature-search",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [
+          "search terms to the hospital search service"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": [
+          "searxng.athena.internal"
+        ]
+      },
+      "provides": {
+        "tools": [
+          "web_search",
+          "web_extract"
+        ],
+        "toolsets": [
+          "web"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "admin"
+      ],
+      "sha256": "c8bd1019047a7d0a02bd689260c61e7d62d3041557ac1299a08af5d059204f2c",
+      "source": {
+        "config": {
+          "web": {
+            "backend": "searxng"
+          }
+        },
+        "hermes_toolset": "web"
+      },
+      "status": "stable",
+      "summary": "Search PubMed and the hospital library index.",
+      "title": "Literature search",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "memory": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "brain",
+      "id": "memory",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "memory"
+        ],
+        "toolsets": [
+          "memory"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Managed: users cannot turn it off (S55)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "f03fff6ca34d69ae83c5693ac9d0fe096b6535a123e9bb56875b8614de16fa32",
+      "source": {
+        "config": {},
+        "hermes_toolset": "memory"
+      },
+      "status": "stable",
+      "summary": "Remembers notes about you and your work across chats.",
+      "title": "Memory",
+      "user_toggle": false,
+      "version": "1.0.0"
+    },
+    "python": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "code",
+      "id": "python",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": true,
+        "filesystem": "write",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "execute_code"
+        ],
+        "toolsets": [
+          "code_execution"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "5eeb1b65690c560347f5d844c2177681e9ad50cec8048b2aa1e0669fd083a4e5",
+      "source": {
+        "config": {},
+        "hermes_toolset": "code_execution"
+      },
+      "status": "stable",
+      "summary": "Run Python scripts on this laptop to analyse data and call tools.",
+      "title": "Python",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "subagents": {
+      "default_on": false,
+      "group": "Workspace",
+      "icon": "users",
+      "id": "subagents",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "delegate_task"
+        ],
+        "toolsets": [
+          "delegation"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Not for trainee."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "admin"
+      ],
+      "sha256": "44a0d1010c149c541ec22f64ef8f59141ad5d915febc7ead7293c0064a2b1f88",
+      "source": {
+        "config": {},
+        "hermes_toolset": "delegation"
+      },
+      "status": "stable",
+      "summary": "Hands parts of a task to helper agents with their own context.",
+      "title": "Subagents",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "summarise-paper": {
+      "default_on": true,
+      "group": "Research",
+      "icon": "file-search",
+      "id": "summarise-paper",
+      "kind": "skill",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Placeholder content (Q4: skills not named yet); experimental."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "53279b00d0bc07a382fcef68f8f548ed249c3d6907891a65a27b7083863efb6a",
+      "source": {
+        "path": "skills/summarise-paper",
+        "sha256": "dc17000e7b20406facf6133e02765416bed60d7869683deb31187a9a7713e3de"
+      },
+      "status": "experimental",
+      "summary": "Summarises a paper's question, methods, findings and limits.",
+      "title": "Summarise a paper",
+      "user_toggle": true,
+      "version": "0.1.0"
+    },
+    "terminal": {
+      "default_on": false,
+      "group": "Workspace",
+      "icon": "terminal",
+      "id": "terminal",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": true,
+        "filesystem": "write",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "terminal",
+          "process_manage"
+        ],
+        "toolsets": [
+          "terminal"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). On by default for researcher and admin only (role configs)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "292ecef5288884d8b94b742fe72bd8b5130b0d99c37d8f23b6db315b166b7e00",
+      "source": {
+        "config": {},
+        "hermes_toolset": "terminal"
+      },
+      "status": "stable",
+      "summary": "Run shell commands and manage processes on this laptop.",
+      "title": "Terminal",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "todo": {
+      "default_on": true,
+      "group": "Workspace",
+      "icon": "list-checks",
+      "id": "todo",
+      "kind": "toolset",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [
+          "todo_list"
+        ],
+        "toolsets": [
+          "todo"
+        ]
+      },
+      "requires_hermes": ">=1a48bf2b",
+      "review": {
+        "at": "2026-11-09",
+        "by": "claude-code/implement-plan",
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "sha256": "142374235f94df55bd145675f0c7db88307984997e7325456dce972aa020165c",
+      "source": {
+        "config": {},
+        "hermes_toolset": "todo"
+      },
+      "status": "stable",
+      "summary": "Plans and tracks multi-step work in the chat.",
+      "title": "To-do list",
+      "user_toggle": true,
+      "version": "1.0.0"
+    }
+  },
+  "hermes_commit": "1a48bf2bf38bd881e0837e3192d2291de6184dc7"
+}

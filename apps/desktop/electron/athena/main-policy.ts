@@ -1,15 +1,32 @@
-// Athena: main-process policies built from the verified client config (F02 slice 16).
+// Athena: main-process policies built from the verified client config (F02 slices 16 and 17).
 //
-// Each new snapshot installs the deep-link seam (policy-seams.ts): an OS deep
-// link that reaches a refused feature (`hermes://open/settings?tab=billing`,
-// `hermes://open/cron`, a refused `hermes://<kind>/…`) is dropped by
-// `handleDeepLink` with a log line. REST and IPC refusals (slice 17) stay
-// allow-all here.
+// Each new snapshot installs every main seam (policy-seams.ts) from the feature
+// registry, through one decider (backend-policy.ts):
+// - deep links: an OS deep link that reaches a refused feature
+//   (`hermes://open/settings?tab=billing`, `hermes://open/cron`, a refused
+//   `hermes://<kind>/…`) is dropped by `handleDeepLink` with a log line;
+// - REST: `hermes:api` refuses a call reaching a refused `rest:`, `credential:`
+//   or `env:` entry, and always refuses `PUT`/`DELETE /api/env` of a
+//   managed-scope variable;
+// - IPC: a refused `ipc:` channel is unregistered, and re-registered when its
+//   row turns on (the next snapshot after a sync);
+// - DevTools: refused while S65 is off.
+// Decisions worth recording go to the policy-decisions file
+// (policy-decisions.ts) when one is configured.
 
 import { deepLinkEntries, type DeepLinkLike } from './app-locations'
+import {
+  type FeatureDecider,
+  featureDecider,
+  type FeatureDecisionRecord,
+  ipcEntries,
+  isManagedScopeEnvWrite,
+  restEntries
+} from './backend-policy'
 import type { ClientConfigSnapshot } from './client-config-types'
-import { featureEntryFilter } from './feature-registry'
-import { setMainPolicySeams } from './policy-seams'
+import { featureEntryFilter, featureMode } from './feature-registry'
+import type { PolicyDecisionLog } from './policy-decisions'
+import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
 
 export function deepLinkPolicy(config: unknown): (link: DeepLinkLike) => boolean {
   const filter = featureEntryFilter(config)
@@ -17,7 +34,84 @@ export function deepLinkPolicy(config: unknown): (link: DeepLinkLike) => boolean
   return link => deepLinkEntries(link).every(filter)
 }
 
-export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config'>): void {
-  setMainPolicySeams({ deepLink: deepLinkPolicy(snapshot.config) })
+let decisions: null | PolicyDecisionLog = null
+
+let log: (line: string) => void = () => {}
+const listeners = new Set<() => void>()
+
+/** Where decisions are recorded and listener failures logged (installAthenaClientConfig sets it up). */
+export function configureMainPolicies(options: { decisions?: null | PolicyDecisionLog; log?: (line: string) => void }) {
+  decisions = options.decisions ?? null
+  log = options.log ?? (() => {})
 }
 
+/** Run `listener` after every policy change (the app menu rebuilds its DevTools item). Returns the unsubscribe. */
+export function onMainPoliciesChanged(listener: () => void): () => void {
+  listeners.add(listener)
+
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+export function recordFeatureDecision(record: FeatureDecisionRecord | null): void {
+  if (record) {
+    decisions?.record({ kind: 'feature', ...record })
+  }
+}
+
+/** The main seams for one effective client config. */
+export function mainPolicySeams(config: unknown, decide: FeatureDecider = featureDecider(config)): MainPolicySeams {
+  const mode = featureMode(config)
+
+  const decided = (entries: readonly string[], surface: string, target: string) => {
+    const decision = decide(entries, surface, target)
+    recordFeatureDecision(decision.record)
+
+    return decision.allowed
+  }
+
+  return {
+    deepLink: link => decided(deepLinkEntries(link), 'deep-link', `${link.kind}/${link.name}`),
+    devTools: () => decided(['devtools:open'], 'devtools', 'devtools'),
+    // Asked at registration and on every change: nothing was called, so nothing is recorded.
+    ipcChannel: channel => decide(ipcEntries(channel), 'ipc', channel).allowed,
+    // A registered tracked channel was used: recorded only when the policy lets through what it would refuse.
+    ipcUse: channel => {
+      const decision = decide(ipcEntries(channel), 'ipc', channel)
+
+      if (decision.allowed) {
+        recordFeatureDecision(decision.record)
+      }
+    },
+    rest: (request: RestRequestInfo) => {
+      if (isManagedScopeEnvWrite(request)) {
+        const key = (request.body as undefined | { key?: unknown })?.key
+        decisions?.record({
+          action: 'refused',
+          id: 'managed-scope',
+          kind: 'feature',
+          mode,
+          surface: 'rest',
+          target: `${request.method} ${request.pathname} ${String(key)}`
+        })
+
+        return false
+      }
+
+      return decided(restEntries(request), 'rest', `${request.method} ${request.pathname}`)
+    }
+  }
+}
+
+export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config'>): void {
+  setMainPolicySeams(mainPolicySeams(snapshot.config))
+
+  for (const listener of listeners) {
+    try {
+      listener()
+    } catch (error) {
+      log(`[athena] policy listener failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+}

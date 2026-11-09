@@ -9,6 +9,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 const CHANGED = 'athena:client-config:changed'
 const GET = 'athena:client-config:get'
 const SNAPSHOT = 'athena:client-config:snapshot'
+const DECISION = 'athena:policy-decision'
 
 export function exposeAthenaBridge(): void {
   let snapshot: unknown = null
@@ -31,6 +32,10 @@ export function exposeAthenaBridge(): void {
           ipcRenderer.removeListener(CHANGED, listener)
         }
       }
+    },
+    // A policy decision the renderer made (slices 17 and 19); main stamps and appends it.
+    policy: {
+      record: (decision: unknown) => ipcRenderer.send(DECISION, decision)
     }
   })
 }

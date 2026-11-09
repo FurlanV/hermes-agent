@@ -53,17 +53,23 @@ export const BUNDLED_DEFAULT_CONFIG = {
     "available": [
       "files",
       "memory",
-      "todo"
+      "todo",
+      "clarify",
+      "desktop-projects"
     ],
     "default_on": [
       "files",
       "memory",
-      "todo"
+      "todo",
+      "clarify",
+      "desktop-projects"
     ],
     "experimental": [],
     "locked_on": [
       "files",
-      "memory"
+      "memory",
+      "clarify",
+      "desktop-projects"
     ]
   }
 }

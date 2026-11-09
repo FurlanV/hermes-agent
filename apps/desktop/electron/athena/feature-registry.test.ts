@@ -73,7 +73,7 @@ describe('the feature registry', () => {
       expect(new Set(row.entries).size, row.id).toBe(row.entries.length)
 
       for (const entry of row.entries) {
-        expect(entry, row.id).toMatch(/^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog):[^*]*\*?$/)
+        expect(entry, row.id).toMatch(/^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog|rest|rpc|ipc|env|devtools):[^*]*\*?$/)
       }
     }
   })
@@ -90,7 +90,7 @@ describe('the exported registry (features.json)', () => {
     )
   })
 
-  test('has ids, marks and build defaults only for the admin API', () => {
+  test('has ids, marks and build defaults for the admin API, and the config keys to pin for the applier', () => {
     const doc = exportedFeatureRegistry()
 
     expect(doc.features.find(row => row.id === 'S82')).toEqual({
@@ -98,8 +98,10 @@ describe('the exported registry (features.json)', () => {
       mark: 'disable',
       default: 'off',
       area: 'Providers',
-      title: 'Local models (Hugging Face downloads, local server)'
+      title: 'Local models (Hugging Face downloads, local server)',
+      config_keys: []
     })
+    expect(doc.features.find(row => row.id === 'S41')?.config_keys).toEqual(['terminal.persistent_shell'])
     expect(doc.features.find(row => row.id === 'S77')?.default).toBeNull()
   })
 

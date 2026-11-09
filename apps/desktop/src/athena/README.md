@@ -279,6 +279,44 @@ a real filter.
     deep links, toasts, slash replies, Bot Mode and the terminal, and holds a
     tripwire on each upstream hook.
 
+- Backend refusals (slice 17): a disabled feature is refused, not just
+  hidden. Rows also list their backend surfaces: `rest:<path>`,
+  `rest:<METHOD> <path>` and `rest:WRITE <path>` (any method but GET/HEAD),
+  `rpc:<method>` and `rpc:<method>/<action>` (the `config.set` key, a
+  `*.manage` action, the `command.dispatch` name), `ipc:<channel>`,
+  `env:<KEY>` (an /api/env write of a key no `credential:` entry names) and
+  `devtools:open`. `electron/athena/backend-policy.ts` (pure, shared) turns a
+  call into the entries it reaches and decides it with the same flags.
+  - Main (`main-policy.ts`, every snapshot): `hermes:api` refuses a REST call
+    reaching a refused entry; a refused IPC channel is unregistered and comes
+    back when its row turns on (`policy-seams.ts` tracks every registration of
+    an `ipc:` channel: `guardedIpcMain`, or any `ipcMain.handle`/`on` once
+    `ipc-guard-install.ts`, the first import of `main.ts`, wrapped
+    `ipcMain`); DevTools (S65) do not open from F12, the inspect chord or the
+    View menu item (hidden, rebuilt on change), and DevTools opened any other
+    way close again.
+  - Always refused, in every mode: `PUT`/`DELETE /api/env` of
+    `HERMES_MANAGED_DIR`, `HERMES_MANAGED`, `HERMES_HOME`,
+    `PYTEST_CURRENT_TEST` and any `ATHENA_*` variable (spike 05: the app's own
+    env editor could unpin the running daemon).
+  - Renderer (`managed/feature-policy.ts`): the JSON-RPC seam refuses a
+    method or action reaching a refused entry, so a desktop plugin's
+    `host.request` is refused too; `command.dispatch` / `slash.exec` also ask
+    `slash:<command>`.
+  - Config keys: `features.json` exports each row's `config_keys` (its
+    `config-field:` entries; `*` is a prefix). `athena config apply` pins the
+    keys of every row that is off in managed scope, at the Athena value, so
+    Import config, Reset to defaults and hand-made `PUT /api/config` cannot
+    change them; a row turned on is unpinned on the next sync.
+  - Desktop settings a row pins (`managed/desktop-pins.ts`): S36 holds inline
+    embeds at `off`; S87 refuses `hermes:secret-storage:set`; S65 is DevTools.
+  - Refusals are appended to `$HERMES_HOME/athena/policy-decisions.jsonl`
+    (`policy-decisions.ts`; the renderer sends its own over
+    `athena:policy-decision`).
+  - Tests: `electron/athena/backend-policy.test.ts` and
+    `managed/backend-refusal.test.tsx` send every surface of every row that is
+    off by default (off → refused, on → through, remove → refused even "on").
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -329,3 +367,4 @@ override with `ATHENA_F02_BASE`).
 | `src/store/profile-share.ts` | `runImportProfileFlow` asks the filter |
 | `src/app/profiles/create-profile-dialog.tsx` | The create/import dialog opens only while allowed |
 | `src/store/send-diagnostics.ts` | `requestSendDiagnostics` asks the filter |
+| `electron/main.ts` | Imports `athena/ipc-guard-install` first (policy IPC channels follow the flags); `toggleDevTools`, `devtools-opened` and the View menu's DevTools item ask the DevTools seam; the menu is rebuilt on a policy change (slice 17) |

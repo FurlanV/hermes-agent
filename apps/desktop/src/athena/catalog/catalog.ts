@@ -1,0 +1,186 @@
+/**
+ * The curated tool catalog on the Capabilities page (F02 slice 28, plan section D "What users see").
+ *
+ * `catalog.json` is a byte copy of the athena repo's `client/catalog/catalog.json` (built by
+ * `athena-build-catalog`); `catalog-bundle.test.ts` fails when they drift. The role's client config says which
+ * entries the user sees (`tools.available`) and which are locked; `tool-prefs.json` holds the user's own toggles.
+ * Whether a card is on mirrors the applier (`athena_shipper.tool_pins.is_on`), so the page shows what the next
+ * new chat gets.
+ */
+
+import catalogJson from './catalog.json'
+
+export interface CatalogEntry {
+  default_on: boolean
+  group: string
+  icon: string
+  id: string
+  kind: 'mcp' | 'plugin' | 'skill' | 'toolset'
+  owner: string
+  permissions: {
+    data: string[]
+    executes_code: boolean
+    filesystem: 'none' | 'read' | 'write'
+    network: string[]
+  }
+  provides: { tools: string[]; toolsets: string[] }
+  requires_hermes: string
+  review: { at: string; by: string; notes: string }
+  roles: string[]
+  sha256: string
+  source: Record<string, unknown>
+  status: 'experimental' | 'stable'
+  summary: string
+  title: string
+  user_toggle: boolean
+  version: string
+}
+
+export interface Catalog {
+  catalog_version: string
+  entries: Record<string, CatalogEntry>
+  hermes_commit: string
+}
+
+export const BUNDLED_CATALOG = catalogJson as unknown as Catalog
+
+export type ToolsMode = 'enforce' | 'off' | 'report'
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+const ids = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+
+/** The master switch for tools (`managed.tools`); missing or unknown reads as `enforce`, never a silent opening. */
+export function toolsMode(config: unknown): ToolsMode {
+  const mode = isRecord(config) && isRecord(config.managed) ? config.managed.tools : undefined
+
+  return mode === 'off' || mode === 'report' ? mode : 'enforce'
+}
+
+export interface ToolsSection {
+  available: string[]
+  default_on: string[]
+  experimental: string[]
+  locked_on: string[]
+}
+
+export function toolsSection(config: unknown): ToolsSection {
+  const tools = isRecord(config) && isRecord(config.tools) ? config.tools : {}
+
+  return {
+    available: ids(tools.available),
+    default_on: ids(tools.default_on),
+    experimental: ids(tools.experimental),
+    locked_on: ids(tools.locked_on)
+  }
+}
+
+/**
+ * "Need another tool? Ask Research IT": `tools.request_url` when the config has one (http, https or mailto),
+ * else null and the link is hidden.
+ */
+export function requestToolsUrl(config: unknown): null | string {
+  const tools = isRecord(config) && isRecord(config.tools) ? config.tools : {}
+  const url = typeof tools.request_url === 'string' ? tools.request_url.trim() : ''
+
+  return /^(https?:\/\/|mailto:)\S+$/i.test(url) ? url : null
+}
+
+export interface CatalogCard {
+  entry: CatalogEntry
+  /** `status: experimental`: the card shows a badge. */
+  experimental: boolean
+  /** No switch: `locked_on` in the config, or `user_toggle: false` in the catalog (the admin decides). */
+  managed: boolean
+  /** On for the next new chat. */
+  on: boolean
+}
+
+/** On for new chats: locked → on; managed → whether the admin turned it on; else the user's toggle, else default. */
+export function entryIsOn(entry: CatalogEntry, tools: ToolsSection, prefs: Record<string, boolean>): boolean {
+  if (tools.locked_on.includes(entry.id)) {
+    return true
+  }
+
+  const fallback = tools.default_on.includes(entry.id)
+
+  if (!entry.user_toggle) {
+    return fallback
+  }
+
+  return typeof prefs[entry.id] === 'boolean' ? prefs[entry.id] : fallback
+}
+
+/** One card per `tools.available` id this build's catalog has, in the config's order. Nothing else is shown. */
+export function catalogCards(
+  config: unknown,
+  prefs: Record<string, boolean> = {},
+  catalog: Catalog = BUNDLED_CATALOG
+): CatalogCard[] {
+  const tools = toolsSection(config)
+  const cards: CatalogCard[] = []
+
+  for (const id of new Set(tools.available)) {
+    const entry = catalog.entries[id]
+
+    if (entry) {
+      cards.push({
+        entry,
+        experimental: entry.status === 'experimental',
+        managed: tools.locked_on.includes(id) || !entry.user_toggle,
+        on: entryIsOn(entry, tools, prefs)
+      })
+    }
+  }
+
+  return cards
+}
+
+const normalize = (text: string) => text.toLocaleLowerCase().trim()
+
+export function cardMatches(card: CatalogCard, query: string): boolean {
+  const q = normalize(query)
+
+  if (!q) {
+    return true
+  }
+
+  const { entry } = card
+
+  return [entry.title, entry.summary, entry.group, entry.id, ...entry.provides.tools, ...entry.provides.toolsets].some(
+    text => normalize(text).includes(q)
+  )
+}
+
+export interface CardGroup {
+  cards: CatalogCard[]
+  group: string
+}
+
+/** Cards matching `query`, grouped by the entry's `group` (groups A–Z, cards in the config's order). */
+export function groupCards(cards: CatalogCard[], query = ''): CardGroup[] {
+  const groups = new Map<string, CatalogCard[]>()
+
+  for (const card of cards) {
+    if (cardMatches(card, query)) {
+      const group = card.entry.group || 'Other'
+      groups.set(group, [...(groups.get(group) ?? []), card])
+    }
+  }
+
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([group, items]) => ({ cards: items, group }))
+}
+
+/** The card's "Sends:" line: what leaves the laptop, from the entry's reviewed permissions. */
+export function sendsLine(entry: CatalogEntry): string {
+  const data = entry.permissions.data.filter(Boolean)
+
+  return data.length ? `Sends: ${data.join('; ')}` : 'Sends: nothing beyond your chat'
+}
+
+/** The skill names the catalog itself installs (kind `skill`): not "learned", even though hermes lists them as local. */
+export function catalogSkillIds(catalog: Catalog = BUNDLED_CATALOG): Set<string> {
+  return new Set(Object.values(catalog.entries).filter(entry => entry.kind === 'skill').map(entry => entry.id))
+}
