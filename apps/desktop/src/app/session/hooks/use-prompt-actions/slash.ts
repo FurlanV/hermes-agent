@@ -5,6 +5,7 @@ import { type MutableRefObject, useCallback, useRef } from 'react'
 import { mergeOlderTranscriptPage } from '@/app/chat/transcript-backfill'
 import { prepareDefaultNewSession } from '@/app/session/new-session-route'
 import { invalidateContextBreakdown } from '@/app/shell/hooks/use-context-breakdown'
+import { isModelSelectable, modelNotSelectableMessage, modelSlashChoice } from '@/athena/managed/models'
 import { getProfiles } from '@/hermes'
 import type { Translations } from '@/i18n'
 import { translateNow } from '@/i18n/runtime'
@@ -1398,6 +1399,16 @@ export function useSlashCommand(deps: SlashCommandDeps) {
         if (pickerId === 'model') {
           if (!ctx.arg.trim()) {
             setModelPickerOpen(true)
+
+            return
+          }
+
+          // The same check every model picker applies (Athena managed models).
+          const choice = modelSlashChoice(ctx.arg)
+
+          if (choice && !isModelSelectable(choice)) {
+            const resolved = await withSlashOutput(ctx)
+            resolved?.render(modelNotSelectableMessage(choice.model))
 
             return
           }

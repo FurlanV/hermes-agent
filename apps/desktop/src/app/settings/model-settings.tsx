@@ -4,6 +4,7 @@ import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
+import { modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -36,7 +37,7 @@ import { catalogProviderMatches, findCatalogProvider } from '@/lib/model-options
 import { composerServiceTier } from '@/lib/model-status-label'
 import { cn } from '@/lib/utils'
 import { showLargeModelNotice } from '@/store/agent-notices'
-import { $customModels, withCustomModels } from '@/store/custom-models'
+import { $customModels } from '@/store/custom-models'
 import { setMainModelAssignment } from '@/store/model-assignment'
 import { notify, notifyError, readableError } from '@/store/notifications'
 import { startManualLocalEndpoint, startManualOnboarding, startManualProviderOAuth } from '@/store/onboarding'
@@ -391,7 +392,13 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
   // Slugs typed into any picker ride along as rows of their provider, so a
   // model added from the composer is selectable here too.
   const customModels = useStore($customModels)
-  const providers = useMemo(() => withCustomModels(catalogProviders, customModels), [catalogProviders, customModels])
+  const modelPolicy = useModelPolicy()
+
+  const providers = useMemo(
+    () => modelPickerProviders(catalogProviders, customModels, modelPolicy),
+    [catalogProviders, customModels, modelPolicy]
+  )
+
   const [selectedProvider, setSelectedProvider] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
   const [auxiliary, setAuxiliary] = useState<AuxiliaryModelsResponse | null>(null)

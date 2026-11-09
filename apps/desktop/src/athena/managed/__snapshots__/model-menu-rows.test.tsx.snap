@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`composer model menu rows > catalog and remembered custom ids are unchanged 1`] = `
+[
+  "Anthropic",
+  "Opus 4.8",
+  "Sonnet 4.8",
+  "Custom Lab",
+  "Athena gateway",
+  "GPT-6-solMed",
+  "GPT-6-luna",
+  "GPT-6-customPreview",
+  "Add custom model…",
+  "Edit models…",
+]
+`;
+
+exports[`composer model menu rows > searching every provider and a typed custom id are unchanged 1`] = `
+[
+  "Anthropic",
+  "Custom Lab",
+  "Athena gateway",
+  "GPT-6-solMed",
+  "GPT-6-luna",
+  "GPT-6-customPreview",
+  "Add custom model…",
+  "Edit models…",
+]
+`;
+
+exports[`composer model menu rows > searching every provider and a typed custom id are unchanged 2`] = `
+[
+  "lab/typed-model-x Athena gateway",
+  "lab/typed-model-x Anthropic",
+  "Add custom model…",
+  "Edit models…",
+]
+`;

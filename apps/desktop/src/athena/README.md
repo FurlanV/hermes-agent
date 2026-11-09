@@ -175,6 +175,15 @@ a real filter.
     itself; main only mints the one-use ticket, so main never sees JSON-RPC.
   - `managed/policy-refusal.ts`: `PolicyRefusedError` (`code`, `kind`,
     `target`); `PolicyRefusedError.from(error)` reads a bridged REST refusal.
+- `managed/models.ts`: the one model-options selector. Every picker (composer
+  menu, picker dialog, Edit Models, the Settings model selects) lists
+  `modelPickerProviders(catalog, customModels)` (catalog plus remembered custom
+  ids) and offers `modelPickerCustomCandidate` as its typed-id row;
+  `/model <id>` asks `isModelSelectable`. The policy (`setModelPolicy`:
+  `selectable` per model, `customIds` on/off) allows everything today.
+  `allowsCustomModelIds` is the switch for the "Add custom model…" /
+  "Custom model…" entries, which still show unconditionally.
+  `model-selector-scope.test.ts` fails if a UI file merges custom ids itself.
 
 ### Upstream files touched (F02)
 
@@ -194,3 +203,10 @@ override with `ATHENA_F02_BASE`).
 | `electron/fs-ipc.ts` | Plugin install channels (`hermes:plugin:probe`, `hermes:plugin:installDesktop`) register through `guardedIpcMain` |
 | `electron/preload.ts` | `api` turns a REST refusal sentinel into the rejection (`unwrapPolicyRefusal`) |
 | `src/api/client.ts` | `HermesGateway.request` asks the JSON-RPC seam first |
+| `src/app/shell/model-catalog-menu.tsx` | Composer model menu rows and its typed-id row come from the model-options selector |
+| `src/components/model-picker.tsx` | Model picker dialog rows and its typed-id row come from the selector |
+| `src/components/model-visibility-dialog.tsx` | Edit Models rows and its typed-id row come from the selector |
+| `src/app/settings/model-settings.tsx` | Settings model selects (default model, auxiliary, MoA) read the selector's rows |
+| `src/app/settings/fallback-models-field.tsx` | Fallback model rows read the selector |
+| `src/app/settings/delegation-model-provider-field.tsx` | Subagent model rows read the selector |
+| `src/app/session/hooks/use-prompt-actions/slash.ts` | `/model <id>` asks `isModelSelectable` before running on the backend |
