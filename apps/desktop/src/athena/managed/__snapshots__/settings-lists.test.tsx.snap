@@ -1,0 +1,618 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Settings lists with every feature allowed > the Settings nav is unchanged 1`] = `
+[
+  {
+    "children": [
+      {
+        "id": "config:model:main",
+        "label": "Main model",
+      },
+      {
+        "id": "config:model:fallbacks",
+        "label": "Fallback models",
+      },
+      {
+        "id": "config:model:auxiliary",
+        "label": "Auxiliary models",
+      },
+      {
+        "id": "config:model:delegation",
+        "label": "Subagents",
+      },
+      {
+        "id": "config:model:moa",
+        "label": "Mixture of Agents",
+      },
+    ],
+    "id": "config:model",
+    "label": "Model",
+  },
+  {
+    "children": [
+      {
+        "id": "config:chat:behavior",
+        "label": "Behavior",
+      },
+      {
+        "id": "config:chat:attachments",
+        "label": "Attachments",
+      },
+    ],
+    "id": "config:chat",
+    "label": "Chat",
+  },
+  {
+    "children": [
+      {
+        "id": "config:appearance:general",
+        "label": "General",
+      },
+      {
+        "id": "config:appearance:theme",
+        "label": "Theme",
+      },
+      {
+        "id": "config:appearance:typography",
+        "label": "Typography",
+      },
+      {
+        "id": "config:appearance:window-layout",
+        "label": "Window & layout",
+      },
+      {
+        "id": "config:appearance:chat-display",
+        "label": "Chat display",
+      },
+      {
+        "id": "config:appearance:pet",
+        "label": "Pet",
+      },
+    ],
+    "id": "config:appearance",
+    "label": "Appearance",
+  },
+  {
+    "children": [
+      {
+        "id": "config:workspace:projects",
+        "label": "Projects & discovery",
+      },
+      {
+        "id": "config:workspace:shell",
+        "label": "Shell environment",
+      },
+      {
+        "id": "config:workspace:files",
+        "label": "Files & execution",
+      },
+    ],
+    "id": "config:workspace",
+    "label": "Workspace",
+  },
+  {
+    "children": [
+      {
+        "id": "config:safety:approvals",
+        "label": "Approvals",
+      },
+      {
+        "id": "config:safety:privacy",
+        "label": "Privacy & network",
+      },
+      {
+        "id": "config:safety:checkpoints",
+        "label": "Checkpoints",
+      },
+    ],
+    "id": "config:safety",
+    "label": "Safety",
+  },
+  {
+    "children": [
+      {
+        "id": "config:browser:profile",
+        "label": "Browser profile",
+      },
+      {
+        "id": "config:browser:network",
+        "label": "Local & private URLs",
+      },
+    ],
+    "id": "config:browser",
+    "label": "Browser",
+  },
+  {
+    "children": [
+      {
+        "id": "vault:credentials",
+        "label": "Saved credentials",
+      },
+      {
+        "id": "vault:sources",
+        "label": "Password managers",
+      },
+    ],
+    "id": "vault",
+    "label": "Passwords & Logins",
+  },
+  {
+    "children": [
+      {
+        "id": "config:memory:persistent",
+        "label": "Persistent memory",
+      },
+      {
+        "id": "config:memory:context",
+        "label": "Context & compression",
+      },
+    ],
+    "id": "config:memory",
+    "label": "Memory & Context",
+  },
+  {
+    "children": [
+      {
+        "id": "config:voice:conversation",
+        "label": "Voice conversation",
+      },
+      {
+        "id": "config:voice:transcription",
+        "label": "Speech to text",
+      },
+      {
+        "id": "config:voice:speech",
+        "label": "Text to speech",
+      },
+    ],
+    "id": "config:voice",
+    "label": "Voice",
+  },
+  {
+    "children": [
+      {
+        "id": "config:advanced:desktop",
+        "label": "Desktop & startup",
+      },
+      {
+        "id": "config:advanced:runtime",
+        "label": "Agent limits",
+      },
+      {
+        "id": "config:advanced:tools",
+        "label": "Tool access",
+      },
+      {
+        "id": "config:advanced:terminal",
+        "label": "Terminal backend",
+      },
+      {
+        "id": "config:advanced:output",
+        "label": "Output limits",
+      },
+    ],
+    "id": "config:advanced",
+    "label": "Advanced",
+  },
+  {
+    "children": [
+      {
+        "id": "notifications:alerts",
+        "label": "Desktop alerts",
+      },
+      {
+        "id": "notifications:sounds",
+        "label": "Sounds",
+      },
+    ],
+    "id": "notifications",
+    "label": "Notifications",
+  },
+  {
+    "children": [
+      {
+        "id": "bview:overview",
+        "label": "Overview",
+      },
+    ],
+    "id": "billing",
+    "label": "Billing",
+  },
+  {
+    "children": [
+      {
+        "id": "pview:accounts",
+        "label": "Accounts",
+      },
+      {
+        "id": "pview:keys",
+        "label": "API keys",
+      },
+      {
+        "id": "pview:custom-endpoints",
+        "label": "Custom Endpoints",
+      },
+    ],
+    "id": "providers",
+    "label": "Providers",
+  },
+  {
+    "children": [
+      {
+        "id": "gateway:connection",
+        "label": "Primary gateway",
+      },
+      {
+        "id": "gateway:devices",
+        "label": "Saved connections",
+      },
+      {
+        "id": "gateway:managed-updates",
+        "label": "Remote updates",
+      },
+    ],
+    "id": "gateway",
+    "label": "Gateways",
+  },
+  {
+    "id": "web-access",
+    "label": "Web access",
+  },
+  {
+    "children": [
+      {
+        "id": "keybinds:shortcuts",
+        "label": "Key bindings",
+      },
+      {
+        "id": "keybinds:hud-gesture",
+        "label": "HUD gesture",
+      },
+      {
+        "id": "keybinds:screen-capture",
+        "label": "Screen capture",
+      },
+    ],
+    "id": "keybinds",
+    "label": "Keyboard Shortcuts",
+  },
+  {
+    "children": [
+      {
+        "id": "kview:tools",
+        "label": "Tools",
+      },
+      {
+        "id": "kview:settings",
+        "label": "Settings",
+      },
+    ],
+    "id": "keys",
+    "label": "Tools & Keys",
+  },
+  {
+    "children": [
+      {
+        "id": "sessions:archived",
+        "label": "Archive & retention",
+      },
+      {
+        "id": "sessions:default-directory",
+        "label": "Default project folder",
+      },
+    ],
+    "id": "sessions",
+    "label": "Sessions",
+  },
+  {
+    "id": "plugins",
+    "label": "Plugins",
+  },
+  {
+    "children": [
+      {
+        "id": "about:updates",
+        "label": "Version & updates",
+      },
+      {
+        "id": "about:uninstall",
+        "label": "Uninstall",
+      },
+    ],
+    "id": "about",
+    "label": "About",
+  },
+]
+`;
+
+exports[`Settings lists with every feature allowed > the command palette Settings rows are unchanged (root and Settings page) 1`] = `
+[
+  {
+    "group": "Settings",
+    "label": "Model",
+    "value": "set-config-model",
+  },
+  {
+    "group": "Settings",
+    "label": "Chat",
+    "value": "set-config-chat",
+  },
+  {
+    "group": "Settings",
+    "label": "Appearance",
+    "value": "set-config-appearance",
+  },
+  {
+    "group": "Settings",
+    "label": "Workspace",
+    "value": "set-config-workspace",
+  },
+  {
+    "group": "Settings",
+    "label": "Safety",
+    "value": "set-config-safety",
+  },
+  {
+    "group": "Settings",
+    "label": "Browser",
+    "value": "set-config-browser",
+  },
+  {
+    "group": "Settings",
+    "label": "Memory & Context",
+    "value": "set-config-memory",
+  },
+  {
+    "group": "Settings",
+    "label": "Voice",
+    "value": "set-config-voice",
+  },
+  {
+    "group": "Settings",
+    "label": "Advanced",
+    "value": "set-config-advanced",
+  },
+  {
+    "group": "Settings",
+    "label": "Accounts",
+    "value": "set-providers&pview=accounts",
+  },
+  {
+    "group": "Settings",
+    "label": "API keys",
+    "value": "set-providers&pview=keys",
+  },
+  {
+    "group": "Settings",
+    "label": "Gateways",
+    "value": "set-gateway",
+  },
+  {
+    "group": "Settings",
+    "label": "Tools",
+    "value": "set-keys&kview=tools",
+  },
+  {
+    "group": "Settings",
+    "label": "Settings",
+    "value": "set-keys&kview=settings",
+  },
+  {
+    "group": "Settings",
+    "label": "Archived Chats",
+    "value": "set-sessions",
+  },
+  {
+    "group": "Settings",
+    "label": "Plugins",
+    "value": "set-plugins",
+  },
+  {
+    "group": "Settings",
+    "label": "About",
+    "value": "set-about",
+  },
+]
+`;
+
+exports[`Settings lists with every feature allowed > the command palette Settings rows are unchanged (root and Settings page) 2`] = `
+[
+  {
+    "group": "Settings",
+    "label": "Model",
+    "value": "sp-config-model",
+  },
+  {
+    "group": "Settings",
+    "label": "Chat",
+    "value": "sp-config-chat",
+  },
+  {
+    "group": "Settings",
+    "label": "Appearance",
+    "value": "sp-config-appearance",
+  },
+  {
+    "group": "Settings",
+    "label": "Workspace",
+    "value": "sp-config-workspace",
+  },
+  {
+    "group": "Settings",
+    "label": "Safety",
+    "value": "sp-config-safety",
+  },
+  {
+    "group": "Settings",
+    "label": "Browser",
+    "value": "sp-config-browser",
+  },
+  {
+    "group": "Settings",
+    "label": "Memory & Context",
+    "value": "sp-config-memory",
+  },
+  {
+    "group": "Settings",
+    "label": "Voice",
+    "value": "sp-config-voice",
+  },
+  {
+    "group": "Settings",
+    "label": "Advanced",
+    "value": "sp-config-advanced",
+  },
+  {
+    "group": "Settings",
+    "label": "Accounts",
+    "value": "sp-providers&pview=accounts",
+  },
+  {
+    "group": "Settings",
+    "label": "API keys",
+    "value": "sp-providers&pview=keys",
+  },
+  {
+    "group": "Settings",
+    "label": "Gateways",
+    "value": "sp-gateway",
+  },
+  {
+    "group": "Settings",
+    "label": "Tools",
+    "value": "sp-keys&kview=tools",
+  },
+  {
+    "group": "Settings",
+    "label": "Settings",
+    "value": "sp-keys&kview=settings",
+  },
+  {
+    "group": "Settings",
+    "label": "Archived Chats",
+    "value": "sp-sessions",
+  },
+  {
+    "group": "Settings",
+    "label": "Plugins",
+    "value": "sp-plugins",
+  },
+  {
+    "group": "Settings",
+    "label": "About",
+    "value": "sp-about",
+  },
+]
+`;
+
+exports[`Settings lists with every feature allowed > the settings search catalog is unchanged 1`] = `
+{
+  "configEntries": [
+    "config-field:model_context_length",
+    "config-field:timezone",
+    "config-field:memory.memory_enabled",
+    "config-field:voice.auto_tts",
+    "config-field:agent.max_turns",
+    "config-field:updates.non_interactive_local_changes",
+  ],
+  "credentialEntries": [
+    "credential:BRAVE_API_KEY",
+    "credential:HTTPS_PROXY",
+  ],
+  "pluginEntries": [],
+  "settingEntries": [
+    "setting:appearance.language",
+    "setting:appearance.intro-splash",
+    "setting:appearance.model-pricing",
+    "setting:appearance.resume-last-session",
+    "setting:appearance.tips",
+    "setting:appearance.tours",
+    "setting:appearance.theme",
+    "setting:appearance.ui-scale",
+    "setting:appearance.chat-text-scale",
+    "setting:appearance.chat-font",
+    "setting:appearance.terminal-font",
+    "setting:appearance.interface-mode",
+    "setting:appearance.session-density",
+    "setting:appearance.tab-strip",
+    "setting:appearance.app-actions",
+    "setting:appearance.backdrop",
+    "setting:appearance.file-browser",
+    "setting:appearance.composer-popout",
+    "setting:appearance.user-bubble",
+    "setting:appearance.text-direction",
+    "setting:appearance.hide-thread-timeline",
+    "setting:appearance.reactions",
+    "setting:appearance.vibe-hearts",
+    "setting:appearance.tool-view",
+    "setting:appearance.hide-code-diffs",
+    "setting:appearance.reasoning-collapsed",
+    "setting:appearance.embeds",
+    "setting:appearance.pet",
+    "setting:chat.attachment-size",
+    "setting:advanced.keep-awake",
+    "setting:advanced.disable-f12",
+    "setting:notifications.enable-all",
+    "setting:notifications.kind-approval",
+    "setting:notifications.kind-input",
+    "setting:notifications.kind-turn-done",
+    "setting:notifications.kind-turn-error",
+    "setting:notifications.kind-background-done",
+    "setting:notifications.kind-credits",
+    "setting:notifications.kind-plugin",
+    "setting:notifications.mute-sounds",
+    "setting:notifications.completion-sound",
+    "setting:sessions.auto-archive",
+    "setting:gateway.connection-mode",
+    "setting:gateway.keychain-encryption",
+    "setting:gateway.diagnostics",
+    "setting:about.updates",
+  ],
+  "subpageEntries": [
+    "settings-page:config:model:main",
+    "settings-page:config:model:fallbacks",
+    "settings-page:config:model:auxiliary",
+    "settings-page:config:model:delegation",
+    "settings-page:config:model:moa",
+    "settings-page:config:chat:behavior",
+    "settings-page:config:chat:attachments",
+    "settings-page:config:appearance:general",
+    "settings-page:config:appearance:typography",
+    "settings-page:config:appearance:window-layout",
+    "settings-page:config:appearance:chat-display",
+    "settings-page:config:appearance:pet",
+    "settings-page:config:workspace:projects",
+    "settings-page:config:workspace:shell",
+    "settings-page:config:workspace:files",
+    "settings-page:config:safety:approvals",
+    "settings-page:config:safety:privacy",
+    "settings-page:config:safety:checkpoints",
+    "settings-page:config:browser:profile",
+    "settings-page:config:browser:network",
+    "settings-page:config:memory:persistent",
+    "settings-page:config:memory:context",
+    "settings-page:config:voice:conversation",
+    "settings-page:config:voice:transcription",
+    "settings-page:config:voice:speech",
+    "settings-page:config:advanced:desktop",
+    "settings-page:config:advanced:runtime",
+    "settings-page:config:advanced:tools",
+    "settings-page:config:advanced:terminal",
+    "settings-page:config:advanced:output",
+    "settings-page:gateway:connection",
+    "settings-page:gateway:devices",
+    "settings-page:gateway:managed-updates",
+    "settings-page:keybinds:shortcuts",
+    "settings-page:keybinds:hud-gesture",
+    "settings-page:keybinds:screen-capture",
+    "settings-page:notifications:alerts",
+    "settings-page:notifications:sounds",
+    "settings-page:sessions:archived",
+    "settings-page:sessions:default-directory",
+    "settings-page:vault:credentials",
+    "settings-page:vault:sources",
+    "settings-page:about:updates",
+    "settings-page:about:uninstall",
+  ],
+}
+`;

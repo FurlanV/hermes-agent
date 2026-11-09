@@ -144,3 +144,36 @@ Keep the diff to these, plus this folder (D05 › Upstream files touched).
 | `src/components/onboarding/index.tsx` | No featured Nous row on the key form; custom-endpoint docs link → `supportUrl` |
 | `src/app/settings/constants.ts` | Hidden provider key groups filtered (Nous Portal) |
 | `src/lib/docs.ts`, `src/lib/error-surface.ts`, `src/app/chat/sidebar/section-states.tsx`, `src/components/version-details.tsx` | Docs / support / commit links → `supportUrl` |
+
+## Managed client (F02)
+
+The managed client (F02) narrows what Settings, the pickers and the backend
+calls offer, per role, from an admin-signed client config. Its code lives in
+`src/athena/managed/` (renderer) and `electron/athena/` (main), with small
+hooks into upstream files. Every hook is a no-op until a later slice installs
+a real filter.
+
+- `managed/features.ts`: the feature filter (`$featureFilter`, allow-all by
+  default). `setFeatureFilter` installs one; `useFeatureFilter` subscribes.
+- `managed/settings-entries.ts`: the stable entry ids every Settings list is
+  filtered by, and one helper per list. Ids: `settings:<view>` for a page
+  (`?tab=`), `settings:<view>/<page>` for a subpage or sub-view
+  (`?page=`, `?pview=`, `?kview=`, `?bview=`), `config-field:<key>` for a
+  config field, and the search rows' own ids (`setting:<view>.<kebab>`,
+  `credential:<KEY>`, `plugin:desktop:<id>`, `plugin:agent:<key>`). A denied
+  page takes its children, fields and search rows with it.
+
+### Upstream files touched (F02)
+
+Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
+`managed/diff-scope.test.ts` fails when the branch touches anything else
+(paths are relative to `apps/desktop/`; the base is `feature/athena-demo`,
+override with `ATHENA_F02_BASE`).
+
+| File | Change |
+|---|---|
+| `src/app/settings/index.tsx` | Nav groups go through `filterSettingsNav`; subpage children read the live filter |
+| `src/app/settings/subpages.ts` | `settingsSubpages` (every subpage registry) asks the filter |
+| `src/app/settings/helpers.ts` | `sectionFieldEntries` (config section field lists, page and search) asks per field |
+| `src/app/settings/use-settings-search.ts` | Every settings-search list goes through `allowedSettingsSearchEntries` |
+| `src/app/command-palette/index.tsx` | Settings rows (root and Settings page) ask the filter |

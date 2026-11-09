@@ -2,6 +2,8 @@ import { useStore } from '@nanostores/react'
 import { type ComponentType, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 
+import { useFeatureFilter } from '@/athena/managed/features'
+import { filterSettingsNav } from '@/athena/managed/settings-entries'
 import { codiconIcon } from '@/components/ui/codicon'
 import { KbdCombo } from '@/components/ui/kbd'
 import { Tip } from '@/components/ui/tooltip'
@@ -253,7 +255,9 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
     }
   }, [activeView, setActiveView, webAccessAvailable])
 
-  const navGroups: OverlayNavGroup[] = useMemo(
+  const featureFilter = useFeatureFilter()
+
+  const registeredNavGroups: OverlayNavGroup[] = useMemo(
     () =>
       (
         [
@@ -441,7 +445,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
         ] as OverlayNavGroup[]
       ).map(group => {
         const view = group.id as SettingsViewId
-        const children = settingsSubpages(view)
+        const children = settingsSubpages(view, featureFilter)
 
         return children.length
           ? {
@@ -460,6 +464,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
       activeView,
       billingView,
       canViewPlans,
+      featureFilter,
       keysView,
       plugins,
       providerView,
@@ -472,6 +477,11 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
       openSettingsPage,
       openSubView
     ]
+  )
+
+  const navGroups = useMemo(
+    () => filterSettingsNav(registeredNavGroups, featureFilter),
+    [featureFilter, registeredNavGroups]
   )
 
   const activeGroup = navGroups.find(group => group.active)
