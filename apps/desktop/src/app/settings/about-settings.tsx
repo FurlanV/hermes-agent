@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { type ReactElement, useEffect } from 'react'
 
+import { AthenaManagedLine } from '@/athena/managed/managed-line'
 import { UpdateStatusCard, VersionHero } from '@/components/update-status'
 import { VersionDetails } from '@/components/version-details'
 import { useI18n } from '@/i18n'
@@ -58,6 +59,7 @@ function AppUpdatesSettings({ includeUninstall }: AppUpdatesSettingsProps): Reac
   return (
     <SettingsContent>
       <VersionHero version={version} />
+      <AthenaManagedLine />
       <div className="mx-auto mt-4 w-full max-w-2xl">
         {!cloudOwned.client && (
           <>

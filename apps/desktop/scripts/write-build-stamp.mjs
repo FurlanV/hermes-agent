@@ -268,6 +268,9 @@ export function buildStampPayload(stamp, env = process.env, platform = process.p
     distribution: "desktop-app",
     // bundle-electron-main.mjs re-derives the baked identity from the stamp.
     ...(variant === "athena" ? { brand: "athena" } : {}),
+    // Athena (F02): a managed release (ATHENA_MANAGED_RELEASE=1) never honours the dev
+    // override file; the demo build leaves it unset.
+    ...(variant === "athena" && env.ATHENA_MANAGED_RELEASE === "1" ? { athenaManagedRelease: true } : {}),
 
     updateMechanism: commitBuild ? 'external' : updateMechanism,
     tag: channelBuild?.receiverCandidate ? channelBuild.releaseTag : env.HERMES_PAYLOAD_TAG || null,

@@ -185,6 +185,38 @@ a real filter.
   "Custom model…" entries, which still show unconditionally.
   `model-selector-scope.test.ts` fails if a UI file merges custom ids itself.
 
+- The signed client config (slice 14):
+  - Electron main (`electron/athena/client-config.ts`) reads
+    `$HERMES_HOME/athena/client-config.jws` (stored by `athena config sync`)
+    and re-verifies it with the bundled keys (`electron/athena/bundled-config-data.ts`, a copy of athena's `trusted-keys.json`):
+    signature, `typ: athena-client-config+jws`, `aud: athena-desktop`, the
+    schema major, `sub` = the signed-in `oid` (from `token.json`: an `oid` key,
+    else the access token's `oid` claim) and no `config_version` below the
+    highest seen. A bad file keeps the last good copy (until 7 days past its
+    expiry); no file means the bundled default
+    (the same file, a copy of `client-config.default.json`). Never the CLI's
+    unsigned `client-config.json`.
+  - It polls the inputs every second and pushes each new snapshot to every
+    window: `athena:client-config:snapshot` (sendSync, read by preload before
+    the first paint), `athena:client-config:get` (invoke),
+    `athena:client-config:changed` (push). The renderer reads them through
+    `window.athenaDesktop.clientConfig` (`electron/athena/preload-bridge.ts`)
+    into `managed/client-config.ts` (`$clientConfig`).
+  - Main writes `$HERMES_HOME/athena/desktop-status.json`
+    (`dev_overrides_active`, `config_version_seen`, `updated_at`) for the
+    Shipper's heartbeat. `config_version_seen` is also the replay floor across
+    restarts.
+  - Dev override: with `ATHENA_DEV_OVERRIDES=1` and a build that is not a
+    managed release, `ATHENA_DEV_OVERRIDES_FILE` (default
+    `~/athena-demo/athena-overrides.json`) is merged on top (dicts merge, lists
+    replace). `ATHENA_MANAGED_RELEASE=1` at build time stamps
+    `athenaManagedRelease: true` into the install stamp, and such a build
+    ignores the override. The demo build is not a managed release.
+  - Settings › About shows "Managed by SickKids · role researcher · config v118 (server)".
+  - The bundled copies must match the athena repo
+    (`shared/athena_schemas/src/athena_schemas/data/`); `client-config.test.ts`
+    compares them when a checkout is present (`ATHENA_REPO`).
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -210,3 +242,8 @@ override with `ATHENA_F02_BASE`).
 | `src/app/settings/fallback-models-field.tsx` | Fallback model rows read the selector |
 | `src/app/settings/delegation-model-provider-field.tsx` | Subagent model rows read the selector |
 | `src/app/session/hooks/use-prompt-actions/slash.ts` | `/model <id>` asks `isModelSelectable` before running on the backend |
+| `electron/main.ts` | Installs the Athena client config (`installAthenaClientConfig`) before the guarded channels register |
+| `electron/preload.ts` | Exposes `window.athenaDesktop` (`exposeAthenaBridge`) |
+| `src/main.tsx` | Imports `athena/managed/boot` (follow main's client config) before the first render |
+| `src/app/settings/about-settings.tsx` | The "Managed by SickKids · role … · config v…" line under the version |
+| `scripts/write-build-stamp.mjs` | `ATHENA_MANAGED_RELEASE=1` stamps `athenaManagedRelease: true` (no dev overrides) |

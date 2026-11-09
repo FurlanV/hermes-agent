@@ -65,6 +65,7 @@ import {
 } from './app-version'
 import { runAppInstallerChecker } from './appinstaller-checker'
 import { installApplicationMenuAfterFirstWindow } from './application-menu-startup'
+import { installAthenaClientConfig } from './athena/client-config-ipc'
 import { ATHENA_POLICY_REFUSED, deepLinkAllowed, guardedIpcMain, refuseRestRequest } from './athena/policy-seams'
 import { stopBackendChild as stopBackendChildImpl, waitForBackendExit } from './backend-child'
 import {
@@ -15211,6 +15212,16 @@ ipcMain.handle('hermes:connection-config:oauth-logout', async (_event, rawUrl) =
   const connected = (await hasLiveOauthSession(baseUrl)) || hasNativeSession(baseUrl)
 
   return { ok: true, connected }
+})
+
+// Athena (F02): the verified client config for this Profile, loaded before any
+// guarded channel registers and pushed to every window on change.
+installAthenaClientConfig({
+  allWindows: () => BrowserWindow.getAllWindows(),
+  athenaDir: path.join(HERMES_HOME, 'athena'),
+  installStamp: INSTALL_STAMP,
+  ipcMain,
+  log: rememberLog
 })
 
 // Privileged channels (Hermes Cloud, updates) register through the Athena

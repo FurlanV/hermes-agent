@@ -29,6 +29,7 @@ const uiPreferencesSnapshot = ipcRenderer.sendSync('hermes:ui-preferences:snapsh
 
 import { unwrapExpectedNotFound } from './api-expected-404'
 import { unwrapPolicyRefusal } from './athena/policy-seams'
+import { exposeAthenaBridge } from './athena/preload-bridge'
 
 contextBridge.exposeInMainWorld('hermesDesktop', {
   glassSupported: translucencySupport?.glass === true,
@@ -765,3 +766,6 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
     return () => ipcRenderer.removeListener('hermes:open-find-bar', listener)
   }
 })
+
+// Athena (F02): the verified client config (`window.athenaDesktop`).
+exposeAthenaBridge()
