@@ -318,7 +318,12 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     ...st('advanced', 'quick-entry', 'quick-entry-shortcut')
   ]),
   row('S68', 'remove', 'Advanced', 'Run onboarding again', ['settings-control:rerun-onboarding', ...rpc('onboarding.start', 'onboarding.set_run')]),
-  row('S69', 'remove', 'Advanced', 'In-app update local changes', [...cf('updates.*'), ...ipc('hermes:updates:apply')]),
+  // The in-app updater: S105 keeps the read-only Updates card, without its "Check now" (managed outside the app).
+  row('S69', 'remove', 'Advanced', 'In-app update local changes', [
+    ...cf('updates.*'),
+    'settings-control:updates-check-now',
+    ...ipc('hermes:updates:apply')
+  ]),
   row('S70a', 'keep', 'Advanced', 'Max agent steps', [ADVANCED_RUNTIME, ...cf('agent.max_turns')]),
   row('S70b', 'disable', 'Advanced', 'API retries, service tier', [
     ADVANCED_RUNTIME,
@@ -429,6 +434,8 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
     'settings-control:gateway-mode-remote',
+    // Local stays choosable whenever another mode is offered.
+    'settings-control:gateway-mode-local',
     'statusbar:gateway-switcher',
     ...ipc(
       'hermes:connection-config:probe',
@@ -442,6 +449,7 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
     'settings-control:gateway-mode-ssh',
+    'settings-control:gateway-mode-local',
     'statusbar:gateway-switcher',
     ...ipc('hermes:ssh-config:*')
   ]),
@@ -533,10 +541,16 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
 
   // ── Surfaces outside Settings (entries: slice 16) ──
-  row('S109', 'remove', 'Surfaces outside Settings', 'Stock onboarding (provider picker, key entry)'),
+  row('S109', 'remove', 'Surfaces outside Settings', 'Stock onboarding (provider picker, key entry)', [
+    'dialog:onboarding',
+    ...rpc('onboarding.*')
+  ]),
   row('S110', 'remove', 'Surfaces outside Settings', 'Free-tier sign-in dialog, intro and terms bar', [
     'statusbar:free-tier',
     'error-action:sign_in_free_tier',
+    'dialog:free-tier-sign-in',
+    'dialog:free-tier-notice',
+    'dialog:portal-terms',
     ...rpc('free_tier.*'),
     ...ipc('hermes:freeTierChallenge:run')
   ]),

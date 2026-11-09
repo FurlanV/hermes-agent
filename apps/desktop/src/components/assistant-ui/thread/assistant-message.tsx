@@ -1010,6 +1010,7 @@ const ErrorDetailsBlock: FC<{ errorText: string; hidden: boolean; id: string; su
   const connection = useStore($connection)
   const ownerProfile = useOwnerProfile()
   const remoteConnection = connection?.mode === 'remote'
+  const diagnosticsAllowed = useFeatureEntry('dialog:send-diagnostics')
 
   const failedAt = useErrorFailedAt()
 
@@ -1047,13 +1048,16 @@ const ErrorDetailsBlock: FC<{ errorText: string; hidden: boolean; id: string; su
             {remoteConnection ? copy.errorOpenDesktopLogs : copy.errorOpenLogs}
           </button>
         )}
-        <button
-          className="aui-error-details-link"
-          onClick={() => requestSendDiagnostics(diagnosticsText())}
-          type="button"
-        >
-          {copy.errorSendDiagnostics}
-        </button>
+        {/* Athena (F02 slice 18): no diagnostics upload to Nous (S117). */}
+        {diagnosticsAllowed && (
+          <button
+            className="aui-error-details-link"
+            onClick={() => requestSendDiagnostics(diagnosticsText())}
+            type="button"
+          >
+            {copy.errorSendDiagnostics}
+          </button>
+        )}
       </div>
     </div>
   )

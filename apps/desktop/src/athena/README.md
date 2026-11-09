@@ -344,6 +344,33 @@ a real filter.
     `managed/backend-refusal.test.tsx` send every surface of every row that is
     off by default (off → refused, on → through, remove → refused even "on").
 
+- Removed features (slice 18): the 22 `remove` rows are left out of the Athena
+  variant. A remove row has no flag: `featureStates` keeps it off whatever the
+  server config, the dev override or `managed.features: off` say (main logs
+  `features.<id> = "on" ignored`; the admin API refuses it with 422). Its UI is
+  not mounted (pages, controls and dialogs ask their entry: stock onboarding,
+  the free-tier dialog, notice strip and terms bar, the usage-stats consent,
+  Hermes Cloud in the mode control, the diagnostics upload, "Check now",
+  Advanced Delegation's install), its IPC handlers are not registered, and its
+  REST, JSON-RPC and config keys are refused and pinned as in slice 17.
+  Opening Settings no longer reads `billing.state` / `subscription.state`.
+  - **Bringing a removed feature back** is a registry change and a build:
+    change the row's mark in `electron/athena/feature-registry.ts` from
+    `remove` to `disable` (or `keep`), regenerate `features.json`
+    (`ATHENA_WRITE_FEATURES=1`) and copy it to athena, update the plan's audit
+    table (the mark test reads it), rebuild. No upstream code was deleted.
+  - Variant-gated: `electron/athena/variant.ts` tells the Athena variant (the
+    install stamp's `brand: "athena"`, or the baked `ca.sickkids.athena` app
+    id) from a stock build. In a stock build every snapshot says
+    `variant: "stock"` and the managed client is inert: allow-all filter,
+    JSON-RPC and main seams, no pins.
+  - Startup egress: `managed/nous-egress.test.ts` classifies every main and
+    renderer source naming a Nous host and checks each fetch is shut in the
+    Athena variant; athena's `tests/hook_sequence/test_egress.py` runs the
+    gateway daemon headless with a socket audit hook through a connected chat
+    and a Settings walk and sees only loopback.
+  - Tests: `managed/removed-features.test.tsx`.
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -397,3 +424,13 @@ override with `ATHENA_F02_BASE`).
 | `src/app/capabilities/index.tsx` | `CapabilitiesView` renders the Athena catalog page while `managed.tools` is enforce or report; the stock view is `StockCapabilitiesView`, unchanged (slice 28) |
 | `electron/main.ts` | Installs the Capabilities tool switches (`installAthenaToolPrefs`, `athena:tool-prefs:get`/`set`) (slice 28) |
 | `electron/main.ts` | Imports `athena/ipc-guard-install` first (policy IPC channels follow the flags); `toggleDevTools`, `devtools-opened` and the View menu's DevTools item ask the DevTools seam; the menu is rebuilt on a policy change (slice 17) |
+| `src/app/contrib/wiring.tsx` | Stock onboarding (S109) is not decided or mounted; the usage-stats consent (S49) and free-tier sign-in (S110) dialogs are not mounted (slice 18) |
+| `src/app/contrib/controller.tsx` | The free-tier terms bar asks `dialog:portal-terms` (S110, slice 18) |
+| `src/app/chat/composer/status-stack/index.tsx` | The free-tier notice and usage-stats consent strips ask the filter (S110, S49, slice 18) |
+| `src/app/settings/gateway-settings.tsx` | Each connection-mode card asks its entry; Hermes Cloud (S84) is not offered (slice 18) |
+| `src/app/settings/delegation/routing-section.tsx` | Routing follows S13; Advanced Delegation's catalog install (S14) is not offered (slice 18) |
+| `src/components/update-status.tsx` | "Check now" asks `settings-control:updates-check-now` (S69/S105, slice 18) |
+| `src/app/update-error-report.tsx` | The diagnostics upload to Nous is not offered (S117, slice 18) |
+| `src/components/error-boundary.tsx` | The crash screen's Send diagnostics is not offered (S117, slice 18) |
+| `src/components/assistant-ui/thread/assistant-message.tsx` | The error card's Send diagnostics is not offered (S117, slice 18) |
+| `src/app/settings/index.tsx` | `billing.state` / `subscription.state` are read only while Billing is allowed (S77, slice 18) |

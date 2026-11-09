@@ -13,9 +13,12 @@ import path from 'node:path'
 
 import type { BrowserWindow, IpcMain } from 'electron'
 
+import { PRODUCT_IDENTITY } from '../product-identity'
+
 import { AthenaClientConfig, type ClientConfigSnapshot, devOverridesFromEnv } from './client-config'
-import { applyMainPolicies, configureMainPolicies } from './main-policy'
+import { applyMainPolicies, configureMainPolicies, ignoredRemoveRows } from './main-policy'
 import { parsePolicyDecision, POLICY_DECISIONS_FILE, PolicyDecisionLog } from './policy-decisions'
+import { type DesktopVariant, desktopVariant } from './variant'
 
 export const CLIENT_CONFIG_CHANNELS = Object.freeze({
   changed: 'athena:client-config:changed',
@@ -40,10 +43,26 @@ export interface InstallClientConfigOptions {
   log: (line: string) => void
   /** Each new snapshot, after it is broadcast (main-side policies hook in here). */
   onChange?: (snapshot: ClientConfigSnapshot) => void
+  /** Default: from the install stamp and the baked identity (variant.ts). */
+  variant?: DesktopVariant
+}
+
+/** Remove rows have no flag: a config (server or dev override) that turns one on is ignored, with a log line. */
+function warnIgnoredRemoveRows(snapshot: ClientConfigSnapshot, log: (line: string) => void, warned: Set<string>) {
+  for (const id of ignoredRemoveRows(snapshot.config)) {
+    const key = `${id}:${snapshot.configVersion}:${snapshot.devOverridesActive}`
+
+    if (!warned.has(key)) {
+      warned.add(key)
+      log(`[athena] features.${id} = "on" ignored: ${id} is removed from the Athena build (a registry change and a build bring it back)`)
+    }
+  }
 }
 
 export function installAthenaClientConfig(options: InstallClientConfigOptions): AthenaClientConfig {
   const devOverrides = devOverridesFromEnv(options.env ?? process.env, options.installStamp)
+  const variant = options.variant ?? desktopVariant(options.installStamp, PRODUCT_IDENTITY.appId)
+  const warned = new Set<string>()
   const decisions = new PolicyDecisionLog({ file: path.join(options.athenaDir, POLICY_DECISIONS_FILE), log: options.log })
   configureMainPolicies({ decisions, log: options.log })
 
@@ -55,6 +74,7 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
     athenaDir: options.athenaDir,
     devOverrides,
     log: options.log,
+    variant,
     onChange: snapshot => {
       for (const win of options.allWindows()) {
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
@@ -62,6 +82,7 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
         }
       }
 
+      warnIgnoredRemoveRows(snapshot, options.log, warned)
       applyMainPolicies(snapshot)
       options.onChange?.(snapshot)
     }
@@ -85,6 +106,12 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
     `[athena] client config: ${first.source}${first.configVersion === null ? '' : ` v${first.configVersion}`}` +
       `${first.error ? ` (file ${first.error})` : ''}`
   )
+
+  if (variant === 'stock') {
+    options.log('[athena] stock variant: the managed client stays inert (no feature filter, refusals or pins)')
+  }
+
+  warnIgnoredRemoveRows(first, options.log, warned)
   applyMainPolicies(first)
   options.onChange?.(first)
 

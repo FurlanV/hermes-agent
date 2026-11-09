@@ -1,6 +1,7 @@
 // Athena client config types shared by main and the renderer (no runtime imports, so the renderer can use them).
 
 import type { JwsReason } from './jws'
+import type { DesktopVariant } from './variant'
 
 export type ClientConfigDocument = Record<string, unknown>
 export type ClientConfigSource = 'bundled' | 'last-good' | 'server'
@@ -27,6 +28,11 @@ export interface ClientConfigSnapshot {
   error: ClientConfigRejection | null
   role: null | string
   source: ClientConfigSource
+  /**
+   * The build variant (slice 18). `stock` leaves the managed client inert (allow-all filter and seams); absent
+   * (older snapshots, tests) reads as `athena`.
+   */
+  variant?: DesktopVariant
   /** When the config in use was last verified (null for the bundled default). */
   verifiedAt: null | string
 }

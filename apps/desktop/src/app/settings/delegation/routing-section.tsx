@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import type { ReactNode } from 'react'
 
 import { useGatewayRequest } from '@/app/gateway/hooks/use-gateway-request'
+import { useFeatureEntry } from '@/athena/managed/features'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { DelegationRouting, ProfileScope } from '@/hermes'
@@ -39,7 +40,10 @@ interface DelegationRoutingSlotProps {
 
 /** The Routing section on the page that owns `delegation.*` (Model › Subagents); nothing elsewhere. */
 export function DelegationRoutingSlot({ sectionId, subpage, writeScope, readScope }: DelegationRoutingSlotProps) {
-  if (sectionId !== 'model' || (subpage !== undefined && subpage !== 'delegation')) {
+  // Athena (F02 slice 18): Routing follows S13.
+  const routingAllowed = useFeatureEntry('settings-control:delegation-routing')
+
+  if (!routingAllowed || sectionId !== 'model' || (subpage !== undefined && subpage !== 'delegation')) {
     return null
   }
 
@@ -257,13 +261,15 @@ function AdvancedDelegationStatus({ blocked, scope }: { blocked: boolean; scope:
   const { requestGateway } = useGatewayRequest()
   const owner = useStore($settingsRequestProfile) ?? null
   const { row, state } = useAdvancedDelegationPlugin(requestGateway, owner)
+  // Athena (F02 slice 18): installing Advanced Delegation from the Nous catalog (S14) is not in the Athena variant.
+  const installAllowed = useFeatureEntry('settings-control:delegation-install-plugin')
 
   if (state === 'loading') {
     return blocked ? <BlockedBanner message={r.blockedMissing} scope={scope} /> : null
   }
 
   const action =
-    state === 'missing' ? (
+    state === 'missing' && !installAllowed ? null : state === 'missing' ? (
       <Button onClick={() => void installAdvancedDelegation(owner, r.installUnavailable)} size="sm" variant="outline">
         {r.installPlugin}
       </Button>

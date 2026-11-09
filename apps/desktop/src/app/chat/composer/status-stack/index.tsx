@@ -7,6 +7,7 @@ import { useComposerSurfaceId } from '@/app/chat/composer/scope'
 import { useSessionView } from '@/app/chat/session-view'
 import { AGENTS_ROUTE } from '@/app/routes'
 import type { SubmitTextOptions } from '@/app/session/hooks/use-prompt-actions/utils'
+import { useFeatureFilter } from '@/athena/managed/features'
 import { BillingBanner } from '@/components/billing-banner'
 import { composerDockCard } from '@/components/chat/composer-dock'
 import { StatusSection } from '@/components/chat/status-section'
@@ -110,6 +111,7 @@ interface ComposerStatusStackProps {
  * type and separated by light dividers. Collapses to nothing when empty.
  */
 export function ComposerStatusStack({ onSubmit, queue, sessionId }: ComposerStatusStackProps) {
+  const featureFilter = useFeatureFilter()
   const { t } = useI18n()
   const navigate = useNavigate()
   const storedSessionId = useStore(useSessionView().$storedId)
@@ -232,11 +234,12 @@ export function ComposerStatusStack({ onSubmit, queue, sessionId }: ComposerStat
   // Below the billing wall (a blocker outranks an offer), above everything the
   // session itself is doing. The strip retires itself the moment any of its
   // actions acks the notice.
-  if (freeTierNotice) {
+  // Athena (F02 slice 18): the Nous free-tier notice (S110) and usage-stats consent (S49) strips stay unmounted.
+  if (freeTierNotice && featureFilter('dialog:free-tier-notice')) {
     sections.push({ key: 'free-tier', node: <FreeTierNoticeStrip /> })
   }
 
-  if (sharedMetricsOffer) {
+  if (sharedMetricsOffer && featureFilter('dialog:shared-metrics-consent')) {
     sections.push({ key: 'shared-metrics', node: <SharedMetricsConsentStrip /> })
   }
 

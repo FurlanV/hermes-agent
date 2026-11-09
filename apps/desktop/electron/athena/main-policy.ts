@@ -24,7 +24,7 @@ import {
   restEntries
 } from './backend-policy'
 import type { ClientConfigSnapshot } from './client-config-types'
-import { featureEntryFilter, featureMode } from './feature-registry'
+import { FEATURE_ROW_BY_ID, featureEntryFilter, featureMode } from './feature-registry'
 import type { PolicyDecisionLog } from './policy-decisions'
 import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
 
@@ -104,8 +104,23 @@ export function mainPolicySeams(config: unknown, decide: FeatureDecider = featur
   }
 }
 
-export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config'>): void {
-  setMainPolicySeams(mainPolicySeams(snapshot.config))
+/** Remove-row ids a config asks to turn on (ignored: remove rows have no flag). */
+export function ignoredRemoveRows(config: unknown): string[] {
+  const features =
+    config && typeof config === 'object' ? (config as { features?: unknown }).features : undefined
+
+  if (!features || typeof features !== 'object') {
+    return []
+  }
+
+  return Object.entries(features as Record<string, unknown>)
+    .filter(([id, value]) => value === 'on' && FEATURE_ROW_BY_ID.get(id)?.mark === 'remove')
+    .map(([id]) => id)
+}
+
+/** Install main's seams for a snapshot. The stock variant gets allow-all seams (variant.ts). */
+export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config' | 'variant'>): void {
+  setMainPolicySeams(snapshot.variant === 'stock' ? null : mainPolicySeams(snapshot.config))
 
   for (const listener of listeners) {
     try {

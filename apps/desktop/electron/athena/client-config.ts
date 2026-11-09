@@ -37,6 +37,7 @@ import type {
   ClientConfigSource
 } from './client-config-types'
 import { JwsError, trustedKeys, verifyCompactJws } from './jws'
+import type { DesktopVariant } from './variant'
 
 export const CLIENT_CONFIG_TYP = 'athena-client-config+jws'
 export const CLIENT_CONFIG_AUDIENCE = 'athena-desktop'
@@ -257,6 +258,8 @@ export interface ClientConfigSourceOptions {
   /** Called with each new snapshot (not for no-op refreshes). */
   onChange?: (snapshot: ClientConfigSnapshot) => void
   trusted?: ReadonlyMap<string, KeyObject>
+  /** The build variant every snapshot carries (default `athena`). */
+  variant?: DesktopVariant
 }
 
 interface Held {
@@ -290,6 +293,7 @@ export class AthenaClientConfig {
   private readonly now: () => number
   private readonly onChange?: (snapshot: ClientConfigSnapshot) => void
   private readonly trusted: ReadonlyMap<string, KeyObject>
+  private readonly variant: DesktopVariant
 
   private held: Held | null = null
   private versionSeen: number
@@ -308,6 +312,7 @@ export class AthenaClientConfig {
     this.now = options.now ?? Date.now
     this.onChange = options.onChange
     this.trusted = options.trusted ?? bundledTrustedKeys()
+    this.variant = options.variant ?? 'athena'
 
     const status = readJson(this.statusFile)
     const seen = isRecord(status) ? status.config_version_seen : undefined
@@ -449,6 +454,7 @@ export class AthenaClientConfig {
       error,
       role: chosen && typeof chosen.config.role === 'string' ? chosen.config.role : null,
       source,
+      variant: this.variant,
       verifiedAt: chosen?.verifiedAt ?? null
     }
   }

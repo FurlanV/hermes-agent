@@ -14,15 +14,23 @@ import { featureDecider, rpcEntries } from '../../../electron/athena/backend-pol
 import { featureEntryFilter } from '../../../electron/athena/feature-registry'
 
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
-import { setFeatureFilter } from './features'
+import { ALLOW_ALL_FEATURES, setFeatureFilter } from './features'
 import { recordPolicyDecision } from './policy-decisions'
-import { type RpcPolicy, setRpcPolicy } from './rpc-seam'
+import { ALLOW_ALL_RPC, type RpcPolicy, setRpcPolicy } from './rpc-seam'
 
-/** The filter for a snapshot. No snapshot yet (or no Electron bridge): the build defaults. */
-export const filterForSnapshot = (snapshot: ClientConfigSnapshot | null) => featureEntryFilter(snapshot?.config ?? {})
+/**
+ * The filter for a snapshot. No snapshot yet (or no Electron bridge): the build defaults. The stock variant
+ * (`variant: 'stock'`, electron/athena/variant.ts) allows everything: the managed client is the Athena variant's.
+ */
+export const filterForSnapshot = (snapshot: ClientConfigSnapshot | null) =>
+  snapshot?.variant === 'stock' ? ALLOW_ALL_FEATURES : featureEntryFilter(snapshot?.config ?? {})
 
 /** The JSON-RPC policy for a snapshot: a method (or its action) reaching a refused entry is refused and recorded. */
 export function rpcPolicyForSnapshot(snapshot: ClientConfigSnapshot | null): RpcPolicy {
+  if (snapshot?.variant === 'stock') {
+    return ALLOW_ALL_RPC
+  }
+
   const decide = featureDecider(snapshot?.config ?? {})
 
   return (method, params) => {

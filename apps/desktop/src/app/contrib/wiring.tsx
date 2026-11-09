@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { type CSSProperties, lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
+import { isFeatureAllowed, useFeatureEntry } from '@/athena/managed/features'
 import { formatRefValue } from '@/components/assistant-ui/directive-text'
 import { StartupOverlay } from '@/components/boot-failure-overlay'
 import { ConfirmHost } from '@/components/confirm-host'
@@ -224,7 +225,8 @@ function useRouteRequestNavigation(navigate: ReturnType<typeof useNavigate>): vo
 // Settings' Run onboarding again opens its chat through the same opener.
 function useFirstRunOnboarding(request: OnboardingRequest, open: OnboardingResume, gatewayOpen: boolean): void {
   useEffect(() => {
-    if (!isMainWindow()) {
+    // Athena (F02 slice 18): stock onboarding (S109) is not in the Athena variant; nothing waits on it.
+    if (!isMainWindow() || !isFeatureAllowed('dialog:onboarding')) {
       markOnboardingDecided()
     } else if (gatewayOpen) {
       void decideOnboarding(request, open, { intro: firstRunIntro() })
@@ -321,6 +323,10 @@ function useTitlebarControlsVars(controlsPos: { left: number; top: number }): CS
 }
 
 export function ContribWiring({ children }: { children: ReactNode }) {
+  // Athena (F02 slice 18): Nous-only first-run surfaces (S109 onboarding, S49 consent, S110 free tier) stay unmounted.
+  const onboardingAllowed = useFeatureEntry('dialog:onboarding')
+  const sharedMetricsAllowed = useFeatureEntry('dialog:shared-metrics-consent')
+  const freeTierAllowed = useFeatureEntry('dialog:free-tier-sign-in')
   const queryClient = useQueryClient()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1281,7 +1287,7 @@ export function ContribWiring({ children }: { children: ReactNode }) {
       {/* The full real overlay set (mirrors DesktopController's `overlays`). */}
       <RemoteDisplayBanner />
       {!isAuxiliaryWindow() && <DesktopInstallOverlay />}
-      {!isAuxiliaryWindow() && (
+      {!isAuxiliaryWindow() && onboardingAllowed && (
         <DesktopOnboardingOverlay
           enabled={gatewayState === 'open'}
           onCompleted={() => {
@@ -1293,8 +1299,8 @@ export function ContribWiring({ children }: { children: ReactNode }) {
           requestGateway={requestGateway}
         />
       )}
-      {!isAuxiliaryWindow() && <OnboardingEnd />}
-      {!isAuxiliaryWindow() && (
+      {!isAuxiliaryWindow() && onboardingAllowed && <OnboardingEnd />}
+      {!isAuxiliaryWindow() && sharedMetricsAllowed && (
         <SharedMetricsConsentDialog
           enabled={gatewayState === 'open'}
           profile={activeGatewayProfile}
@@ -1304,7 +1310,7 @@ export function ContribWiring({ children }: { children: ReactNode }) {
       {/* One host for every free-tier sign-in entry point (Settings › Billing,
           the statusbar chip, the first-launch intro). It owns the flow; the
           entry points only record the intent. */}
-      {!isAuxiliaryWindow() && <FreeTierSignInDialog onSelectModel={selectModel} />}
+      {!isAuxiliaryWindow() && freeTierAllowed && <FreeTierSignInDialog onSelectModel={selectModel} />}
       <ModelPickerOverlay
         gateway={gateway || undefined}
         onSelect={selectModel}

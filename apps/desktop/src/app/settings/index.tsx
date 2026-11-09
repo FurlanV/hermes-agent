@@ -2,7 +2,7 @@ import { useStore } from '@nanostores/react'
 import { type ComponentType, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 
-import { useFeatureFilter } from '@/athena/managed/features'
+import { useFeatureEntry, useFeatureFilter } from '@/athena/managed/features'
 import { filterSettingsNav } from '@/athena/managed/settings-entries'
 import { useSettingsRouteGuard } from '@/athena/managed/settings-route-guard'
 import { codiconIcon } from '@/components/ui/codicon'
@@ -170,8 +170,10 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
   const [providerView, setProviderView] = useRouteEnumParam<ProviderView>('pview', PROVIDER_VIEWS, 'accounts')
   const [keysView] = useRouteEnumParam<KeysView>('kview', KEYS_VIEWS, 'tools')
   const [billingView] = useRouteEnumParam<BillingSubView>('bview', BILLING_VIEWS, 'overview')
-  const billingState = useBillingState()
-  const subscriptionState = useSubscriptionState()
+  // Athena (F02 slice 18): Billing (S77) is not in the Athena variant, so opening Settings asks Nous nothing.
+  const billingAllowed = useFeatureEntry('settings:billing')
+  const billingState = useBillingState(billingAllowed)
+  const subscriptionState = useSubscriptionState(billingAllowed)
   const billingPresentation = deriveBillingView(billingState.data, subscriptionState.data)
   const canViewPlans = billingPresentation.status === 'normal' && Boolean(billingPresentation.plan?.action)
 

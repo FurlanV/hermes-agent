@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { type ReactElement, type ReactNode, useState } from 'react'
 
+import { FeatureGate } from '@/athena/managed/feature-gate'
 import { BrandMark } from '@/components/brand-mark'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
@@ -404,15 +405,18 @@ function UpdateStatusCardBody({
 
       {view.tone !== 'unsupported' && (
         <div className="mt-3 flex flex-wrap items-center gap-4">
-          <Button
-            disabled={checking || view.applying}
-            onClick={() => void handleCheck()}
-            size="sm"
-            variant="textStrong"
-          >
-            {checking ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
-            {checking ? u.checkingShort : u.checkNow}
-          </Button>
+          {/* Athena (F02 slice 18): updates are managed outside the app; no "Check now" (S105 keeps the card). */}
+          <FeatureGate entry="settings-control:updates-check-now">
+            <Button
+              disabled={checking || view.applying}
+              onClick={() => void handleCheck()}
+              size="sm"
+              variant="textStrong"
+            >
+              {checking ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
+              {checking ? u.checkingShort : u.checkNow}
+            </Button>
+          </FeatureGate>
 
           <UpdateActions target={target} u={u} view={view} />
 
