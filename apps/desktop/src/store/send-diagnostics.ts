@@ -14,6 +14,7 @@
 // halves in one bundle.
 import { atom } from 'nanostores'
 
+import { isFeatureAllowed } from '@/athena/managed/features'
 import { $gateway } from '@/store/gateway'
 
 export interface SendDiagnosticsResult {
@@ -54,6 +55,11 @@ let generation = 0
 
 /** Open the consent modal. No network I/O happens until the user confirms. */
 export function requestSendDiagnostics(errorContext?: string, options: SendDiagnosticsOptions = {}): void {
+  // Athena (F02): the upload to Nous (S117) follows the feature policy.
+  if (!isFeatureAllowed('dialog:send-diagnostics')) {
+    return
+  }
+
   generation += 1
   $sendDiagnostics.set({ errorContext, phase: 'consent', ...options })
 }

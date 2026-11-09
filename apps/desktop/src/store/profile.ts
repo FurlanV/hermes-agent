@@ -1,6 +1,7 @@
 import { LOCAL_CONNECTION_ID, registryBackendScopeKey } from '@hermes/shared'
 import { atom, batch, computed } from 'nanostores'
 
+import { isFeatureAllowed } from '@/athena/managed/features'
 import type { HermesConnection } from '@/global'
 import { getProfiles, hermesApi, setApiRequestProfile, STARTUP_REQUEST_TIMEOUT_MS } from '@/hermes'
 import { hostHas } from '@/lib/host-capabilities'
@@ -1219,5 +1220,10 @@ export function cycleProfile(direction: 1 | -1): void {
 export const $profileCreateRequest = atom(0)
 
 export function requestProfileCreate(): void {
+  // Athena (F02): profile create and import (S122) follow the feature policy.
+  if (!isFeatureAllowed('dialog:create-profile')) {
+    return
+  }
+
   $profileCreateRequest.set($profileCreateRequest.get() + 1)
 }

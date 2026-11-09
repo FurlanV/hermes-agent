@@ -13,6 +13,7 @@
  * dialogs and the backend share the filesystem for local and pooled backends.
  */
 
+import { isFeatureAllowed } from '@/athena/managed/features'
 import { isLayoutNode, normalize } from '@/components/pane-shell/tree/model'
 import { $layoutTree, markActivePreset, persistTree } from '@/components/pane-shell/tree/store'
 import { exportProfileArchive, importProfileArchive } from '@/hermes'
@@ -197,6 +198,11 @@ export async function runExportProfileFlow(profile?: string): Promise<null | str
 /** Pick an archive and import it as a new profile; lands the user in it on a
  *  fresh chat. Returns the new profile name, or null when cancelled/failed. */
 export async function runImportProfileFlow(): Promise<null | string> {
+  // Athena (F02): profile import (S122) follows the feature policy.
+  if (!isFeatureAllowed('dialog:create-profile')) {
+    return null
+  }
+
   const paths = await window.hermesDesktop?.selectPaths?.({
     title: translateNow('profiles.importProfile'),
     multiple: false,

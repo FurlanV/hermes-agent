@@ -1,3 +1,4 @@
+import { isSlashCommandAllowed } from '@/athena/managed/entry-points'
 import { translateNow } from '@/i18n/runtime'
 import { peekCachedSlashCompletion } from '@/lib/slash-completion-cache'
 
@@ -799,6 +800,11 @@ export function isDesktopSlashSuggestion(command: string): boolean {
  */
 export function isDesktopSlashSuggestionWithOptions(command: string, options: { exactAlias?: string } = {}): boolean {
   const normalized = normalizeCommand(command)
+
+  // Athena (F02): commands the feature policy refuses are not offered.
+  if (!isSlashCommandAllowed([normalized, canonicalDesktopSlashCommand(normalized)])) {
+    return false
+  }
 
   // Aliases stay hidden so the popover isn't cluttered with duplicates.
   if (isAliasCommand(normalized)) {

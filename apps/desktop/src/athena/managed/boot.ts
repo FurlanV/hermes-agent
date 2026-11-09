@@ -6,11 +6,13 @@
  */
 
 import { connectClientConfig } from './client-config'
+import { installEntryPointPolicies } from './entry-point-guards'
 import { installFeaturePolicy } from './feature-policy'
 import { installHiddenRowsStyle } from './hidden-rows'
 
 installFeaturePolicy()
 connectClientConfig()
+installEntryPointPolicies()
 
 if (typeof document !== 'undefined') {
   installHiddenRowsStyle()

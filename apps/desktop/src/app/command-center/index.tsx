@@ -2,6 +2,7 @@ import { compactNumber } from '@hermes/shared'
 import { useStore } from '@nanostores/react'
 import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { useFeatureFilter } from '@/athena/managed/features'
 import { LogSearchField, useLogSearch } from '@/components/chat/log-search'
 import { LogTail } from '@/components/chat/log-tail'
 import { PageLoader } from '@/components/page-loader'
@@ -369,9 +370,12 @@ export function CommandCenterView({
     [cc, refreshSystem]
   )
 
+  // Athena (F02): Command Center tabs and buttons the feature policy refuses (`command-center:<id>`) are left out.
+  const featureFilter = useFeatureFilter()
+
   const navGroups = useMemo(
     () =>
-      SECTIONS.map(value => ({
+      SECTIONS.filter(value => featureFilter(`command-center:${value}`)).map(value => ({
         active: section === value,
         icon:
           value === 'sessions'
@@ -385,7 +389,7 @@ export function CommandCenterView({
         label: cc.sections[value],
         onSelect: () => setSection(value)
       })),
-    [cc, section, setSection]
+    [cc, featureFilter, section, setSection]
   )
 
   const activeGroup = navGroups.find(group => group.active)
@@ -519,10 +523,17 @@ export function CommandCenterView({
                           </div>
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 whitespace-nowrap max-[47.5rem]:whitespace-normal">
-                          <Button onClick={() => void runSystemAction('restart')} size="xs" variant="text">
-                            {cc.restartGateway}
-                          </Button>
-                          <UpdateHermesButton label={cc.updateHermes} onClick={() => void runSystemAction('update')} />
+                          {featureFilter('command-center:restart-gateway') && (
+                            <Button onClick={() => void runSystemAction('restart')} size="xs" variant="text">
+                              {cc.restartGateway}
+                            </Button>
+                          )}
+                          {featureFilter('command-center:update-hermes') && (
+                            <UpdateHermesButton
+                              label={cc.updateHermes}
+                              onClick={() => void runSystemAction('update')}
+                            />
+                          )}
                         </div>
                       </div>
                       {systemAction && (

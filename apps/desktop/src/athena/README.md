@@ -255,6 +255,30 @@ a real filter.
   - `client-config.e2e.test.ts` (opt-in, `ATHENA_E2E=1`) runs admin API →
     `athena config sync` → main's verifier → filter on the compose stack.
 
+- Entry points outside Settings (slice 16) use the same registry and filter,
+  with more entry kinds: `keybind:<action>`, `route:<path>`,
+  `command-center:<tab|button>`, `palette:<row id>`, `statusbar:<item id>`,
+  `nav:<sidebar row>`, `slash:<command>`, `error-action:<id>`,
+  `deep-link:<kind>`, `plugin:<id>`, `pane:<id>`, `dialog:<name>`.
+  - `electron/athena/app-locations.ts` (pure, shared): the entries an in-app
+    path or an OS deep link reaches (`/settings?…` → the Settings entries,
+    `/cron` → `route:/cron`, `/command-center?section=usage` →
+    `command-center:usage`, `hermes://<kind>/…` → `deep-link:<kind>`).
+  - Main: `electron/athena/main-policy.ts` installs the deep-link seam on every
+    snapshot; `handleDeepLink` drops a refused link with
+    `[deeplink] refused by policy`.
+  - Renderer: `managed/entry-points.ts` (shortcuts, open targets, palette,
+    status bar, slash commands, error-card buttons, toast buttons) and
+    `managed/entry-point-guards.ts` (the app route guard, the sidebar rows
+    through core's `sidebarNav.prefs` area, the terminal pane, flagged bundled
+    plugins: Bot Mode stays listed but off).
+  - A refused slash command answers "Not available in Athena." and is not
+    offered in the popover; a refused shortcut drops out of Settings ›
+    Keyboard Shortcuts and its chord does nothing.
+  - `managed/entry-points.test.tsx` drives every such row off and on, the
+    deep links, toasts, slash replies, Bot Mode and the terminal, and holds a
+    tripwire on each upstream hook.
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -288,3 +312,20 @@ override with `ATHENA_F02_BASE`).
 | `src/app/settings/profile-scope.tsx` | The "Applies to" chips ask the filter (S04) |
 | `src/app/settings/config-settings.tsx` | Run onboarding again (S68) and Share usage stats (S49) ask the filter |
 | `src/app/settings/appearance-settings.tsx` | Marketplace theme results (S24) ask the filter |
+| `src/app/hooks/use-keybinds.ts` | A refused shortcut (`keybind:<id>`) does nothing, from a chord or a plugin's `runAction` |
+| `src/app/settings/keybind-settings.tsx` | Refused shortcuts drop out of the key map |
+| `src/lib/hermes-open-target.ts` | `resolveHermesOpenPath` resolves a refused in-app path to nothing |
+| `src/app/shell/hooks/use-overlay-routing.ts` | The Athena app route guard (refused page → new chat) |
+| `src/app/shell/hooks/use-statusbar-items.tsx` | Status-bar items go through `allowedStatusbarItems` |
+| `src/app/command-palette/index.tsx` | Palette groups go through `allowedPaletteGroups` (row id and its shortcut) |
+| `src/app/session/hooks/use-prompt-actions/slash.ts` | A refused slash command answers "Not available in Athena." |
+| `src/lib/desktop-slash-commands.ts` | Refused slash commands are not suggested |
+| `src/components/assistant-ui/thread/assistant-message.tsx` | Error-card buttons into refused features are not offered |
+| `src/store/notifications.ts` | Recovery buttons are tagged with what they open; refused ones are left off the toast |
+| `src/app/command-center/index.tsx` | Command Center tabs and the Restart / Update buttons ask the filter |
+| `src/contrib/plugins-store.ts` | A plugin the policy refuses (`plugin:<id>`) never activates; `pluginPolicyHandle` for live switching |
+| `src/app/right-sidebar/terminal/reveal-focus.ts` | The terminal pane opens only while `pane:terminal` is allowed |
+| `src/store/profile.ts` | `requestProfileCreate` asks the filter |
+| `src/store/profile-share.ts` | `runImportProfileFlow` asks the filter |
+| `src/app/profiles/create-profile-dialog.tsx` | The create/import dialog opens only while allowed |
+| `src/store/send-diagnostics.ts` | `requestSendDiagnostics` asks the filter |

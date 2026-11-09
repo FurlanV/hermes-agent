@@ -23,6 +23,8 @@
 import type { OverlayNavGroup } from '@/app/overlays/overlay-split-layout'
 import type { SettingsSearchEntry, SettingsSearchTarget } from '@/app/settings/settings-search'
 
+import { SUB_VIEW_DEFAULTS, SUB_VIEW_PARAMS } from '../../../electron/athena/app-locations'
+
 import { $featureFilter, allowedEntries, type FeatureFilter } from './features'
 
 const current = (): FeatureFilter => $featureFilter.get()
@@ -34,10 +36,8 @@ export const settingsSubpageEntryId = (view: string, page: string): string => `s
 export const configFieldEntryId = (key: string): string => `config-field:${key}`
 
 /** Pages whose children are selected by their own query param rather than `page=`. */
-export const SUB_VIEW_PARAMS: Readonly<Record<string, string>> = { billing: 'bview', keys: 'kview', providers: 'pview' }
-
-/** The sub-view each of those pages shows when its param is absent (settings/index.tsx defaults). */
-export const SUB_VIEW_DEFAULTS: Readonly<Record<string, string>> = { billing: 'overview', keys: 'tools', providers: 'accounts' }
+// Shared with Electron main (deep links): electron/athena/app-locations.ts.
+export { SUB_VIEW_DEFAULTS, SUB_VIEW_PARAMS }
 
 export function isSettingsPageAllowed(view: string, filter: FeatureFilter = current()): boolean {
   return filter(settingsPageEntryId(view))

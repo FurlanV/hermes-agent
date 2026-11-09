@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { useFeatureEntry } from '@/athena/managed/features'
 import { ActionStatus } from '@/components/ui/action-status'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,6 +44,8 @@ export function CreateProfileDialog({
 }) {
   const { t } = useI18n()
   const p = t.profiles
+  // Athena (F02): profile create and import (S122) follow the feature policy.
+  const athenaAllowed = useFeatureEntry('dialog:create-profile')
   const [name, setName] = useState('')
   const [cloneFrom, setCloneFrom] = useState<null | string>('default')
   const [soul, setSoul] = useState('')
@@ -98,7 +101,7 @@ export function CreateProfileDialog({
   }
 
   return (
-    <Dialog onOpenChange={value => !value && !busy && onClose()} open={open}>
+    <Dialog onOpenChange={value => !value && !busy && onClose()} open={open && athenaAllowed}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{p.newProfile}</DialogTitle>

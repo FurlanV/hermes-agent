@@ -10,12 +10,17 @@ import {
   NEW_CHAT_ROUTE,
   STARMAP_ROUTE
 } from '@/app/routes'
+import { useAppRouteGuard } from '@/athena/managed/entry-point-guards'
 
 const SECTIONS = ['sessions', 'system', 'usage'] as const
 
 export function useOverlayRouting() {
   const location = useLocation()
   const navigate = useNavigate()
+  const goHome = useCallback(() => navigate(NEW_CHAT_ROUTE, { replace: true }), [navigate])
+
+  // Athena (F02): a page the feature policy refuses (Messaging, cron, a Command Center tab) goes to a new chat.
+  useAppRouteGuard(location.pathname, location.search, goHome)
 
   const currentView = appViewForPath(location.pathname)
   const settingsOpen = currentView === 'settings'

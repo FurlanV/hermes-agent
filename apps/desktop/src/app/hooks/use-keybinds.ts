@@ -7,6 +7,7 @@ import { setTerminalTakeover } from '@/app/right-sidebar/store'
 import { toggleTerminalPane } from '@/app/right-sidebar/terminal/reveal-focus'
 import { closeActiveTerminal, createTerminal, cycleTerminal } from '@/app/right-sidebar/terminal/terminals'
 import { appViewForPath, isOverlayView } from '@/app/routes'
+import { isKeybindAllowed } from '@/athena/managed/entry-points'
 import {
   activateTreeTabSlot,
   cycleTreeTabInFocusedZone,
@@ -415,7 +416,7 @@ export function useKeybinds(deps: KeybindRuntimeDeps): void {
       registerBuiltinActionRunner(actionId => {
         const handler = handlersRef.current[actionId]
 
-        if (!handler) {
+        if (!handler || !isKeybindAllowed(actionId)) {
           return false
         }
 
@@ -610,7 +611,8 @@ export function useKeybinds(deps: KeybindRuntimeDeps): void {
         // actions bring their own `run` through the registry.
         const handler = handlersRef.current[actionId] ?? contributedKeybindHandler(actionId)
 
-        if (!handler) {
+        // Athena (F02): a refused action's chord does nothing.
+        if (!handler || !isKeybindAllowed(actionId)) {
           return
         }
 

@@ -5,6 +5,7 @@ import { type MutableRefObject, useCallback, useRef } from 'react'
 import { mergeOlderTranscriptPage } from '@/app/chat/transcript-backfill'
 import { prepareDefaultNewSession } from '@/app/session/new-session-route'
 import { invalidateContextBreakdown } from '@/app/shell/hooks/use-context-breakdown'
+import { isSlashCommandAllowed, SLASH_NOT_AVAILABLE } from '@/athena/managed/entry-points'
 import { isModelSelectable, modelNotSelectableMessage, modelSlashChoice } from '@/athena/managed/models'
 import { getProfiles } from '@/hermes'
 import type { Translations } from '@/i18n'
@@ -1489,7 +1490,16 @@ export function useSlashCommand(deps: SlashCommandDeps) {
         }
 
         const ctx: SlashActionCtx = { arg, command, name, recordInput, sessionHint }
-        const surface = resolveDesktopCommand(`/${name}`)?.surface
+        const resolvedCommand = resolveDesktopCommand(`/${name}`)
+        const surface = resolvedCommand?.surface
+
+        // Athena (F02): a command the feature policy refuses (`slash:<name>`) answers and runs nothing.
+        if (!isSlashCommandAllowed([name, resolvedCommand?.name])) {
+          const resolved = await withSlashOutput(ctx)
+          resolved?.render(SLASH_NOT_AVAILABLE)
+
+          return
+        }
 
         switch (surface?.kind) {
           case 'unavailable': {

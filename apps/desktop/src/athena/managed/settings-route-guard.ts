@@ -12,6 +12,8 @@ import { useEffect } from 'react'
 import type { OverlayNavGroup } from '@/app/overlays/overlay-split-layout'
 import { notify } from '@/store/notifications'
 
+import { settingsLocationEntries } from '../../../electron/athena/app-locations'
+
 import type { FeatureFilter } from './features'
 import {
   isSettingsLocationAllowed,
@@ -22,13 +24,6 @@ import {
 
 export type SettingsRouteVerdict = 'first-child' | 'home' | 'ok'
 
-/** Deep-link params that name one row on the page, and the entry id each one is. */
-const ROW_PARAMS: readonly (readonly [param: string, entryId: (value: string) => string])[] = [
-  ['field', value => `config-field:${value}`],
-  ['setting', value => `setting:${value}`],
-  ['key', value => `credential:${value}`]
-]
-
 export function settingsRouteVerdict(search: string, filter: FeatureFilter): SettingsRouteVerdict {
   const params = new URLSearchParams(search)
   const view = params.get('tab')
@@ -37,16 +32,9 @@ export function settingsRouteVerdict(search: string, filter: FeatureFilter): Set
     return 'ok'
   }
 
-  if (!isSettingsLocationAllowed(params, filter)) {
+  // The page, the child it names and any row it names (`field`, `setting`, `key`).
+  if (!isSettingsLocationAllowed(params, filter) || !settingsLocationEntries(params).every(filter)) {
     return 'home'
-  }
-
-  for (const [param, entryId] of ROW_PARAMS) {
-    const value = params.get(param)
-
-    if (value && !filter(entryId(value))) {
-      return 'home'
-    }
   }
 
   const subViewParam = SUB_VIEW_PARAMS[view]

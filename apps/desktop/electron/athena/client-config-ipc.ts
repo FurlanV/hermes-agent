@@ -9,6 +9,7 @@
 import type { BrowserWindow, IpcMain } from 'electron'
 
 import { AthenaClientConfig, type ClientConfigSnapshot, devOverridesFromEnv } from './client-config'
+import { applyMainPolicies } from './main-policy'
 
 export const CLIENT_CONFIG_CHANNELS = Object.freeze({
   changed: 'athena:client-config:changed',
@@ -52,6 +53,7 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
         }
       }
 
+      applyMainPolicies(snapshot)
       options.onChange?.(snapshot)
     }
   })
@@ -67,6 +69,7 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
     `[athena] client config: ${first.source}${first.configVersion === null ? '' : ` v${first.configVersion}`}` +
       `${first.error ? ` (file ${first.error})` : ''}`
   )
+  applyMainPolicies(first)
   options.onChange?.(first)
 
   return source

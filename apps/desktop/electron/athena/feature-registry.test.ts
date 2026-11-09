@@ -73,7 +73,7 @@ describe('the feature registry', () => {
       expect(new Set(row.entries).size, row.id).toBe(row.entries.length)
 
       for (const entry of row.entries) {
-        expect(entry, row.id).toMatch(/^(settings|settings-control|config-field|setting|credential):[^*]*\*?$/)
+        expect(entry, row.id).toMatch(/^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog):[^*]*\*?$/)
       }
     }
   })

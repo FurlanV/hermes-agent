@@ -14,6 +14,8 @@ import {
   HUD_TEXT
 } from '@/app/floating-hud'
 import { SESSION_IMPORT_ROUTE } from '@/app/routes'
+import { allowedPaletteGroups } from '@/athena/managed/entry-points'
+import { useFeatureFilter } from '@/athena/managed/features'
 import { isSettingsPageAllowed, isSettingsTabAllowed } from '@/athena/managed/settings-entries'
 import { leaveIntro } from '@/components/onboarding/first-run/intro'
 import { codiconIcon } from '@/components/ui/codicon'
@@ -1316,9 +1318,12 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
   // scale with whatever worktrees happen to exist, so on a tie they're the least
   // likely thing meant. Everything above is either always-present chrome or a
   // list the search itself asked for.
+  // Athena (F02): rows the feature policy refuses (by id or the shortcut they run) are left out.
+  const featureFilter = useFeatureFilter()
+
   const groups = useMemo(
-    () => [...baseGroups, ...searchGroups, ...branchGroup],
-    [baseGroups, branchGroup, searchGroups]
+    () => allowedPaletteGroups([...baseGroups, ...searchGroups, ...branchGroup], featureFilter),
+    [baseGroups, branchGroup, featureFilter, searchGroups]
   )
 
   // Settings-scoped page (⌘K on the Settings overlay, or its search pill):

@@ -21,6 +21,15 @@
 // - `credential:<ENV_KEY>`: env-credential rows (search, and the row through
 //   its `credential-key-<KEY>` DOM id);
 // - `settings-control:<name>`: an in-page control with an explicit Athena gate.
+// Outside Settings (slice 16):
+// - `keybind:<action id>`: a shortcut (dispatch, plugin runAction, the panel);
+// - `route:<path>`, `command-center:<section|action>`: app pages and Command
+//   Center tabs and buttons (route guard, in-app open targets, deep links);
+// - `palette:<item id>`, `statusbar:<item id>`, `nav:<sidebar row id>`;
+// - `slash:<command>`: answered "Not available in Athena";
+// - `error-action:<action id>`: chat error-card buttons;
+// - `deep-link:<kind>[/<name>]`: OS deep links other than `open`;
+// - `plugin:<bundled plugin id>`, `pane:<id>`, `dialog:<name>`.
 // An id ending in `*` covers every id with that prefix (the longest match
 // wins; an exact id beats any prefix). `*` anywhere else is literal.
 //
@@ -168,9 +177,10 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
   row('S37', 'disable', 'Appearance', 'Pet: choose, size, roam, rename, export, uninstall', [
     'settings:config:appearance/pet',
-    ...st('appearance', 'pet')
+    ...st('appearance', 'pet'),
+    'palette:appearance-pets'
   ]),
-  row('S38', 'remove', 'Appearance', 'Generate pet (palette)'),
+  row('S38', 'remove', 'Appearance', 'Generate pet (palette)', ['palette:appearance-generate-pet']),
 
   // ── Workspace ──
   row('S39', 'keep', 'Workspace', 'Default working directory', [WORKSPACE_PROJECTS, ...cf('terminal.cwd')]),
@@ -188,7 +198,8 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   // ── Safety ──
   row('S44', 'disable', 'Safety', 'Approval mode, approval timeout', [
     SAFETY_APPROVALS,
-    ...cf('approvals.mode', 'approvals.timeout')
+    ...cf('approvals.mode', 'approvals.timeout'),
+    'statusbar:approval-mode'
   ]),
   row('S45', 'disable', 'Safety', 'Confirm MCP reloads', [SAFETY_APPROVALS, ...cf('approvals.mcp_reload_confirm')]),
   row('S46', 'disable', 'Safety', 'Command allowlist', [SAFETY_APPROVALS, ...cf('command_allowlist')]),
@@ -197,7 +208,10 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S49', 'remove', 'Safety', 'Share usage stats with Nous (and the composer consent strip)', [
     'settings-control:shared-metrics'
   ]),
-  row('S50', 'keep', 'Safety', 'File checkpoints', ['settings:config:safety/checkpoints', ...cf('checkpoints.enabled')]),
+  row('S50', 'keep', 'Safety', 'File checkpoints', [
+    'settings:config:safety/checkpoints',
+    ...cf('checkpoints.enabled')
+  ]),
 
   // ── Browser ──
   row('S51', 'disable', 'Browser', 'Use my real browser profile', [
@@ -227,7 +241,10 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     MEMORY_PERSISTENT,
     ...cf('memory.memory_char_limit', 'memory.user_char_limit')
   ]),
-  row('S57', 'disable', 'Memory & Context', 'Memory provider and connect', [MEMORY_PERSISTENT, ...cf('memory.provider')]),
+  row('S57', 'disable', 'Memory & Context', 'Memory provider and connect', [
+    MEMORY_PERSISTENT,
+    ...cf('memory.provider')
+  ]),
   row('S58', 'keep', 'Memory & Context', 'Memory layers summary', [MEMORY_PERSISTENT]),
   row('S59', 'disable', 'Memory & Context', 'Context engine and compression', [
     'settings:config:memory/context',
@@ -308,12 +325,32 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S76', 'remove', 'Notifications', 'Credit alerts', st('notifications', 'kind-credits')),
 
   // ── Billing ──
-  row('S77', 'remove', 'Billing', 'Billing page: balance, plans, credits, auto-reload, portal, usage', ['settings:billing']),
-  row('S78', 'remove', 'Billing', 'Billing entry points: plan gauge, credit-error links, /subscription, /upgrade, /topup, /usage'),
+  row('S77', 'remove', 'Billing', 'Billing page: balance, plans, credits, auto-reload, portal, usage', [
+    'settings:billing'
+  ]),
+  row(
+    'S78',
+    'remove',
+    'Billing',
+    'Billing entry points: plan gauge, credit-error links, /subscription, /upgrade, /topup, /usage',
+    [
+      'statusbar:plan-usage',
+      'error-action:use_credits',
+      'error-action:open_billing',
+      'slash:subscription',
+      'slash:upgrade',
+      'slash:topup',
+      'slash:usage'
+    ]
+  ),
 
   // ── Providers ──
-  row('S79', 'remove', 'Providers', 'Accounts (OAuth sign-in to model vendors)', [PROVIDERS, 'settings:providers/accounts']),
-  row('S80', 'remove', 'Providers', 'API keys', [PROVIDERS, 'settings:providers/keys']),
+  row('S79', 'remove', 'Providers', 'Accounts (OAuth sign-in to model vendors)', [
+    PROVIDERS,
+    'settings:providers/accounts',
+    'error-action:sign_in_again'
+  ]),
+  row('S80', 'remove', 'Providers', 'API keys', [PROVIDERS, 'settings:providers/keys', 'error-action:update_api_key']),
   row('S81', 'disable', 'Providers', 'Custom endpoints', [PROVIDERS, 'settings:providers/custom-endpoints']),
   row('S82', 'disable', 'Providers', 'Local models (Hugging Face downloads, local server)', [
     PROVIDERS,
@@ -325,28 +362,41 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     GATEWAY,
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
-    'settings-control:gateway-mode-local'
+    'settings-control:gateway-mode-local',
+    'statusbar:gateway-switcher'
   ]),
-  row('S84', 'remove', 'Gateways', 'Hermes Cloud (sign-in, org picker, agents)', ['settings-control:gateway-mode-cloud']),
+  row('S84', 'remove', 'Gateways', 'Hermes Cloud (sign-in, org picker, agents)', [
+    'settings-control:gateway-mode-cloud'
+  ]),
   row('S85', 'disable', 'Gateways', 'Remote gateway (URL, auth, test)', [
     GATEWAY,
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
-    'settings-control:gateway-mode-remote'
+    'settings-control:gateway-mode-remote',
+    'statusbar:gateway-switcher'
   ]),
   row('S86', 'disable', 'Gateways', 'SSH connection', [
     GATEWAY,
     GATEWAY_CONNECTION,
     GATEWAY_MODE,
-    'settings-control:gateway-mode-ssh'
+    'settings-control:gateway-mode-ssh',
+    'statusbar:gateway-switcher'
   ]),
   row('S87', 'disable', 'Gateways', 'Encrypt saved secrets with the OS keychain', [
     GATEWAY,
     GATEWAY_CONNECTION,
     ...st('gateway', 'keychain-encryption')
   ]),
-  row('S88', 'keep', 'Gateways', 'Diagnostics › Open logs', [GATEWAY, GATEWAY_CONNECTION, ...st('gateway', 'diagnostics')]),
-  row('S89', 'disable', 'Gateways', 'Saved connections', [GATEWAY, 'settings:gateway/devices']),
+  row('S88', 'keep', 'Gateways', 'Diagnostics › Open logs', [
+    GATEWAY,
+    GATEWAY_CONNECTION,
+    ...st('gateway', 'diagnostics')
+  ]),
+  row('S89', 'disable', 'Gateways', 'Saved connections', [
+    GATEWAY,
+    'settings:gateway/devices',
+    'statusbar:gateway-switcher'
+  ]),
   row('S90', 'disable', 'Gateways', 'Remote updates (managed SSH)', [GATEWAY, 'settings:gateway/managed-updates']),
 
   // ── Web access ──
@@ -387,7 +437,10 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     SESSIONS_ARCHIVED,
     ...st('sessions', 'auto-archive')
   ]),
-  row('S102', 'keep', 'Sessions', 'Default project directory', ['settings:sessions', 'settings:sessions/default-directory']),
+  row('S102', 'keep', 'Sessions', 'Default project directory', [
+    'settings:sessions',
+    'settings:sessions/default-directory'
+  ]),
 
   // ── Plugins ──
   row('S103', 'keep', 'Plugins', 'Plugins tab (Athena page)', ['settings:plugins']),
@@ -397,26 +450,67 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   row('S105', 'keep', 'About', 'Updates card', ['settings:about', ABOUT_UPDATES, ...st('about', 'updates')]),
   row('S106', 'remove', 'About', 'Update channel', ['settings-control:update-channel']),
   row('S107', 'disable', 'About', 'Backend update card', ['settings-control:backend-update-card']),
-  row('S108', 'disable', 'About', 'Uninstall', ['settings:about', 'settings:about/uninstall', 'settings-control:uninstall']),
+  row('S108', 'disable', 'About', 'Uninstall', [
+    'settings:about',
+    'settings:about/uninstall',
+    'settings-control:uninstall'
+  ]),
 
   // ── Surfaces outside Settings (entries: slice 16) ──
   row('S109', 'remove', 'Surfaces outside Settings', 'Stock onboarding (provider picker, key entry)'),
-  row('S110', 'remove', 'Surfaces outside Settings', 'Free-tier sign-in dialog, intro and terms bar'),
-  row('S111', 'disable', 'Surfaces outside Settings', 'Messaging page (Telegram, WhatsApp, Slack, relay, pairing)'),
-  row('S112', 'disable', 'Surfaces outside Settings', 'Webhooks page'),
-  row('S113', 'disable', 'Surfaces outside Settings', 'Scheduled jobs (cron)'),
-  row('S114', 'remove', 'Surfaces outside Settings', 'Command Center › Update Hermes'),
-  row('S115', 'keep', 'Surfaces outside Settings', 'Command Center › Restart gateway'),
-  row('S116', 'disable', 'Surfaces outside Settings', 'Command Center › Usage analytics'),
-  row('S117', 'remove', 'Surfaces outside Settings', 'Send diagnostics to Nous; /debug'),
-  row('S118a', 'disable', 'Surfaces outside Settings', '/approvals'),
-  row('S118b', 'remove', 'Surfaces outside Settings', '/yolo'),
-  row('S119', 'disable', 'Surfaces outside Settings', '/tools'),
-  row('S120', 'keep', 'Surfaces outside Settings', '/reasoning'),
-  row('S121', 'keep', 'Surfaces outside Settings', '/personality, /skin'),
-  row('S122', 'disable', 'Surfaces outside Settings', 'Profiles: create, import'),
-  row('S123', 'disable', 'Surfaces outside Settings', 'Bot Mode (bundled hermes-bots plugin)'),
-  row('S124', 'disable', 'Surfaces outside Settings', 'In-app terminal pane')
+  row('S110', 'remove', 'Surfaces outside Settings', 'Free-tier sign-in dialog, intro and terms bar', [
+    'statusbar:free-tier',
+    'error-action:sign_in_free_tier'
+  ]),
+  row('S111', 'disable', 'Surfaces outside Settings', 'Messaging page (Telegram, WhatsApp, Slack, relay, pairing)', [
+    'route:/messaging',
+    'keybind:nav.messaging',
+    'palette:nav-messaging',
+    'nav:messaging'
+  ]),
+  row('S112', 'disable', 'Surfaces outside Settings', 'Webhooks page', ['route:/webhooks', 'statusbar:webhooks']),
+  row('S113', 'disable', 'Surfaces outside Settings', 'Scheduled jobs (cron)', [
+    'route:/cron',
+    'keybind:nav.cron',
+    'palette:nav-cron',
+    'nav:cron',
+    'statusbar:cron'
+  ]),
+  row('S114', 'remove', 'Surfaces outside Settings', 'Command Center › Update Hermes', [
+    'command-center:update-hermes',
+    'palette:cc-update-hermes'
+  ]),
+  row('S115', 'keep', 'Surfaces outside Settings', 'Command Center › Restart gateway', [
+    'command-center:restart-gateway',
+    'palette:cc-restart-gateway'
+  ]),
+  row('S116', 'disable', 'Surfaces outside Settings', 'Command Center › Usage analytics', [
+    'command-center:usage',
+    'palette:cc-usage'
+  ]),
+  row('S117', 'remove', 'Surfaces outside Settings', 'Send diagnostics to Nous; /debug', [
+    'slash:debug',
+    'dialog:send-diagnostics'
+  ]),
+  row('S118a', 'disable', 'Surfaces outside Settings', '/approvals', ['slash:approvals']),
+  row('S118b', 'remove', 'Surfaces outside Settings', '/yolo', ['slash:yolo']),
+  row('S119', 'disable', 'Surfaces outside Settings', '/tools', ['slash:tools']),
+  row('S120', 'keep', 'Surfaces outside Settings', '/reasoning', ['slash:reasoning']),
+  row('S121', 'keep', 'Surfaces outside Settings', '/personality, /skin', ['slash:personality', 'slash:skin']),
+  row('S122', 'disable', 'Surfaces outside Settings', 'Profiles: create, import', [
+    'keybind:profile.create',
+    'dialog:create-profile'
+  ]),
+  row('S123', 'disable', 'Surfaces outside Settings', 'Bot Mode (bundled hermes-bots plugin)', ['plugin:hermes-bots']),
+  row('S124', 'disable', 'Surfaces outside Settings', 'In-app terminal pane', [
+    'pane:terminal',
+    'keybind:view.showTerminal',
+    'keybind:view.newTerminal',
+    'keybind:view.nextTerminal',
+    'keybind:view.prevTerminal',
+    'statusbar:terminal',
+    'palette:view.showTerminal'
+  ])
 ])
 
 export const FEATURE_ROW_BY_ID: ReadonlyMap<string, FeatureRow> = new Map(FEATURE_ROWS.map(r => [r.id, r]))
@@ -431,7 +525,13 @@ export function exportedFeatureRegistry() {
   return {
     schema_version: 1,
     source: 'hermes desktop fork: apps/desktop/electron/athena/feature-registry.ts',
-    features: FEATURE_ROWS.map(r => ({ id: r.id, mark: r.mark, default: buildDefault(r.mark), area: r.area, title: r.title }))
+    features: FEATURE_ROWS.map(r => ({
+      id: r.id,
+      mark: r.mark,
+      default: buildDefault(r.mark),
+      area: r.area,
+      title: r.title
+    }))
   }
 }
 

@@ -315,8 +315,12 @@ describe('every Settings row of the audit', () => {
     const reach = new Map(SETTINGS_ROWS.map(row => [row.id, items.filter(item => reaches(row, item.entry))]))
     const unreached = SETTINGS_ROWS.filter(row => row.entries.length && !reach.get(row.id)!.length).map(r => r.id)
 
-    // settings-control entries are FeatureGate'd in-page controls; S38/S78 reach the palette and status bar (slice 16).
-    expect(unreached.filter(id => !SETTINGS_ROWS.find(r => r.id === id)!.entries.every(e => e.startsWith('settings-control:')))).toEqual([])
+    // Only rows with a Settings-list entry must show up here: settings-control entries are FeatureGate'd in-page
+    // controls, and entries outside Settings (palette, status bar, slash…) are entry-points.test.tsx's (slice 16).
+    const SETTINGS_LIST = /^(settings|config-field|setting|credential):/
+    const listed = (id: string) => SETTINGS_ROWS.find(r => r.id === id)!.entries.some(e => SETTINGS_LIST.test(e))
+
+    expect(unreached.filter(listed)).toEqual([])
   })
 
   test('every config field Settings lists belongs to an audit row', () => {

@@ -23,6 +23,7 @@ import { useComposerScope } from '@/app/chat/composer/scope'
 import { useSessionView } from '@/app/chat/session-view'
 import { SETTINGS_ROUTE } from '@/app/routes'
 import { useBillingApi } from '@/app/settings/billing/api'
+import { useFeatureEntry } from '@/athena/managed/features'
 import { dispatchedTo } from '@/components/assistant-ui/thread/agent-delivery'
 import { ChangedFilesCard } from '@/components/assistant-ui/thread/changed-files-card'
 import {
@@ -1235,6 +1236,13 @@ const ErrorActionControl: FC<{
   const gatewayProfile = useStore($activeGatewayProfile)
   const ownerProfile = useOwnerProfile()
   const link = variant === 'link'
+
+  // Athena (F02): a button into a refused feature (billing, vendor keys, sign-ins) is not offered.
+  const athenaAllowed = useFeatureEntry(`error-action:${action}`)
+
+  if (!athenaAllowed) {
+    return null
+  }
 
   return ERROR_ACTION_RENDERERS[action]({
     // Nous DS Button (portal /ds/components/button): the one action is `secondary`,
