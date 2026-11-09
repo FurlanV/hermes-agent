@@ -4,6 +4,7 @@ import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
+import { useFeatureEntry } from '@/athena/managed/features'
 import { modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -319,6 +320,7 @@ function MainModelDefaults({
 }) {
   const { t } = useI18n()
   const m = t.settings.model
+  const speedAllowed = useFeatureEntry('settings-control:main-speed')
 
   return (
     <div className="mt-6 grid gap-1">
@@ -342,7 +344,7 @@ function MainModelDefaults({
           title={m.reasoning}
         />
       )}
-      {ultrafastSupported ? (
+      {!speedAllowed ? null : ultrafastSupported ? (
         <ListRow
           action={
             <Select onValueChange={value => void onChange('agent.service_tier', value)} value={speedValue}>
@@ -381,6 +383,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
   const { t } = useI18n()
   const m = t.settings.model
   const showMain = subpage === undefined || subpage === 'main'
+  const providerRowAllowed = useFeatureEntry('settings-control:main-provider')
   const showAuxiliary = subpage === undefined || subpage === 'auxiliary'
   const showMoa = subpage === undefined || subpage === 'moa'
   const [loading, setLoading] = useState(true)
@@ -1110,6 +1113,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                   </SelectContent>
                 </Select>
               }
+              className={providerRowAllowed ? undefined : 'hidden'}
               title={m.provider}
             />
             <ListRow

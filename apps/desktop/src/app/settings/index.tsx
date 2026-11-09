@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router'
 
 import { useFeatureFilter } from '@/athena/managed/features'
 import { filterSettingsNav } from '@/athena/managed/settings-entries'
+import { useSettingsRouteGuard } from '@/athena/managed/settings-route-guard'
 import { codiconIcon } from '@/components/ui/codicon'
 import { KbdCombo } from '@/components/ui/kbd'
 import { Tip } from '@/components/ui/tooltip'
@@ -484,6 +485,13 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
     [featureFilter, registeredNavGroups]
   )
 
+  const openSettingsHome = useCallback(
+    () => navigate({ hash, pathname, search: '' }, { replace: true }),
+    [hash, navigate, pathname]
+  )
+
+  useSettingsRouteGuard({ filter: featureFilter, navGroups, openHome: openSettingsHome, search })
+
   const activeGroup = navGroups.find(group => group.active)
   const activeChild = activeGroup?.children?.find(child => child.active)
 
@@ -541,32 +549,38 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
 
   const navFooter = (
     <>
-      <Tip label={t.settings.exportConfig}>
-        <OverlayIconButton onClick={() => void exportConfig()}>
-          <Download />
-        </OverlayIconButton>
-      </Tip>
-      <Tip label={t.settings.importConfig}>
-        <OverlayIconButton
-          onClick={() => {
-            triggerHaptic('open')
-            importInputRef.current?.click()
-          }}
-        >
-          <Upload />
-        </OverlayIconButton>
-      </Tip>
-      <Tip label={t.settings.resetToDefaults}>
-        <OverlayIconButton
-          className="hover:text-destructive"
-          onClick={() => {
-            triggerHaptic('warning')
-            void resetConfig()
-          }}
-        >
-          <RefreshCw />
-        </OverlayIconButton>
-      </Tip>
+      {featureFilter('settings-control:export-config') && (
+        <Tip label={t.settings.exportConfig}>
+          <OverlayIconButton onClick={() => void exportConfig()}>
+            <Download />
+          </OverlayIconButton>
+        </Tip>
+      )}
+      {featureFilter('settings-control:import-config') && (
+        <Tip label={t.settings.importConfig}>
+          <OverlayIconButton
+            onClick={() => {
+              triggerHaptic('open')
+              importInputRef.current?.click()
+            }}
+          >
+            <Upload />
+          </OverlayIconButton>
+        </Tip>
+      )}
+      {featureFilter('settings-control:reset-config') && (
+        <Tip label={t.settings.resetToDefaults}>
+          <OverlayIconButton
+            className="hover:text-destructive"
+            onClick={() => {
+              triggerHaptic('warning')
+              void resetConfig()
+            }}
+          >
+            <RefreshCw />
+          </OverlayIconButton>
+        </Tip>
+      )}
     </>
   )
 

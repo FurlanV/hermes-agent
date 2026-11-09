@@ -1,0 +1,895 @@
+{
+  "schema_version": 1,
+  "source": "hermes desktop fork: apps/desktop/electron/athena/feature-registry.ts",
+  "features": [
+    {
+      "id": "S01",
+      "mark": "disable",
+      "default": "off",
+      "area": "Every Settings page",
+      "title": "Export config"
+    },
+    {
+      "id": "S02",
+      "mark": "disable",
+      "default": "off",
+      "area": "Every Settings page",
+      "title": "Import config"
+    },
+    {
+      "id": "S03",
+      "mark": "disable",
+      "default": "off",
+      "area": "Every Settings page",
+      "title": "Reset to defaults"
+    },
+    {
+      "id": "S04",
+      "mark": "disable",
+      "default": "off",
+      "area": "Every Settings page",
+      "title": "\"Applies to\" profile chips"
+    },
+    {
+      "id": "S05",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Main model › Provider"
+    },
+    {
+      "id": "S06",
+      "mark": "keep",
+      "default": "on",
+      "area": "Model",
+      "title": "Main model › Model"
+    },
+    {
+      "id": "S07",
+      "mark": "remove",
+      "default": null,
+      "area": "Model",
+      "title": "Main model › Set up provider / API key"
+    },
+    {
+      "id": "S08a",
+      "mark": "keep",
+      "default": "on",
+      "area": "Model",
+      "title": "Reasoning effort"
+    },
+    {
+      "id": "S08b",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Speed / Fast (service tier)"
+    },
+    {
+      "id": "S09",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Context window override"
+    },
+    {
+      "id": "S10",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Fallback models"
+    },
+    {
+      "id": "S11",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Auxiliary models"
+    },
+    {
+      "id": "S12",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Mixture of Agents"
+    },
+    {
+      "id": "S13",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Subagents › Routing"
+    },
+    {
+      "id": "S14",
+      "mark": "remove",
+      "default": null,
+      "area": "Model",
+      "title": "Subagents › \"Install plugin\" (Advanced Delegation)"
+    },
+    {
+      "id": "S15",
+      "mark": "disable",
+      "default": "off",
+      "area": "Model",
+      "title": "Subagents › model, provider, limits, timeout, effort"
+    },
+    {
+      "id": "S16",
+      "mark": "keep",
+      "default": "on",
+      "area": "Model",
+      "title": "Restart backend (shown on version skew)"
+    },
+    {
+      "id": "S17",
+      "mark": "keep",
+      "default": "on",
+      "area": "Chat",
+      "title": "Personality"
+    },
+    {
+      "id": "S18",
+      "mark": "keep",
+      "default": "on",
+      "area": "Chat",
+      "title": "Timezone"
+    },
+    {
+      "id": "S19",
+      "mark": "keep",
+      "default": "on",
+      "area": "Chat",
+      "title": "Reasoning blocks"
+    },
+    {
+      "id": "S20",
+      "mark": "keep",
+      "default": "on",
+      "area": "Chat",
+      "title": "Image attachments"
+    },
+    {
+      "id": "S21",
+      "mark": "keep",
+      "default": "on",
+      "area": "Chat",
+      "title": "Max preview / image load size"
+    },
+    {
+      "id": "S22",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Language"
+    },
+    {
+      "id": "S23",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Theme (light/dark/system, gallery, remove)"
+    },
+    {
+      "id": "S24",
+      "mark": "remove",
+      "default": null,
+      "area": "Appearance",
+      "title": "Search and install VS Code Marketplace themes"
+    },
+    {
+      "id": "S25",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "UI scale, chat text size, chat font, terminal font"
+    },
+    {
+      "id": "S26",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Interface mode (simple / advanced)"
+    },
+    {
+      "id": "S27",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Layout: density, tab strip, app actions, floating composer, file browser"
+    },
+    {
+      "id": "S28",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Minimize to tray"
+    },
+    {
+      "id": "S29",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Window translucency"
+    },
+    {
+      "id": "S30",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Message display"
+    },
+    {
+      "id": "S31",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Intro splash"
+    },
+    {
+      "id": "S32",
+      "mark": "disable",
+      "default": "off",
+      "area": "Appearance",
+      "title": "Model pricing"
+    },
+    {
+      "id": "S33",
+      "mark": "keep",
+      "default": "on",
+      "area": "Appearance",
+      "title": "Reopen last chat on launch"
+    },
+    {
+      "id": "S34",
+      "mark": "disable",
+      "default": "off",
+      "area": "Appearance",
+      "title": "In-app tips (and reset)"
+    },
+    {
+      "id": "S35",
+      "mark": "disable",
+      "default": "off",
+      "area": "Appearance",
+      "title": "Guided tours"
+    },
+    {
+      "id": "S36",
+      "mark": "disable",
+      "default": "off",
+      "area": "Appearance",
+      "title": "Inline embeds (ask / always / off)"
+    },
+    {
+      "id": "S37",
+      "mark": "disable",
+      "default": "off",
+      "area": "Appearance",
+      "title": "Pet: choose, size, roam, rename, export, uninstall"
+    },
+    {
+      "id": "S38",
+      "mark": "remove",
+      "default": null,
+      "area": "Appearance",
+      "title": "Generate pet (palette)"
+    },
+    {
+      "id": "S39",
+      "mark": "keep",
+      "default": "on",
+      "area": "Workspace",
+      "title": "Default working directory"
+    },
+    {
+      "id": "S40",
+      "mark": "keep",
+      "default": "on",
+      "area": "Workspace",
+      "title": "Repository scan (on/off, roots, exclusions)"
+    },
+    {
+      "id": "S41",
+      "mark": "disable",
+      "default": "off",
+      "area": "Workspace",
+      "title": "Persistent shell"
+    },
+    {
+      "id": "S42",
+      "mark": "disable",
+      "default": "off",
+      "area": "Workspace",
+      "title": "Environment passthrough"
+    },
+    {
+      "id": "S43",
+      "mark": "disable",
+      "default": "off",
+      "area": "Workspace",
+      "title": "Code execution mode, file read limit"
+    },
+    {
+      "id": "S44",
+      "mark": "disable",
+      "default": "off",
+      "area": "Safety",
+      "title": "Approval mode, approval timeout"
+    },
+    {
+      "id": "S45",
+      "mark": "disable",
+      "default": "off",
+      "area": "Safety",
+      "title": "Confirm MCP reloads"
+    },
+    {
+      "id": "S46",
+      "mark": "disable",
+      "default": "off",
+      "area": "Safety",
+      "title": "Command allowlist"
+    },
+    {
+      "id": "S47",
+      "mark": "disable",
+      "default": "off",
+      "area": "Safety",
+      "title": "Redact secrets"
+    },
+    {
+      "id": "S48",
+      "mark": "disable",
+      "default": "off",
+      "area": "Safety",
+      "title": "Allow private URLs"
+    },
+    {
+      "id": "S49",
+      "mark": "remove",
+      "default": null,
+      "area": "Safety",
+      "title": "Share usage stats with Nous (and the composer consent strip)"
+    },
+    {
+      "id": "S50",
+      "mark": "keep",
+      "default": "on",
+      "area": "Safety",
+      "title": "File checkpoints"
+    },
+    {
+      "id": "S51",
+      "mark": "disable",
+      "default": "off",
+      "area": "Browser",
+      "title": "Use my real browser profile"
+    },
+    {
+      "id": "S52",
+      "mark": "disable",
+      "default": "off",
+      "area": "Browser",
+      "title": "Private URLs; local browser for private URLs"
+    },
+    {
+      "id": "S53",
+      "mark": "disable",
+      "default": "off",
+      "area": "Passwords & Logins",
+      "title": "Saved credentials"
+    },
+    {
+      "id": "S54",
+      "mark": "disable",
+      "default": "off",
+      "area": "Passwords & Logins",
+      "title": "Password managers (Bitwarden, 1Password, local)"
+    },
+    {
+      "id": "S55",
+      "mark": "disable",
+      "default": "off",
+      "area": "Memory & Context",
+      "title": "Persistent memory, user profile (on/off)"
+    },
+    {
+      "id": "S56",
+      "mark": "disable",
+      "default": "off",
+      "area": "Memory & Context",
+      "title": "Memory and profile budgets"
+    },
+    {
+      "id": "S57",
+      "mark": "disable",
+      "default": "off",
+      "area": "Memory & Context",
+      "title": "Memory provider and connect"
+    },
+    {
+      "id": "S58",
+      "mark": "keep",
+      "default": "on",
+      "area": "Memory & Context",
+      "title": "Memory layers summary"
+    },
+    {
+      "id": "S59",
+      "mark": "disable",
+      "default": "off",
+      "area": "Memory & Context",
+      "title": "Context engine and compression"
+    },
+    {
+      "id": "S60",
+      "mark": "disable",
+      "default": "off",
+      "area": "Voice",
+      "title": "Voice chat mode (including GPT Live)"
+    },
+    {
+      "id": "S61",
+      "mark": "disable",
+      "default": "off",
+      "area": "Voice",
+      "title": "Speech-to-text provider and options"
+    },
+    {
+      "id": "S62",
+      "mark": "disable",
+      "default": "off",
+      "area": "Voice",
+      "title": "Text-to-speech provider and options"
+    },
+    {
+      "id": "S63",
+      "mark": "disable",
+      "default": "off",
+      "area": "Voice",
+      "title": "Auto-TTS, max recording length, client-direct"
+    },
+    {
+      "id": "S64",
+      "mark": "keep",
+      "default": "on",
+      "area": "Advanced",
+      "title": "Keep computer awake"
+    },
+    {
+      "id": "S65",
+      "mark": "disable",
+      "default": "off",
+      "area": "Advanced",
+      "title": "Disable F12 DevTools"
+    },
+    {
+      "id": "S66",
+      "mark": "keep",
+      "default": "on",
+      "area": "Advanced",
+      "title": "Always open links in external browser"
+    },
+    {
+      "id": "S67",
+      "mark": "keep",
+      "default": "on",
+      "area": "Advanced",
+      "title": "Quick entry and its shortcut"
+    },
+    {
+      "id": "S68",
+      "mark": "remove",
+      "default": null,
+      "area": "Advanced",
+      "title": "Run onboarding again"
+    },
+    {
+      "id": "S69",
+      "mark": "remove",
+      "default": null,
+      "area": "Advanced",
+      "title": "In-app update local changes"
+    },
+    {
+      "id": "S70a",
+      "mark": "keep",
+      "default": "on",
+      "area": "Advanced",
+      "title": "Max agent steps"
+    },
+    {
+      "id": "S70b",
+      "mark": "disable",
+      "default": "off",
+      "area": "Advanced",
+      "title": "API retries, service tier"
+    },
+    {
+      "id": "S71",
+      "mark": "disable",
+      "default": "off",
+      "area": "Advanced",
+      "title": "Enabled toolsets"
+    },
+    {
+      "id": "S72",
+      "mark": "disable",
+      "default": "off",
+      "area": "Advanced",
+      "title": "Tool-use enforcement"
+    },
+    {
+      "id": "S73",
+      "mark": "disable",
+      "default": "off",
+      "area": "Advanced",
+      "title": "Terminal backend (local, docker, singularity, modal, daytona, ssh)"
+    },
+    {
+      "id": "S74",
+      "mark": "disable",
+      "default": "off",
+      "area": "Advanced",
+      "title": "Output limits; checkpoint limit"
+    },
+    {
+      "id": "S75",
+      "mark": "keep",
+      "default": "on",
+      "area": "Notifications",
+      "title": "Enable, test, per-kind alerts, permission, mute, completion sound"
+    },
+    {
+      "id": "S76",
+      "mark": "remove",
+      "default": null,
+      "area": "Notifications",
+      "title": "Credit alerts"
+    },
+    {
+      "id": "S77",
+      "mark": "remove",
+      "default": null,
+      "area": "Billing",
+      "title": "Billing page: balance, plans, credits, auto-reload, portal, usage"
+    },
+    {
+      "id": "S78",
+      "mark": "remove",
+      "default": null,
+      "area": "Billing",
+      "title": "Billing entry points: plan gauge, credit-error links, /subscription, /upgrade, /topup, /usage"
+    },
+    {
+      "id": "S79",
+      "mark": "remove",
+      "default": null,
+      "area": "Providers",
+      "title": "Accounts (OAuth sign-in to model vendors)"
+    },
+    {
+      "id": "S80",
+      "mark": "remove",
+      "default": null,
+      "area": "Providers",
+      "title": "API keys"
+    },
+    {
+      "id": "S81",
+      "mark": "disable",
+      "default": "off",
+      "area": "Providers",
+      "title": "Custom endpoints"
+    },
+    {
+      "id": "S82",
+      "mark": "disable",
+      "default": "off",
+      "area": "Providers",
+      "title": "Local models (Hugging Face downloads, local server)"
+    },
+    {
+      "id": "S83",
+      "mark": "disable",
+      "default": "off",
+      "area": "Gateways",
+      "title": "Connection mode: Local"
+    },
+    {
+      "id": "S84",
+      "mark": "remove",
+      "default": null,
+      "area": "Gateways",
+      "title": "Hermes Cloud (sign-in, org picker, agents)"
+    },
+    {
+      "id": "S85",
+      "mark": "disable",
+      "default": "off",
+      "area": "Gateways",
+      "title": "Remote gateway (URL, auth, test)"
+    },
+    {
+      "id": "S86",
+      "mark": "disable",
+      "default": "off",
+      "area": "Gateways",
+      "title": "SSH connection"
+    },
+    {
+      "id": "S87",
+      "mark": "disable",
+      "default": "off",
+      "area": "Gateways",
+      "title": "Encrypt saved secrets with the OS keychain"
+    },
+    {
+      "id": "S88",
+      "mark": "keep",
+      "default": "on",
+      "area": "Gateways",
+      "title": "Diagnostics › Open logs"
+    },
+    {
+      "id": "S89",
+      "mark": "disable",
+      "default": "off",
+      "area": "Gateways",
+      "title": "Saved connections"
+    },
+    {
+      "id": "S90",
+      "mark": "disable",
+      "default": "off",
+      "area": "Gateways",
+      "title": "Remote updates (managed SSH)"
+    },
+    {
+      "id": "S91",
+      "mark": "remove",
+      "default": null,
+      "area": "Web access",
+      "title": "Web access (serve the app on the network)"
+    },
+    {
+      "id": "S92",
+      "mark": "keep",
+      "default": "on",
+      "area": "Keyboard Shortcuts",
+      "title": "Key bindings"
+    },
+    {
+      "id": "S93",
+      "mark": "keep",
+      "default": "on",
+      "area": "Keyboard Shortcuts",
+      "title": "Tap to summon HUD"
+    },
+    {
+      "id": "S94",
+      "mark": "keep",
+      "default": "on",
+      "area": "Keyboard Shortcuts",
+      "title": "Screenshot shortcut"
+    },
+    {
+      "id": "S95",
+      "mark": "disable",
+      "default": "off",
+      "area": "Tools & Keys",
+      "title": "Tool API keys (Exa, Firecrawl, Tavily, Brave, GitHub, …)"
+    },
+    {
+      "id": "S96",
+      "mark": "remove",
+      "default": null,
+      "area": "Tools & Keys",
+      "title": "Nous tool gateway URLs and token"
+    },
+    {
+      "id": "S97",
+      "mark": "remove",
+      "default": null,
+      "area": "Tools & Keys",
+      "title": "SUDO_PASSWORD"
+    },
+    {
+      "id": "S98",
+      "mark": "disable",
+      "default": "off",
+      "area": "Tools & Keys",
+      "title": "Prefill messages file, ephemeral system prompt"
+    },
+    {
+      "id": "S99",
+      "mark": "disable",
+      "default": "off",
+      "area": "Tools & Keys",
+      "title": "API server, webhook, gateway proxy, allow-all-users"
+    },
+    {
+      "id": "S100",
+      "mark": "keep",
+      "default": "on",
+      "area": "Sessions",
+      "title": "Archived sessions (unarchive, delete)"
+    },
+    {
+      "id": "S101",
+      "mark": "keep",
+      "default": "on",
+      "area": "Sessions",
+      "title": "Auto-archive stale chats"
+    },
+    {
+      "id": "S102",
+      "mark": "keep",
+      "default": "on",
+      "area": "Sessions",
+      "title": "Default project directory"
+    },
+    {
+      "id": "S103",
+      "mark": "keep",
+      "default": "on",
+      "area": "Plugins",
+      "title": "Plugins tab (Athena page)"
+    },
+    {
+      "id": "S104",
+      "mark": "keep",
+      "default": "on",
+      "area": "About",
+      "title": "Version and details"
+    },
+    {
+      "id": "S105",
+      "mark": "keep",
+      "default": "on",
+      "area": "About",
+      "title": "Updates card"
+    },
+    {
+      "id": "S106",
+      "mark": "remove",
+      "default": null,
+      "area": "About",
+      "title": "Update channel"
+    },
+    {
+      "id": "S107",
+      "mark": "disable",
+      "default": "off",
+      "area": "About",
+      "title": "Backend update card"
+    },
+    {
+      "id": "S108",
+      "mark": "disable",
+      "default": "off",
+      "area": "About",
+      "title": "Uninstall"
+    },
+    {
+      "id": "S109",
+      "mark": "remove",
+      "default": null,
+      "area": "Surfaces outside Settings",
+      "title": "Stock onboarding (provider picker, key entry)"
+    },
+    {
+      "id": "S110",
+      "mark": "remove",
+      "default": null,
+      "area": "Surfaces outside Settings",
+      "title": "Free-tier sign-in dialog, intro and terms bar"
+    },
+    {
+      "id": "S111",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "Messaging page (Telegram, WhatsApp, Slack, relay, pairing)"
+    },
+    {
+      "id": "S112",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "Webhooks page"
+    },
+    {
+      "id": "S113",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "Scheduled jobs (cron)"
+    },
+    {
+      "id": "S114",
+      "mark": "remove",
+      "default": null,
+      "area": "Surfaces outside Settings",
+      "title": "Command Center › Update Hermes"
+    },
+    {
+      "id": "S115",
+      "mark": "keep",
+      "default": "on",
+      "area": "Surfaces outside Settings",
+      "title": "Command Center › Restart gateway"
+    },
+    {
+      "id": "S116",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "Command Center › Usage analytics"
+    },
+    {
+      "id": "S117",
+      "mark": "remove",
+      "default": null,
+      "area": "Surfaces outside Settings",
+      "title": "Send diagnostics to Nous; /debug"
+    },
+    {
+      "id": "S118a",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "/approvals"
+    },
+    {
+      "id": "S118b",
+      "mark": "remove",
+      "default": null,
+      "area": "Surfaces outside Settings",
+      "title": "/yolo"
+    },
+    {
+      "id": "S119",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "/tools"
+    },
+    {
+      "id": "S120",
+      "mark": "keep",
+      "default": "on",
+      "area": "Surfaces outside Settings",
+      "title": "/reasoning"
+    },
+    {
+      "id": "S121",
+      "mark": "keep",
+      "default": "on",
+      "area": "Surfaces outside Settings",
+      "title": "/personality, /skin"
+    },
+    {
+      "id": "S122",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "Profiles: create, import"
+    },
+    {
+      "id": "S123",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "Bot Mode (bundled hermes-bots plugin)"
+    },
+    {
+      "id": "S124",
+      "mark": "disable",
+      "default": "off",
+      "area": "Surfaces outside Settings",
+      "title": "In-app terminal pane"
+    }
+  ]
+}

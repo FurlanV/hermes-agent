@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { type ReactElement, useEffect } from 'react'
 
+import { FeatureGate } from '@/athena/managed/feature-gate'
 import { AthenaManagedLine } from '@/athena/managed/managed-line'
 import { UpdateStatusCard, VersionHero } from '@/components/update-status'
 import { VersionDetails } from '@/components/version-details'
@@ -66,14 +67,24 @@ function AppUpdatesSettings({ includeUninstall }: AppUpdatesSettingsProps): Reac
             <SectionHeading icon={RefreshCw} title={t.settings.about.updates} />
             <div className="grid gap-3" id={settingElementId(SETTING_IDS.about.updates)}>
               <UpdateStatusCard target="client" version={version} />
-              <UpdateChannelRow />
+              <FeatureGate entry="settings-control:update-channel">
+                <UpdateChannelRow />
+              </FeatureGate>
               {/* Client and remote backend updates are independent. Only the client has release notes. */}
-              {showBackend && <UpdateStatusCard showReleaseNotes={false} target="backend" version={version} />}
+              {showBackend && (
+                <FeatureGate entry="settings-control:backend-update-card">
+                  <UpdateStatusCard showReleaseNotes={false} target="backend" version={version} />
+                </FeatureGate>
+              )}
             </div>
           </>
         )}
         {version && <VersionDetails version={version} />}
-        {includeUninstall && <UninstallSection />}
+        {includeUninstall && (
+          <FeatureGate entry="settings-control:uninstall">
+            <UninstallSection />
+          </FeatureGate>
+        )}
       </div>
     </SettingsContent>
   )

@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { useEffect } from 'react'
 
+import { useFeatureEntry } from '@/athena/managed/features'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { $activeGatewayProfile, $profiles, normalizeProfileKey, profileLabel, refreshProfiles } from '@/store/profile'
@@ -54,6 +55,7 @@ export function SettingsProfileScope({ className }: { className?: string }) {
   const selected = useStore($settingsScopeProfile)
   const editingNonDefault = useStore($settingsScopeEditsNonDefault)
   const profiles = useStore($profiles)
+  const athenaAllowed = useFeatureEntry('settings-control:profile-scope')
   // The note names the edit target with the same presentation label as its
   // chip (Bot title → display_name → slug); the slug alone can name a bot the
   // user has never seen called that.
@@ -66,7 +68,7 @@ export function SettingsProfileScope({ className }: { className?: string }) {
     void refreshProfiles().catch(() => undefined)
   }, [])
 
-  if (profiles.length < 2) {
+  if (profiles.length < 2 || !athenaAllowed) {
     return null
   }
 

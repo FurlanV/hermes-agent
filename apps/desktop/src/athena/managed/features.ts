@@ -36,6 +36,11 @@ export function useFeatureFilter(): FeatureFilter {
   return useStore($featureFilter)
 }
 
+/** One entry, live: for an in-page control with an explicit Athena gate (`settings-control:<name>`). */
+export function useFeatureEntry(entryId: string): boolean {
+  return useFeatureFilter()(entryId)
+}
+
 /** Keep the allowed entries. Returns the same array when nothing is removed, so memo identity survives. */
 export function allowedEntries<A extends readonly unknown[]>(entries: A, allowed: (entry: A[number]) => boolean): A {
   const kept = entries.filter(allowed)

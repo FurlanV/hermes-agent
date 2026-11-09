@@ -217,6 +217,44 @@ a real filter.
     (`shared/athena_schemas/src/athena_schemas/data/`); `client-config.test.ts`
     compares them when a checkout is present (`ATHENA_REPO`).
 
+- The feature registry (slice 15): `electron/athena/feature-registry.ts`,
+  shared by main and the renderer (no imports). One row per line of the
+  plan's audit (S01–S124 with the a/b splits): its mark (`keep`, `disable`,
+  `remove`), its build default (keep → on, disable → off, remove → no flag,
+  always off) and the entry ids that reach it: `settings:<view>[/<page>]`,
+  `config-field:<key>`, `setting:<view>.<kebab>`, `credential:<KEY>`,
+  `settings-control:<name>` (an id ending in `*` is a prefix). An entry stays
+  while any row listing it is on; an entry no row lists is left alone.
+  - Flags: build default < bundled default config < server config < dev
+    override; main layers the documents, `featureStates(config)` reads
+    `features` (exceptions, `"on"`/`"off"`). `managed.features: off` turns
+    filtering off (remove rows stay off); `report` reads as `enforce` until
+    slice 19.
+  - `managed/feature-policy.ts` installs `featureEntryFilter(config)` as the
+    feature filter on every `$clientConfig` change (build defaults until the
+    first snapshot, and on hosts with no Electron bridge).
+  - In-page rows: `managed/hidden-rows.ts` hides refused `setting:` and
+    `credential:` rows by their DOM ids (`setting-field-…`,
+    `credential-key-…`) with one `<style>`; controls with no id use
+    `managed/feature-gate.tsx` (`<FeatureGate entry="settings-control:…">`) or
+    `useFeatureEntry`.
+  - Route guard: `managed/settings-route-guard.ts` sends a refused `?tab=`
+    (or a refused `page`, sub-view, `field`, `setting` or `key`) to the
+    Settings home with a quiet notice; a page whose default sub-view is refused
+    opens its first allowed child (Providers → Local models).
+  - Export: `electron/athena/features.json` (`{schema_version, source,
+    features: [{id, mark, default, area, title}]}`) is generated from the
+    registry; `feature-registry.test.ts` fails when it is stale
+    (`ATHENA_WRITE_FEATURES=1` rewrites it), when the athena copy
+    (`shared/athena_schemas/src/athena_schemas/data/features.json`) differs, or
+    when a mark differs from the plan's audit table (with the OKF bundle
+    present, `ATHENA_OKF`). The admin API refuses unknown ids and remove rows
+    with 422.
+  - `managed/settings-registry.test.tsx` drives every Settings row through
+    the real nav, palette, search, field lists, in-page rows and route guard.
+  - `client-config.e2e.test.ts` (opt-in, `ATHENA_E2E=1`) runs admin API →
+    `athena config sync` → main's verifier → filter on the compose stack.
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -226,7 +264,7 @@ override with `ATHENA_F02_BASE`).
 
 | File | Change |
 |---|---|
-| `src/app/settings/index.tsx` | Nav groups go through `filterSettingsNav`; subpage children read the live filter |
+| `src/app/settings/index.tsx` | Nav groups go through `filterSettingsNav`; subpage children read the live filter; the Athena route guard; Export / Import / Reset ask the filter |
 | `src/app/settings/subpages.ts` | `settingsSubpages` (every subpage registry) asks the filter |
 | `src/app/settings/helpers.ts` | `sectionFieldEntries` (config section field lists, page and search) asks per field |
 | `src/app/settings/use-settings-search.ts` | Every settings-search list goes through `allowedSettingsSearchEntries` |
@@ -238,12 +276,15 @@ override with `ATHENA_F02_BASE`).
 | `src/app/shell/model-catalog-menu.tsx` | Composer model menu rows and its typed-id row come from the model-options selector |
 | `src/components/model-picker.tsx` | Model picker dialog rows and its typed-id row come from the selector |
 | `src/components/model-visibility-dialog.tsx` | Edit Models rows and its typed-id row come from the selector |
-| `src/app/settings/model-settings.tsx` | Settings model selects (default model, auxiliary, MoA) read the selector's rows |
+| `src/app/settings/model-settings.tsx` | Settings model selects (default model, auxiliary, MoA) read the selector's rows; the Provider row and Speed ask the filter |
 | `src/app/settings/fallback-models-field.tsx` | Fallback model rows read the selector |
 | `src/app/settings/delegation-model-provider-field.tsx` | Subagent model rows read the selector |
 | `src/app/session/hooks/use-prompt-actions/slash.ts` | `/model <id>` asks `isModelSelectable` before running on the backend |
 | `electron/main.ts` | Installs the Athena client config (`installAthenaClientConfig`) before the guarded channels register |
 | `electron/preload.ts` | Exposes `window.athenaDesktop` (`exposeAthenaBridge`) |
 | `src/main.tsx` | Imports `athena/managed/boot` (follow main's client config) before the first render |
-| `src/app/settings/about-settings.tsx` | The "Managed by SickKids · role … · config v…" line under the version |
+| `src/app/settings/about-settings.tsx` | The "Managed by SickKids · role … · config v…" line under the version; update channel, backend update card and inline Uninstall ask the filter |
 | `scripts/write-build-stamp.mjs` | `ATHENA_MANAGED_RELEASE=1` stamps `athenaManagedRelease: true` (no dev overrides) |
+| `src/app/settings/profile-scope.tsx` | The "Applies to" chips ask the filter (S04) |
+| `src/app/settings/config-settings.tsx` | Run onboarding again (S68) and Share usage stats (S49) ask the filter |
+| `src/app/settings/appearance-settings.tsx` | Marketplace theme results (S24) ask the filter |
