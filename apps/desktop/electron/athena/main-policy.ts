@@ -10,7 +10,9 @@
 //   managed-scope variable;
 // - IPC: a refused `ipc:` channel is unregistered, and re-registered when its
 //   row turns on (the next snapshot after a sync);
-// - DevTools: refused while S65 is off.
+// - DevTools: refused while S65 is off;
+// - the Settings default model (`POST /api/model/set`): refused outside the
+//   role's list under `managed.models: enforce`, recorded under `report`.
 // Decisions worth recording go to the policy-decisions file
 // (policy-decisions.ts) when one is configured.
 
@@ -25,6 +27,7 @@ import {
 } from './backend-policy'
 import type { ClientConfigSnapshot } from './client-config-types'
 import { FEATURE_ROW_BY_ID, featureEntryFilter, featureMode } from './feature-registry'
+import { managedModels, modelUseDecision, restModelChoice } from './model-policy'
 import type { PolicyDecisionLog } from './policy-decisions'
 import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
 
@@ -63,6 +66,7 @@ export function recordFeatureDecision(record: FeatureDecisionRecord | null): voi
 /** The main seams for one effective client config. */
 export function mainPolicySeams(config: unknown, decide: FeatureDecider = featureDecider(config)): MainPolicySeams {
   const mode = featureMode(config)
+  const models = managedModels(config)
 
   const decided = (entries: readonly string[], surface: string, target: string) => {
     const decision = decide(entries, surface, target)
@@ -99,7 +103,24 @@ export function mainPolicySeams(config: unknown, decide: FeatureDecider = featur
         return false
       }
 
-      return decided(restEntries(request), 'rest', `${request.method} ${request.pathname}`)
+      if (!decided(restEntries(request), 'rest', `${request.method} ${request.pathname}`)) {
+        return false
+      }
+
+      // Settings › Model's default (S06) asks the role's list (managed.models, slice 20).
+      const choice = restModelChoice(request.method, request.pathname, request.body)
+
+      if (!choice) {
+        return true
+      }
+
+      const decision = modelUseDecision(models, choice, 'rest', `${request.method} ${request.pathname}`)
+
+      if (decision.record) {
+        decisions?.record({ kind: 'model', ...decision.record })
+      }
+
+      return decision.allowed
     }
   }
 }

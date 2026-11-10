@@ -1,6 +1,8 @@
 import type { ModelOptionProvider } from '@hermes/shared'
 import { useEffect, useRef, useState } from 'react'
 
+import { managedModelLabel } from '@/athena/managed/model-labels'
+import { allowsCustomModelIds, useModelPolicy } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -64,6 +66,7 @@ export function ModelSelect({
   const { t } = useI18n()
   const m = t.settings.model
   const [typing, setTyping] = useState(false)
+  const modelPolicy = useModelPolicy()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -149,16 +152,20 @@ export function ModelSelect({
       <SelectContent>
         {withActive(models, value).map(model => (
           <SelectItem key={model} value={toItemValue(model)}>
-            {model}
+            {managedModelLabel(model) ?? model}
           </SelectItem>
         ))}
-        <SelectSeparator />
-        <SelectItem className="text-muted-foreground" value={CUSTOM_ITEM}>
-          <span className="inline-flex items-center gap-1.5">
-            <Plus className="size-3" />
-            {m.customModel}
-          </span>
-        </SelectItem>
+        {allowsCustomModelIds(modelPolicy) ? (
+          <>
+            <SelectSeparator />
+            <SelectItem className="text-muted-foreground" value={CUSTOM_ITEM}>
+              <span className="inline-flex items-center gap-1.5">
+                <Plus className="size-3" />
+                {m.customModel}
+              </span>
+            </SelectItem>
+          </>
+        ) : null}
       </SelectContent>
     </Select>
   )

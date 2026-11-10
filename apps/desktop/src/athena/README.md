@@ -180,10 +180,26 @@ a real filter.
   `modelPickerProviders(catalog, customModels)` (catalog plus remembered custom
   ids) and offers `modelPickerCustomCandidate` as its typed-id row;
   `/model <id>` asks `isModelSelectable`. The policy (`setModelPolicy`:
-  `selectable` per model, `customIds` on/off) allows everything today.
-  `allowsCustomModelIds` is the switch for the "Add custom model…" /
-  "Custom model…" entries, which still show unconditionally.
+  `selectable` per model, `customIds` on/off, optional `rows`) allows
+  everything without a client config. `allowsCustomModelIds` gates the
+  "Add custom model…" / "Custom model…" entries.
   `model-selector-scope.test.ts` fails if a UI file merges custom ids itself.
+- The role's models (slice 20): `managed/model-policy.ts` follows
+  `$clientConfig` (`models` section, read by `electron/athena/model-policy.ts`,
+  shared with main). Under `managed.models: enforce` the selector's `rows` are
+  the gateway row with exactly the visible `models.allowed` ids in config
+  order (built from the config, not hermes's cached discovery; `hidden`
+  entries such as `mock` stay callable but are never listed; an
+  `athena-vllm` row only when it serves an allowed id; every other provider
+  dropped), custom ids are off, and `/model <id>` outside the list answers
+  "Not available for your role" (`/model reset` passes). Labels go through
+  `managed/model-labels.ts` into `modelDisplayParts`; notes are a
+  `modelMenu.row` badge. A pick outside the list is also refused at the
+  JSON-RPC seam (`config.set key=model`, `/model`, `session.model`) and the
+  Settings default at main's REST seam (`POST /api/model/set`), each
+  recorded (`kind: "model"`). `report`: nothing narrowed, each outside pick
+  recorded `allowed_in_report`; `off`: stock. A new `config_version` drops
+  the cached `model-options` queries.
 
 - The signed client config (slice 14):
   - Electron main (`electron/athena/client-config.ts`) reads
@@ -466,3 +482,7 @@ override with `ATHENA_F02_BASE`).
 | `src/components/assistant-ui/thread/assistant-message.tsx` | The error card's Send diagnostics is not offered (S117, slice 18) |
 | `src/app/settings/index.tsx` | `billing.state` / `subscription.state` are read only while Billing is allowed (S77, slice 18) |
 | `src/lib/desktop-slash-commands.ts` | Slash suggestions ask `isSlashCommandOffered` (a list, not a use: nothing recorded) (slice 19) |
+| `src/lib/model-status-label.ts` | `modelDisplayParts` returns the admin's label for a role model ("GPT-6 Sol") on every surface (slice 20) |
+| `src/app/shell/model-catalog-menu.tsx` | "Add custom model…" is offered only while `allowsCustomModelIds` (slice 20) |
+| `src/components/model-picker.tsx` | Rows show the admin's labels; the "Add custom model…" button only while `allowsCustomModelIds` (slice 20) |
+| `src/app/settings/model-select.tsx` | Rows show the admin's labels; "Custom model…" only while `allowsCustomModelIds` (slice 20) |

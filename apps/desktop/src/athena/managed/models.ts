@@ -11,9 +11,11 @@
  *   entries are offered at all;
  * - `isModelSelectable`: the single check.
  *
- * Today the policy allows every model and typed ids, so every picker shows
- * exactly what it did before. A later slice installs the role's allowed
- * models with `setModelPolicy`; every picker narrows at once.
+ * With no client config (or `managed.models` off / report) the policy allows
+ * every model and typed ids, so every picker shows exactly what it did before.
+ * Under `enforce`, `model-policy.ts` installs the role's allowed models with
+ * `setModelPolicy` (slice 20): `rows` replaces the catalog with the allowed
+ * list, in config order, and every picker narrows at once.
  */
 
 import type { ModelOptionProvider } from '@hermes/shared'
@@ -22,15 +24,19 @@ import { atom } from 'nanostores'
 
 import { type CustomModel, customModelCandidate, withCustomModels } from '@/store/custom-models'
 
-export interface ModelChoice {
-  model: string
-  /** Absent when the caller has no provider (a bare `/model <id>`). */
-  provider?: string
-}
+import { type ModelChoice, slashModelChoice } from '../../../electron/athena/model-policy'
+
+export type { ModelChoice }
 
 export interface ModelPolicy {
   /** False hides "Add custom model…", typed-id rows and ignores remembered custom ids. */
   customIds: boolean
+  /**
+   * When set, the rows every picker lists, built from the catalog (the managed
+   * list: the role's allowed models in config order). Replaces the narrowing by
+   * `selectable`; remembered custom ids are not merged.
+   */
+  rows?: (catalog: readonly ModelOptionProvider[]) => readonly ModelOptionProvider[]
   selectable: (choice: ModelChoice) => boolean
 }
 
@@ -62,6 +68,10 @@ export function modelPickerProviders(
   customs: readonly CustomModel[],
   policy: ModelPolicy = $modelPolicy.get()
 ): readonly ModelOptionProvider[] {
+  if (policy.rows) {
+    return policy.rows(catalog)
+  }
+
   const merged = policy.customIds ? withCustomModels(catalog, customs) : catalog
 
   if (policy === ALLOW_ALL_MODELS) {
@@ -104,26 +114,14 @@ export function modelPickerCustomCandidate(
 /**
  * `/model <id> [--provider <slug>] [--session]`: the choice it asks for, or
  * null when the argument names no model (the backend answers that itself).
+ * Words the backend treats as subcommands (`/model reset`) come back as a
+ * model too; a policy that narrows models lets them through
+ * (`isModelSubcommand`).
  */
-export function modelSlashChoice(arg: string): ModelChoice | null {
-  const tokens = arg.trim().split(/\s+/).filter(Boolean)
-  // The first bare token that is not `--provider`'s value. Words the backend
-  // treats as subcommands (`/model reset`) come back as a model too; a policy
-  // that narrows models must let them through.
-  const model = tokens.find((token, index) => !token.startsWith('-') && tokens[index - 1] !== '--provider')
+export const modelSlashChoice = (arg: string): ModelChoice | null => slashModelChoice(arg)
 
-  if (!model) {
-    return null
-  }
-
-  const providerAt = tokens.indexOf('--provider')
-  const provider = providerAt >= 0 ? tokens[providerAt + 1] : undefined
-
-  return provider && !provider.startsWith('-') ? { model, provider } : { model }
-}
-
-/** What `/model <id>` says when the policy refuses the id. Copy owned by the later slice that turns this on. */
-export const modelNotSelectableMessage = (model: string): string => `${model} is not available.`
+/** What `/model <id>` says when the policy refuses the id (slice 20). */
+export const modelNotSelectableMessage = (model: string): string => `${model}: Not available for your role.`
 
 /** Subscribe a component to policy changes; pass the result to the selector and into memo deps. */
 export function useModelPolicy(): ModelPolicy {

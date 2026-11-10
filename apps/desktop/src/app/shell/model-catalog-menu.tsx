@@ -21,7 +21,12 @@ import {
   useState
 } from 'react'
 
-import { modelPickerCustomCandidate, modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
+import {
+  allowsCustomModelIds,
+  modelPickerCustomCandidate,
+  modelPickerProviders,
+  useModelPolicy
+} from '@/athena/managed/models'
 import { PlanLimitLine, UsageLevelTag } from '@/components/model-picker'
 import { ProviderStatusChip } from '@/components/provider-status-chip'
 import { Badge } from '@/components/ui/badge'
@@ -929,20 +934,22 @@ export function ModelCatalogMenu({
           trailing block it has always rendered. */}
       <DropdownMenuSeparator className="mx-0" />
       {footer}
-      <DropdownMenuItem
-        className={cn(dropdownMenuRow, 'text-(--ui-text-tertiary)', slugEntry && 'text-foreground')}
-        onSelect={event => {
-          event.preventDefault()
-          setSearch('')
-          setKbOverride(null)
-          setSlugEntry(true)
-          // Radix hands focus back to the row after onSelect; refocus after.
-          window.setTimeout(() => searchRef.current?.focus(), 0)
-        }}
-      >
-        <Codicon name="add" size="0.75rem" />
-        {copyPicker.addCustomModelAction}
-      </DropdownMenuItem>
+      {allowsCustomModelIds(modelPolicy) ? (
+        <DropdownMenuItem
+          className={cn(dropdownMenuRow, 'text-(--ui-text-tertiary)', slugEntry && 'text-foreground')}
+          onSelect={event => {
+            event.preventDefault()
+            setSearch('')
+            setKbOverride(null)
+            setSlugEntry(true)
+            // Radix hands focus back to the row after onSelect; refocus after.
+            window.setTimeout(() => searchRef.current?.focus(), 0)
+          }}
+        >
+          <Codicon name="add" size="0.75rem" />
+          {copyPicker.addCustomModelAction}
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuItem
         className={cn(dropdownMenuRow, 'text-(--ui-text-tertiary)')}
         onSelect={() => setModelVisibilityOpen(true)}

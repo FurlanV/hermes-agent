@@ -13,7 +13,13 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactElement, useMemo, useRef, useState } from 'react'
 
-import { modelPickerCustomCandidate, modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
+import { managedModelLabel } from '@/athena/managed/model-labels'
+import {
+  allowsCustomModelIds,
+  modelPickerCustomCandidate,
+  modelPickerProviders,
+  useModelPolicy
+} from '@/athena/managed/models'
 import { useI18n } from '@/i18n'
 import { catalogProviderMatches, modelOptionsQueryKey, requestModelOptions } from '@/lib/model-options'
 import { currentPickerSelection } from '@/lib/model-status-label'
@@ -230,9 +236,11 @@ export function ModelPickerDialog({
         </Command>
 
         <DialogFooter className="flex-row items-center justify-end gap-2 bg-card p-3">
-          <Button className="mr-auto" onClick={enterSlug} variant="ghost">
-            {copy.addCustomModelAction}
-          </Button>
+          {allowsCustomModelIds(modelPolicy) ? (
+            <Button className="mr-auto" onClick={enterSlug} variant="ghost">
+              {copy.addCustomModelAction}
+            </Button>
+          ) : null}
           <Button onClick={addProvider} variant="ghost">
             {copy.addProvider}
           </Button>
@@ -389,7 +397,7 @@ function ModelResults({
               value={`${provider.slug}:${model}`}
             >
               <span className={cn('min-w-0 flex-1 truncate', dimmed && !isCurrent && 'text-muted-foreground')}>
-                <HighlightMatches foldSeparators query={search} text={model} />
+                <HighlightMatches foldSeparators query={search} text={managedModelLabel(model) ?? model} />
               </span>
               {loadProgress && (
                 <span className="flex shrink-0 items-center gap-1.5" title={copy.loadingIntoMemory}>

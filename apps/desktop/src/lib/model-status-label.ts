@@ -1,3 +1,5 @@
+import { managedModelLabel } from '@/athena/managed/model-labels'
+
 /** Which model/provider pair a picker should mark "current". SessionView state
  *  also drives the composer label, so a complete pair there wins over an older
  *  `model.options` response. During initial hydration (or pre-session startup),
@@ -179,6 +181,13 @@ function splitTrailingTags(base: string): { base: string; variant: string; quant
 /** Split a model id into a clean display name plus an optional grayed variant
  *  tag, so distinct ids (e.g. `…-4.8` vs `…-4.8-fast`) don't collapse. */
 export function modelDisplayParts(model: string): { name: string; tag: string } {
+  // Athena (F02): the admin's label for a role model ("GPT-6 Sol") wins.
+  const managedLabel = managedModelLabel(model)
+
+  if (managedLabel) {
+    return { name: managedLabel, tag: '' }
+  }
+
   let { base, variant, quant } = splitTrailingTags(modelBaseId(model))
 
   const tags = [variant, quant].filter(Boolean)

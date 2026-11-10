@@ -13,6 +13,9 @@ import { clearSingleFlightSessionResumeState } from '@/app/session/hooks/use-pro
 import { $connection } from '@/store/session'
 import { dropSessionState } from '@/store/session-states'
 
+import { $clientConfig, setClientConfigSnapshot } from './client-config'
+import { LUNA, managedSnapshot, MOCK, SOL } from './managed-models-fixture'
+import { installModelPolicy } from './model-policy'
 import { setModelPolicy } from './models'
 
 vi.mock('@/hermes', () => ({
@@ -32,7 +35,10 @@ vi.mock('@/store/gateway', async importOriginal => ({
 }))
 
 const requestGateway = () =>
-  vi.fn(async (method: string) => (method === 'slash.exec' ? { output: 'model: gpt-6-luna' } : {}) as never)
+  vi.fn(
+    async (method: string, _params?: Record<string, unknown>) =>
+      (method === 'slash.exec' ? { output: 'model: gpt-6-luna' } : {}) as never
+  )
 
 async function mount(gateway: ReturnType<typeof requestGateway>): Promise<HarnessHandle> {
   let handle: HarnessHandle | null = null
@@ -86,6 +92,33 @@ describe('/model <id>', () => {
     await handle.submitText('/model gpt-6-sol')
 
     expect(execCalls(gateway)).toEqual([])
-    expect(renderedText(handle)).toContain('gpt-6-sol is not available.')
+    expect(renderedText(handle)).toContain('gpt-6-sol: Not available for your role.')
+  })
+
+  test('under the role list (slice 20): an id outside it gets the role message; listed ids and `reset` run', async () => {
+    const uninstall = installModelPolicy()
+    setClientConfigSnapshot(managedSnapshot([SOL, LUNA, MOCK]))
+
+    try {
+      const gateway = requestGateway()
+      const handle = await mount(gateway)
+
+      await handle.submitText('/model gpt-4.1')
+      expect(execCalls(gateway)).toEqual([])
+      expect(renderedText(handle)).toContain('gpt-4.1: Not available for your role.')
+
+      await handle.submitText('/model gpt-6-sol --provider openrouter')
+      expect(execCalls(gateway)).toEqual([])
+
+      await handle.submitText('/model gpt-6-luna')
+      await handle.submitText('/model reset')
+      expect(execCalls(gateway).map(([, params]) => params?.command)).toEqual([
+        'model gpt-6-luna',
+        'model reset'
+      ])
+    } finally {
+      uninstall()
+      $clientConfig.set(null)
+    }
   })
 })

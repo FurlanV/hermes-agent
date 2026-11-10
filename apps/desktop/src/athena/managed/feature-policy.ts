@@ -16,6 +16,7 @@ import { featureEntryFilter } from '../../../electron/athena/feature-registry'
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
 import { setFeatureDecider } from './feature-use'
 import { ALLOW_ALL_FEATURES, setFeatureFilter } from './features'
+import { managedModelsForSnapshot, modelRpcAllowed } from './model-policy'
 import { recordPolicyDecision } from './policy-decisions'
 import { ALLOW_ALL_RPC, type RpcPolicy, setRpcPolicy } from './rpc-seam'
 
@@ -26,19 +27,24 @@ import { ALLOW_ALL_RPC, type RpcPolicy, setRpcPolicy } from './rpc-seam'
 export const filterForSnapshot = (snapshot: ClientConfigSnapshot | null) =>
   snapshot?.variant === 'stock' ? ALLOW_ALL_FEATURES : featureEntryFilter(snapshot?.config ?? {})
 
-/** The JSON-RPC policy for a snapshot: a method (or its action) reaching a refused entry is refused and recorded. */
+/**
+ * The JSON-RPC policy for a snapshot: a method (or its action) reaching a refused entry is refused and recorded, and
+ * so is a model pick outside the role's list.
+ */
 export function rpcPolicyForSnapshot(snapshot: ClientConfigSnapshot | null): RpcPolicy {
   if (snapshot?.variant === 'stock') {
     return ALLOW_ALL_RPC
   }
 
   const decide = featureDecider(snapshot?.config ?? {})
+  const models = managedModelsForSnapshot(snapshot)
 
   return (method, params) => {
     const decision = decide(rpcEntries(method, params), 'rpc', method)
     recordPolicyDecision(decision.record)
 
-    return decision.allowed
+    // A request that picks a model also asks the role's list (managed.models, slice 20).
+    return decision.allowed && modelRpcAllowed(models, method, params)
   }
 }
 
