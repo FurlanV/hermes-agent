@@ -6,6 +6,8 @@ import { mergeOlderTranscriptPage } from '@/app/chat/transcript-backfill'
 import { prepareDefaultNewSession } from '@/app/session/new-session-route'
 import { invalidateContextBreakdown } from '@/app/shell/hooks/use-context-breakdown'
 import { isSlashCommandAllowed, SLASH_NOT_AVAILABLE } from '@/athena/managed/entry-points'
+import { reasoningSlashRefusal } from '@/athena/managed/model-reasoning'
+import { sessionModel } from '@/athena/managed/model-reasoning-reset'
 import { isModelSelectable, modelNotSelectableMessage, modelSlashChoice } from '@/athena/managed/models'
 import { getProfiles } from '@/hermes'
 import type { Translations } from '@/i18n'
@@ -1011,6 +1013,15 @@ export function useSlashCommand(deps: SlashCommandDeps) {
           }
 
           const { render: renderSlashOutput, sessionId } = resolved
+          // Athena (F02 slice 23): only the levels the session's model offers.
+          const refusal = reasoningSlashRefusal(ctx.arg, sessionModel(sessionId))
+
+          if (refusal) {
+            renderSlashOutput(refusal)
+
+            return
+          }
+
           const params = reasoningSlashParams(ctx.arg, sessionId)
 
           try {

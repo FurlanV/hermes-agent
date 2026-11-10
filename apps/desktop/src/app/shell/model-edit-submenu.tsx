@@ -1,5 +1,6 @@
-import { REASONING_EFFORTS } from '@hermes/shared'
+import { REASONING_EFFORTS, type ReasoningEffort } from '@hermes/shared'
 
+import { REASONING_UNAVAILABLE, useManagedReasoning } from '@/athena/managed/model-reasoning'
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -130,17 +131,25 @@ export function ModelOptionsContent({
   serviceTier,
   ultrafastSupported = false,
   isActive,
+  model,
   onSelectModel,
   onSetOptions,
   reasoning
 }: ModelEditSubmenuProps) {
   const { t } = useI18n()
   const copy = t.shell.modelOptions
+  // Athena (F02 slice 23): only the levels the client config gives this model.
+  const managed = useManagedReasoning(model)
+  const reasoningUnavailable = reasoning && managed?.state === 'unavailable'
+  const reasoningShown = reasoning && managed?.state !== 'off' && !reasoningUnavailable
+  const efforts = managed?.state === 'levels' ? (managed.efforts as readonly ReasoningEffort[]) : REASONING_EFFORTS
 
   const effortValue = resolveReasoningEffort(effort, defaultEffort)
   const clamp = reasoningEffortClamp(effortValue, effortWire)
   const thinkingOn = isThinkingEnabled(effort, defaultEffort)
-  const showThinkingToggle = reasoning && canDisableReasoning !== false
+
+  const showThinkingToggle =
+    reasoningShown && canDisableReasoning !== false && (managed?.state !== 'levels' || managed.thinkingToggle)
 
   const setFast = (enabled: boolean) => {
     if (fastControl.kind === 'variant') {
@@ -166,7 +175,7 @@ export function ModelOptionsContent({
   const ultrafastOn = serviceTier === 'ultrafast'
   const fastOn = fastControl.kind === 'none' ? false : fastControl.on && !ultrafastOn
 
-  return !hasFast && !ultrafastSupported && !daybreak && !reasoning ? (
+  return !hasFast && !ultrafastSupported && !daybreak && !reasoningShown && !reasoningUnavailable ? (
     <div className="px-2.5 py-3 text-xs text-(--ui-text-tertiary)">{copy.noOptions}</div>
   ) : (
     <>
@@ -222,12 +231,15 @@ export function ModelOptionsContent({
           />
         </DropdownMenuItem>
       ) : null}
-      {reasoning ? (
+      {reasoningUnavailable ? (
+        <div className="px-2.5 py-2 text-xs text-(--ui-text-tertiary)">{REASONING_UNAVAILABLE}</div>
+      ) : null}
+      {reasoningShown ? (
         <>
           <DropdownMenuSeparator className="mx-0" />
           <DropdownMenuLabel className={dropdownMenuSectionLabel}>{copy.effort}</DropdownMenuLabel>
           <DropdownMenuRadioGroup onValueChange={value => onSetOptions({ effort: value })} value={effortValue}>
-            {REASONING_EFFORTS.map(value => (
+            {efforts.map(value => (
               <DropdownMenuRadioItem
                 className={dropdownMenuRow}
                 key={value}

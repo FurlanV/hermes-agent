@@ -212,6 +212,21 @@ a real filter.
   `composer.top` banner and a first-in-chain `composer.middleware` say "No
   model available. Contact your administrator." and cancel sends (slash
   commands pass).
+- Reasoning effort per model (slice 23): `managed/model-reasoning.ts`. Under
+  `managed.models: enforce`, the options content the composer reasoning pill
+  and each model row's submenu share (`ModelOptionsContent`), Settings ›
+  Model's reasoning select and `/reasoning` offer only the selected model's
+  `reasoning.levels` (`none` is the Thinking toggle, the rest the effort
+  radio). A model with only `none` (or not on the list) reads "Not available
+  for this model yet" (the pill shows Off). `models.reasoning_control: off`
+  hides the pill and the Settings row and `/reasoning` answers "Reasoning
+  effort is not available." (the display words show/hide still run).
+  `useManagedReasoningReset` (`managed/model-reasoning-reset.ts`, kept apart
+  so the menus do not load the session stores; mounted by the controller) resets, once per
+  session, model and level, any level the session's model does not offer to
+  that model's default (`applyModelPreset`, the pill's own write); an empty
+  level is checked as the profile default it inherits. `report`/`off`:
+  stock.
 
 - The signed client config (slice 14):
   - Electron main (`electron/athena/client-config.ts`) reads
@@ -553,6 +568,11 @@ override with `ATHENA_F02_BASE`).
 | `src/components/model-picker.tsx` | Rows show the admin's labels; the "Add custom model…" button only while `allowsCustomModelIds` (slice 20) |
 | `src/app/settings/model-select.tsx` | Rows show the admin's labels; "Custom model…" only while `allowsCustomModelIds` (slice 20) |
 | `src/app/contrib/wiring.tsx` | The main controller mounts `useManagedModelSwitch(selectModel)`: open sessions on a removed model switch to the role default (slice 21) |
+| `src/app/contrib/wiring.tsx` | The main controller mounts `useManagedReasoningReset(requestGateway)`: a level the session's model does not offer resets to its default (slice 23) |
+| `src/app/shell/model-edit-submenu.tsx` | `ModelOptionsContent` (the reasoning pill's menu and each row's submenu) offers only the model's configured levels, or "Not available for this model yet" (slice 23) |
+| `src/app/chat/composer/reasoning-pill.tsx` | Hidden while `models.reasoning_control` is off; Off for a model that takes no reasoning (slice 23) |
+| `src/app/settings/model-settings.tsx` | The main model's reasoning select offers only its configured levels; hidden while the control is off (slice 23) |
+| `src/app/session/hooks/use-prompt-actions/slash.ts` | `/reasoning <level>` asks `reasoningSlashRefusal` (a level the model does not offer, or the control off) (slice 23) |
 | `src/contrib/runtime-loader.ts` | A disk `plugin.js` is evaluated only when `desktopPluginVerdict` allows it (allowlisted sha256, and the listed id); a `managed.tools` change re-scans (slice 29) |
 | `src/components/assistant-ui/thread/message-parts.tsx` | The `manage_catalog` and `manage_connections` cards go through `gateInstallCard` (a plain tool row under `managed.tools: enforce`) (slice 29) |
 | `src/components/assistant-ui/setup-beat/setup-beat-tool.tsx` | The plugins and connectors beats show no card and answer "nothing added" under `managed.tools: enforce` (slice 29) |

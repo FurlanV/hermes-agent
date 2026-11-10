@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { useSessionView } from '@/app/chat/session-view'
 import { ModelMenuCloseContext } from '@/app/shell/model-menu-panel'
+import { useManagedReasoning } from '@/athena/managed/model-reasoning'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { GlyphSpinner } from '@/components/ui/glyph-spinner'
@@ -39,8 +40,10 @@ export function ReasoningPill({ disabled, model }: { disabled: boolean; model: C
   const pending = useStore(view.$reasoningEffortPending)
   const defaultEffort = useStore($defaultReasoningEffort)
   const [open, setOpen] = useState(false)
+  // Athena (F02 slice 23): `models.reasoning_control: off` turns the control off.
+  const managed = useManagedReasoning(model.model)
 
-  if (!model.reasoningMenuContent || model.supportsReasoning === false) {
+  if (!model.reasoningMenuContent || model.supportsReasoning === false || managed?.state === 'off') {
     return null
   }
 
@@ -49,7 +52,9 @@ export function ReasoningPill({ disabled, model }: { disabled: boolean; model: C
   // spells out the CLI's wording in the tooltip, so Ultra is never shown as a
   // distinct wire level the route does not have (#61634).
   const clamp = reasoningEffortClamp(effort, reasoningEffortWire)
-  const label = reasoningEffortLabel(effort, reasoningEffortWire)
+  // A model that takes no reasoning (only `none` in the config) reads as Off, whatever the session level says.
+  const label =
+    managed?.state === 'unavailable' ? reasoningEffortLabel('none') : reasoningEffortLabel(effort, reasoningEffortWire)
 
   // Until the session reports its own effort, the profile default is a guess
   // about to be replaced (#79807). Show the model pill's quiet loader instead.

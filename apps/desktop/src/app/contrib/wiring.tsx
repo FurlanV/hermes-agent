@@ -14,6 +14,7 @@ import { type CSSProperties, lazy, type ReactNode, Suspense, useCallback, useEff
 import { useLocation, useNavigate } from 'react-router'
 
 import { isFeatureAllowed, useFeatureEntry } from '@/athena/managed/features'
+import { useManagedReasoningReset } from '@/athena/managed/model-reasoning-reset'
 import { useManagedModelSwitch } from '@/athena/managed/model-switch'
 import { formatRefValue } from '@/components/assistant-ui/directive-text'
 import { StartupOverlay } from '@/components/boot-failure-overlay'
@@ -468,8 +469,10 @@ export function ContribWiring({ children }: { children: ReactNode }) {
     requestGateway
   })
 
-  // Athena (F02 slice 21): open sessions on a model the role no longer allows switch to its default.
+  // Athena (F02 slices 21, 23): open sessions on a model the role no longer allows switch to its default, and a
+  // reasoning level the session's model does not offer resets to that model's default.
   useManagedModelSwitch(selectModel)
+  useManagedReasoningReset(requestGateway)
 
   const openProviderSettings = useCallback(() => navigate(`${SETTINGS_ROUTE}?tab=providers`), [navigate])
 
