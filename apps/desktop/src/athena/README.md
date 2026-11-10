@@ -200,6 +200,18 @@ a real filter.
   recorded (`kind: "model"`). `report`: nothing narrowed, each outside pick
   recorded `allowed_in_report`; `off`: stock. A new `config_version` drops
   the cached `model-options` queries.
+- A removed model (slice 21): `managed/model-switch.tsx`. On every config or
+  session change, each idle open session (the primary composer, draft
+  included, and every tile in `$sessionStates`) whose model id left the list
+  is switched once to the role default (first listed model if the default is
+  hidden) through the controller's own `selectModel` (`config.set key=model
+  … --provider custom:athena-gateway`, sent as slice 08's fenced
+  `session.mutate`). A busy session waits for its turn to end. One toast per
+  session ("GPT-6 Sol is no longer available. Switched to GPT-6 Luna.").
+  With no listed model left, or a failed switch for the active session, a
+  `composer.top` banner and a first-in-chain `composer.middleware` say "No
+  model available. Contact your administrator." and cancel sends (slash
+  commands pass).
 
 - The signed client config (slice 14):
   - Electron main (`electron/athena/client-config.ts`) reads
@@ -486,3 +498,4 @@ override with `ATHENA_F02_BASE`).
 | `src/app/shell/model-catalog-menu.tsx` | "Add custom model…" is offered only while `allowsCustomModelIds` (slice 20) |
 | `src/components/model-picker.tsx` | Rows show the admin's labels; the "Add custom model…" button only while `allowsCustomModelIds` (slice 20) |
 | `src/app/settings/model-select.tsx` | Rows show the admin's labels; "Custom model…" only while `allowsCustomModelIds` (slice 20) |
+| `src/app/contrib/wiring.tsx` | The main controller mounts `useManagedModelSwitch(selectModel)`: open sessions on a removed model switch to the role default (slice 21) |

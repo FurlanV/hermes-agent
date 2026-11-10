@@ -1,7 +1,7 @@
 // F02 slice 20: the managed.models master switch in the renderer. `enforce` narrows every picker and refuses a pick
 // outside the list at the JSON-RPC seam (recorded); `report` narrows nothing, lets the pick through and records it
 // once (an `athena:policy_decision`, kind model); `off` is stock and records nothing. The model gateway refuses the
-// call in every mode (athena: tests/platform/e2e_managed_models.py).
+// call in every mode (electron/athena/managed-models.e2e.test.ts, against compose).
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { displayModelName } from '@/lib/model-status-label'
