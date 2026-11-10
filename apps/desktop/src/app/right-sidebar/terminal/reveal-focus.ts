@@ -1,4 +1,5 @@
 import { paletteToggle } from '@/app/command-palette/contrib'
+import { isFeatureAllowed } from '@/athena/managed/features'
 import { isPaneVisible, togglePaneVisible } from '@/components/pane-shell/tree/store'
 import { Terminal } from '@/lib/icons'
 import { isFocusWithin } from '@/lib/keybinds/combo'
@@ -52,6 +53,11 @@ function scheduleFocusAttempt(attempts: number): void {
  */
 export function toggleTerminalPane(): void {
   const revealed = !isPaneVisible('terminal')
+
+  // Athena (F02): the terminal pane (S124) opens only while the feature policy allows it.
+  if (revealed && !isFeatureAllowed('pane:terminal')) {
+    return
+  }
 
   togglePaneVisible('terminal')
   trackArea('terminal_pane', revealed)

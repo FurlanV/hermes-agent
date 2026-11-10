@@ -4,6 +4,9 @@ import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
+import { useFeatureEntry } from '@/athena/managed/features'
+import { managedEffortValues, REASONING_UNAVAILABLE, useManagedReasoning } from '@/athena/managed/model-reasoning'
+import { modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -36,7 +39,7 @@ import { catalogProviderMatches, findCatalogProvider } from '@/lib/model-options
 import { composerServiceTier } from '@/lib/model-status-label'
 import { cn } from '@/lib/utils'
 import { showLargeModelNotice } from '@/store/agent-notices'
-import { $customModels, withCustomModels } from '@/store/custom-models'
+import { $customModels } from '@/store/custom-models'
 import { setMainModelAssignment } from '@/store/model-assignment'
 import { notify, notifyError, readableError } from '@/store/notifications'
 import { startManualLocalEndpoint, startManualOnboarding, startManualProviderOAuth } from '@/store/onboarding'
@@ -303,6 +306,7 @@ function MainModelDefaults({
   effortValue,
   fastOn,
   fastSupported,
+  model,
   onChange,
   reasoningSupported,
   speedValue,
@@ -311,6 +315,7 @@ function MainModelDefaults({
   effortValue: string
   fastOn: boolean
   fastSupported: boolean
+  model: string
   onChange: (key: string, value: boolean | string) => Promise<void>
   reasoningSupported: boolean
   speedValue: SpeedTier
@@ -318,30 +323,37 @@ function MainModelDefaults({
 }) {
   const { t } = useI18n()
   const m = t.settings.model
+  const speedAllowed = useFeatureEntry('settings-control:main-speed')
+  // Athena (F02 slice 23): the levels the client config gives the main model, or none at all.
+  const managedReasoning = useManagedReasoning(model)
 
   return (
     <div className="mt-6 grid gap-1">
       <p className="mb-1 text-xs text-muted-foreground">{m.defaultsLabel}</p>
-      {reasoningSupported && (
+      {reasoningSupported && managedReasoning?.state !== 'off' && (
         <ListRow
           action={
-            <Select onValueChange={value => void onChange('agent.reasoning_effort', value)} value={effortValue}>
-              <SelectTrigger aria-label={m.reasoning} className={cn('min-w-28', CONTROL_TEXT)}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {REASONING_EFFORT_VALUES.map(value => (
-                  <SelectItem key={value} value={value}>
-                    {value === 'none' ? m.reasoningOff : t.shell.modelOptions[value]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            managedReasoning?.state === 'unavailable' ? (
+              <span className={cn('text-muted-foreground', CONTROL_TEXT)}>{REASONING_UNAVAILABLE}</span>
+            ) : (
+              <Select onValueChange={value => void onChange('agent.reasoning_effort', value)} value={effortValue}>
+                <SelectTrigger aria-label={m.reasoning} className={cn('min-w-28', CONTROL_TEXT)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {managedEffortValues(model, REASONING_EFFORT_VALUES).map(value => (
+                    <SelectItem key={value} value={value}>
+                      {value === 'none' ? m.reasoningOff : t.shell.modelOptions[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )
           }
           title={m.reasoning}
         />
       )}
-      {ultrafastSupported ? (
+      {!speedAllowed ? null : ultrafastSupported ? (
         <ListRow
           action={
             <Select onValueChange={value => void onChange('agent.service_tier', value)} value={speedValue}>
@@ -380,6 +392,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
   const { t } = useI18n()
   const m = t.settings.model
   const showMain = subpage === undefined || subpage === 'main'
+  const providerRowAllowed = useFeatureEntry('settings-control:main-provider')
   const showAuxiliary = subpage === undefined || subpage === 'auxiliary'
   const showMoa = subpage === undefined || subpage === 'moa'
   const [loading, setLoading] = useState(true)
@@ -391,7 +404,13 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
   // Slugs typed into any picker ride along as rows of their provider, so a
   // model added from the composer is selectable here too.
   const customModels = useStore($customModels)
-  const providers = useMemo(() => withCustomModels(catalogProviders, customModels), [catalogProviders, customModels])
+  const modelPolicy = useModelPolicy()
+
+  const providers = useMemo(
+    () => modelPickerProviders(catalogProviders, customModels, modelPolicy),
+    [catalogProviders, customModels, modelPolicy]
+  )
+
   const [selectedProvider, setSelectedProvider] = useState('')
   const [selectedModel, setSelectedModel] = useState('')
   const [auxiliary, setAuxiliary] = useState<AuxiliaryModelsResponse | null>(null)
@@ -1103,6 +1122,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
                   </SelectContent>
                 </Select>
               }
+              className={providerRowAllowed ? undefined : 'hidden'}
               title={m.provider}
             />
             <ListRow
@@ -1176,6 +1196,7 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
               effortValue={effortValue}
               fastOn={fastOn}
               fastSupported={fastSupported}
+              model={mainModel?.model ?? ''}
               onChange={writeAgentDefault}
               reasoningSupported={reasoningSupported}
               speedValue={speedValue}

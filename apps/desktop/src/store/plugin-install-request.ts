@@ -1,5 +1,7 @@
 import { atom } from 'nanostores'
 
+import { toolInstallAllowed } from '@/athena/managed/tool-installs'
+
 /** Which plugin component(s) a legacy deeplink pre-selects after probe. */
 export type PluginInstallLegacyHint = 'agent' | 'desktop' | null
 
@@ -32,6 +34,11 @@ export interface PluginInstallRequest {
 export const $pluginInstallRequest = atom<PluginInstallRequest | null>(null)
 
 export function openPluginInstallRequest(request: PluginInstallRequest): void {
+  // Athena (F02 slice 29): no plugin install dialog while managed.tools is enforce.
+  if (!toolInstallAllowed('ui:plugin-install', request.catalogName || request.repo || 'repository entry')) {
+    return
+  }
+
   $pluginInstallRequest.set(request)
 }
 

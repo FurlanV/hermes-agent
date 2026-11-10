@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 
+import { useFeatureEntry } from '@/athena/managed/features'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/error-state'
 import { useI18n } from '@/i18n'
@@ -154,6 +155,7 @@ export function RootErrorBoundary({ children }: { children: ReactNode }) {
 
 function RootErrorFallback({ error, reset }: ErrorBoundaryFallbackProps) {
   const { t } = useI18n()
+  const diagnosticsAllowed = useFeatureEntry('dialog:send-diagnostics')
 
   return (
     <div
@@ -188,9 +190,12 @@ function RootErrorFallback({ error, reset }: ErrorBoundaryFallbackProps) {
         <Button onClick={() => void window.hermesDesktop?.revealLogs()?.catch(() => undefined)} variant="text">
           {t.errors.openLogs}
         </Button>
-        <Button onClick={() => requestSendDiagnostics(error.stack || error.message)} variant="text">
-          {t.errors.sendDiagnostics}
-        </Button>
+        {/* Athena (F02 slice 18): no diagnostics upload to Nous (S117). */}
+        {diagnosticsAllowed && (
+          <Button onClick={() => requestSendDiagnostics(error.stack || error.message)} variant="text">
+            {t.errors.sendDiagnostics}
+          </Button>
+        )}
       </ErrorState>
     </div>
   )

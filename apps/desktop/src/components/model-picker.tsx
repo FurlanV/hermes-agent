@@ -13,6 +13,13 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactElement, useMemo, useRef, useState } from 'react'
 
+import { managedModelLabel } from '@/athena/managed/model-labels'
+import {
+  allowsCustomModelIds,
+  modelPickerCustomCandidate,
+  modelPickerProviders,
+  useModelPolicy
+} from '@/athena/managed/models'
 import { useI18n } from '@/i18n'
 import { catalogProviderMatches, modelOptionsQueryKey, requestModelOptions } from '@/lib/model-options'
 import { currentPickerSelection } from '@/lib/model-status-label'
@@ -20,7 +27,7 @@ import { accountResetMs, formatReset, modelResetMs } from '@/lib/provider-limit'
 import { foldIncludes, normalize } from '@/lib/text'
 import { formatPercentUsed, formatResetsIn } from '@/lib/usage-percent'
 import { cn } from '@/lib/utils'
-import { $customModels, addCustomModel, customModelCandidate, withCustomModels } from '@/store/custom-models'
+import { $customModels, addCustomModel } from '@/store/custom-models'
 import { $localModelsEnabled } from '@/store/local-models-flag'
 import {
   type LocalModelsOwner,
@@ -142,7 +149,8 @@ export function ModelPickerDialog({
   )
 
   const customModels = useStore($customModels)
-  const providers = withCustomModels(modelOptions.data?.providers ?? [], customModels)
+  const modelPolicy = useModelPolicy()
+  const providers = modelPickerProviders(modelOptions.data?.providers ?? [], customModels, modelPolicy)
 
   const { model: optionsModel, provider: optionsProvider } = currentPickerSelection(
     { model: currentModel, provider: currentProvider },
@@ -228,9 +236,11 @@ export function ModelPickerDialog({
         </Command>
 
         <DialogFooter className="flex-row items-center justify-end gap-2 bg-card p-3">
-          <Button className="mr-auto" onClick={enterSlug} variant="ghost">
-            {copy.addCustomModelAction}
-          </Button>
+          {allowsCustomModelIds(modelPolicy) ? (
+            <Button className="mr-auto" onClick={enterSlug} variant="ghost">
+              {copy.addCustomModelAction}
+            </Button>
+          ) : null}
           <Button onClick={addProvider} variant="ghost">
             {copy.addProvider}
           </Button>
@@ -337,7 +347,7 @@ function ModelResults({
   // provider first, so the slug is one Enter away and remembered afterwards.
   // While the query still matches catalog rows the section stays out of the
   // way unless the user asked for it via "Add custom model…".
-  const customSlug = offerCustom || !hasMatches ? customModelCandidate(search, configured) : null
+  const customSlug = offerCustom || !hasMatches ? modelPickerCustomCandidate(search, configured) : null
 
   const customProviders = customSlug
     ? [...configured].sort(
@@ -387,7 +397,7 @@ function ModelResults({
               value={`${provider.slug}:${model}`}
             >
               <span className={cn('min-w-0 flex-1 truncate', dimmed && !isCurrent && 'text-muted-foreground')}>
-                <HighlightMatches foldSeparators query={search} text={model} />
+                <HighlightMatches foldSeparators query={search} text={managedModelLabel(model) ?? model} />
               </span>
               {loadProgress && (
                 <span className="flex shrink-0 items-center gap-1.5" title={copy.loadingIntoMemory}>

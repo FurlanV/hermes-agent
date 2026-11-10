@@ -21,6 +21,12 @@ import {
   useState
 } from 'react'
 
+import {
+  allowsCustomModelIds,
+  modelPickerCustomCandidate,
+  modelPickerProviders,
+  useModelPolicy
+} from '@/athena/managed/models'
 import { PlanLimitLine, UsageLevelTag } from '@/components/model-picker'
 import { ProviderStatusChip } from '@/components/provider-status-chip'
 import { Badge } from '@/components/ui/badge'
@@ -50,7 +56,7 @@ import { accountResetMs, formatReset, modelResetMs } from '@/lib/provider-limit'
 import { reasoningEffortLabel } from '@/lib/reasoning-effort'
 import { foldIncludes, normalize } from '@/lib/text'
 import { cn } from '@/lib/utils'
-import { $customModels, addCustomModel, customModelCandidate, withCustomModels } from '@/store/custom-models'
+import { $customModels, addCustomModel } from '@/store/custom-models'
 import { $favoriteModels, favoriteModelKey, toggleFavoriteModel } from '@/store/favorite-models'
 import { $localModelsEnabled } from '@/store/local-models-flag'
 import {
@@ -273,6 +279,7 @@ export function ModelCatalogMenu({
   // and the composer would end up disagreeing about what "my models" means.
   const visibleModels = useStore($visibleModels)
   const customModels = useStore($customModels)
+  const modelPolicy = useModelPolicy()
   // Favorite models, same reasoning as the shortlist above: one global
   // preference owned by the catalog, so the composer pill, session tiles and
   // the kanban override all show the same Favorites section.
@@ -328,7 +335,7 @@ export function ModelCatalogMenu({
 
   const pickerProviders = useMemo(
     () =>
-      withCustomModels(
+      modelPickerProviders(
         providers?.filter(
           provider =>
             provider.slug.toLowerCase() !== 'moa' &&
@@ -336,9 +343,10 @@ export function ModelCatalogMenu({
             // without the flag the GUI doesn't offer them.
             (localModelsEnabled || provider.slug !== LOCAL_PROVIDER_SLUG)
         ) ?? [],
-        customModels
+        customModels,
+        modelPolicy
       ),
-    [providers, localModelsEnabled, customModels]
+    [providers, localModelsEnabled, customModels, modelPolicy]
   )
 
   const current = controller.current
@@ -416,7 +424,9 @@ export function ModelCatalogMenu({
   // the query still matches catalog rows the section stays out of the way
   // unless the user asked for it via "Add custom model…".
   const customSlug =
-    slugEntry || (!hasList && shownMoaPresets.length === 0) ? customModelCandidate(search, pickerProviders) : null
+    slugEntry || (!hasList && shownMoaPresets.length === 0)
+      ? modelPickerCustomCandidate(search, pickerProviders, modelPolicy)
+      : null
 
   const customProviders = useMemo(
     () =>
@@ -924,20 +934,22 @@ export function ModelCatalogMenu({
           trailing block it has always rendered. */}
       <DropdownMenuSeparator className="mx-0" />
       {footer}
-      <DropdownMenuItem
-        className={cn(dropdownMenuRow, 'text-(--ui-text-tertiary)', slugEntry && 'text-foreground')}
-        onSelect={event => {
-          event.preventDefault()
-          setSearch('')
-          setKbOverride(null)
-          setSlugEntry(true)
-          // Radix hands focus back to the row after onSelect; refocus after.
-          window.setTimeout(() => searchRef.current?.focus(), 0)
-        }}
-      >
-        <Codicon name="add" size="0.75rem" />
-        {copyPicker.addCustomModelAction}
-      </DropdownMenuItem>
+      {allowsCustomModelIds(modelPolicy) ? (
+        <DropdownMenuItem
+          className={cn(dropdownMenuRow, 'text-(--ui-text-tertiary)', slugEntry && 'text-foreground')}
+          onSelect={event => {
+            event.preventDefault()
+            setSearch('')
+            setKbOverride(null)
+            setSlugEntry(true)
+            // Radix hands focus back to the row after onSelect; refocus after.
+            window.setTimeout(() => searchRef.current?.focus(), 0)
+          }}
+        >
+          <Codicon name="add" size="0.75rem" />
+          {copyPicker.addCustomModelAction}
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuItem
         className={cn(dropdownMenuRow, 'text-(--ui-text-tertiary)')}
         onSelect={() => setModelVisibilityOpen(true)}

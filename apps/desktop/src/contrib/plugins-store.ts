@@ -10,6 +10,8 @@
 
 import { atom } from 'nanostores'
 
+import { isFeatureAllowed } from '@/athena/managed/features'
+
 export type PluginKind = 'bundled' | 'disk' | 'runtime'
 export type PluginStatus = 'disabled' | 'error' | 'loaded'
 
@@ -66,6 +68,11 @@ export const $pluginDecisions = atom<Record<string, boolean>>(loadDecisions())
 export function pluginActive(id: string, defaultEnabled = true): boolean {
   const decisions = $pluginDecisions.get()
 
+  // Athena (F02): a plugin the feature policy refuses (`plugin:<id>`) stays listed but never activates.
+  if (!isFeatureAllowed(`plugin:${id}`)) {
+    return false
+  }
+
   return id in decisions ? decisions[id] : defaultEnabled
 }
 
@@ -89,6 +96,9 @@ interface PluginHandle {
 
 /** Loader-owned lifecycle handles, keyed by plugin id. */
 const handles = new Map<string, PluginHandle>()
+
+/** Athena (F02): the loader's handles, for the feature policy to switch a flagged plugin live. */
+export const pluginPolicyHandle = (id: string): PluginHandle | undefined => handles.get(id)
 
 /** Publish/refresh a plugin's record + its activate/deactivate handles. */
 export function publishPlugin(record: PluginRecord, handle?: PluginHandle): void {
@@ -139,6 +149,10 @@ export async function setPluginEnabled(id: string, enabled: boolean): Promise<vo
   const handle = handles.get(id)
 
   if (!handle) {
+    return
+  }
+
+  if (enabled && !isFeatureAllowed(`plugin:${id}`)) {
     return
   }
 

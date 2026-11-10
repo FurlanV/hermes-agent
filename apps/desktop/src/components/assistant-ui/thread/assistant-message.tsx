@@ -23,6 +23,7 @@ import { useComposerScope } from '@/app/chat/composer/scope'
 import { useSessionView } from '@/app/chat/session-view'
 import { SETTINGS_ROUTE } from '@/app/routes'
 import { useBillingApi } from '@/app/settings/billing/api'
+import { useFeatureEntry } from '@/athena/managed/features'
 import { dispatchedTo } from '@/components/assistant-ui/thread/agent-delivery'
 import { ChangedFilesCard } from '@/components/assistant-ui/thread/changed-files-card'
 import {
@@ -1009,6 +1010,7 @@ const ErrorDetailsBlock: FC<{ errorText: string; hidden: boolean; id: string; su
   const connection = useStore($connection)
   const ownerProfile = useOwnerProfile()
   const remoteConnection = connection?.mode === 'remote'
+  const diagnosticsAllowed = useFeatureEntry('dialog:send-diagnostics')
 
   const failedAt = useErrorFailedAt()
 
@@ -1046,13 +1048,16 @@ const ErrorDetailsBlock: FC<{ errorText: string; hidden: boolean; id: string; su
             {remoteConnection ? copy.errorOpenDesktopLogs : copy.errorOpenLogs}
           </button>
         )}
-        <button
-          className="aui-error-details-link"
-          onClick={() => requestSendDiagnostics(diagnosticsText())}
-          type="button"
-        >
-          {copy.errorSendDiagnostics}
-        </button>
+        {/* Athena (F02 slice 18): no diagnostics upload to Nous (S117). */}
+        {diagnosticsAllowed && (
+          <button
+            className="aui-error-details-link"
+            onClick={() => requestSendDiagnostics(diagnosticsText())}
+            type="button"
+          >
+            {copy.errorSendDiagnostics}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -1235,6 +1240,13 @@ const ErrorActionControl: FC<{
   const gatewayProfile = useStore($activeGatewayProfile)
   const ownerProfile = useOwnerProfile()
   const link = variant === 'link'
+
+  // Athena (F02): a button into a refused feature (billing, vendor keys, sign-ins) is not offered.
+  const athenaAllowed = useFeatureEntry(`error-action:${action}`)
+
+  if (!athenaAllowed) {
+    return null
+  }
 
   return ERROR_ACTION_RENDERERS[action]({
     // Nous DS Button (portal /ds/components/button): the one action is `secondary`,

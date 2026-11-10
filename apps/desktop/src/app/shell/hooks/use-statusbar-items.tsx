@@ -15,6 +15,8 @@ import { useCompactConversation } from '@/app/shell/hooks/use-compact-conversati
 import { useContextBreakdown } from '@/app/shell/hooks/use-context-breakdown'
 import { useFocusedSessionRow } from '@/app/shell/hooks/use-focused-session-row'
 import { useSystemResourcesStatusbarItem } from '@/app/shell/system-resources-statusbar'
+import { allowedStatusbarItems } from '@/athena/managed/entry-points'
+import { useFeatureFilter } from '@/athena/managed/features'
 import { $paneVisible } from '@/components/pane-shell/tree/store'
 import { Badge } from '@/components/ui/badge'
 import { Codicon } from '@/components/ui/codicon'
@@ -826,14 +828,17 @@ export function useStatusbarItems({
     ]
   )
 
+  // Athena (F02): items the feature policy refuses (by id, linked page or shortcut) are left out.
+  const featureFilter = useFeatureFilter()
+
   const leftStatusbarItems = useMemo(
-    () => [...coreLeftStatusbarItems, ...extraLeftItems],
-    [coreLeftStatusbarItems, extraLeftItems]
+    () => allowedStatusbarItems([...coreLeftStatusbarItems, ...extraLeftItems], featureFilter),
+    [coreLeftStatusbarItems, extraLeftItems, featureFilter]
   )
 
   const statusbarItems = useMemo(
-    () => [...extraRightItems, ...coreRightStatusbarItems],
-    [coreRightStatusbarItems, extraRightItems]
+    () => allowedStatusbarItems([...extraRightItems, ...coreRightStatusbarItems], featureFilter),
+    [coreRightStatusbarItems, extraRightItems, featureFilter]
   )
 
   return { leftStatusbarItems, statusbarItems }

@@ -3,6 +3,7 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactNode, useMemo } from 'react'
 
+import { modelPickerProviders } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -11,7 +12,7 @@ import { getGlobalModelOptions, type ProfileScope, profileScopeKey } from '@/her
 import { useI18n } from '@/i18n'
 import { findCatalogProvider } from '@/lib/model-options'
 import { cn } from '@/lib/utils'
-import { $customModels, withCustomModels } from '@/store/custom-models'
+import { $customModels } from '@/store/custom-models'
 
 import { CONTROL_TEXT } from './constants'
 import {
@@ -60,7 +61,7 @@ export function useOwnerCatalog(scope: ProfileScope | undefined) {
 
   const providers = useMemo(
     () =>
-      withCustomModels(
+      modelPickerProviders(
         (query.data?.providers ?? []).filter(p => p.slug),
         customModels
       ),

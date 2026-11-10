@@ -1,0 +1,242 @@
+// Athena: the Capabilities page's tool switches (F02 slice 28).
+//
+// The renderer never writes the prefs file or runs anything itself. It asks main over two Athena channels:
+// - `athena:tool-prefs:get` (invoke): the user's toggles, `$HERMES_HOME/athena/tool-prefs.json` `enabled`;
+// - `athena:tool-prefs:set` (invoke, `{id, on}`): runs `athena config tool <id> on|off`, which writes that file and
+//   re-applies managed scope (`athena config apply`), so the next new chat gets the change. Open chats keep their
+//   tools (hermes builds a session's tool list at `session.create`).
+//
+// The CLI is found, in order, at `ATHENA_CLI` (the dev launcher passes the monorepo venv's `athena` by absolute
+// path), else as `athena` on the PATH the app was launched with, captured when main installs this module (before
+// the Desktop merges the login-shell PATH, which can hold another `athena`). With no CLI, main writes the file
+// itself, in the CLI's format, and says the change applies after the next config sync (the shipper re-applies
+// managed scope after every sync). Locked and unavailable entries are the applier's to ignore either way.
+
+import { execFile } from 'node:child_process'
+import { accessSync, closeSync, constants, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeSync } from 'node:fs'
+import path from 'node:path'
+
+import type { IpcMain } from 'electron'
+
+import type { ToolPrefs, ToolToggleResult } from './tool-prefs-types'
+
+export type { ToolPrefs, ToolToggleResult }
+
+export const TOOL_PREFS_CHANNELS = Object.freeze({
+  get: 'athena:tool-prefs:get',
+  set: 'athena:tool-prefs:set'
+} as const)
+
+export const TOOL_PREFS_FILE = 'tool-prefs.json'
+
+/** A catalog id (athena_schemas `ToolId`); anything else never reaches the CLI's argv. */
+const ENTRY_ID = /^[a-z0-9][a-z0-9-]{0,63}$/
+const CLI_TIMEOUT_MS = 60_000
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+/** `tool-prefs.json`'s `enabled` map; anything unreadable counts as no toggles (as the applier reads it). */
+export function readToolPrefs(file: string): ToolPrefs {
+  let data: unknown
+
+  try {
+    data = JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return {}
+  }
+
+  const enabled = isRecord(data) ? data.enabled : undefined
+
+  if (!isRecord(enabled)) {
+    return {}
+  }
+
+  return Object.fromEntries(Object.entries(enabled).filter((pair): pair is [string, boolean] => typeof pair[1] === 'boolean'))
+}
+
+/** Set one toggle, keeping the others and any other keys: the CLI's format (sorted, 2-space JSON, 0600, atomic). */
+export function writeToolPref(file: string, id: string, on: boolean): ToolPrefs {
+  let data: Record<string, unknown> = {}
+
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'))
+    data = isRecord(parsed) ? parsed : {}
+  } catch {
+    data = {}
+  }
+
+  const enabled = { ...readToolPrefs(file), [id]: on }
+
+  const sorted = (record: Record<string, unknown>) =>
+    Object.fromEntries(Object.keys(record).sort().map(key => [key, record[key]]))
+
+  const text = `${JSON.stringify(sorted({ ...data, enabled: sorted(enabled) }), null, 2)}\n`
+
+  mkdirSync(path.dirname(file), { recursive: true })
+  const tmp = path.join(path.dirname(file), `.${path.basename(file)}.tmp`)
+  rmSync(tmp, { force: true })
+  const fd = openSync(tmp, 'wx', 0o600)
+
+  try {
+    writeSync(fd, text)
+  } finally {
+    closeSync(fd)
+  }
+
+  renameSync(tmp, file)
+
+  return enabled
+}
+
+function executable(file: string): boolean {
+  try {
+    accessSync(file, constants.X_OK)
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** The athena CLI: `ATHENA_CLI` when it is an executable absolute path, else `athena` on `launchPath`, else null. */
+export function resolveAthenaCli(
+  env: Record<string, string | undefined>,
+  launchPath: string | undefined,
+  isExecutable: (file: string) => boolean = executable
+): string | null {
+  const explicit = env.ATHENA_CLI?.trim()
+
+  if (explicit && path.isAbsolute(explicit) && isExecutable(explicit)) {
+    return explicit
+  }
+
+  for (const dir of (launchPath ?? '').split(path.delimiter)) {
+    // Relative PATH entries would resolve against main's cwd: never.
+    if (dir && path.isAbsolute(dir)) {
+      const candidate = path.join(dir, 'athena')
+
+      if (isExecutable(candidate)) {
+        return candidate
+      }
+    }
+  }
+
+  return null
+}
+
+export interface CliResult {
+  code: number
+  stderr: string
+  stdout: string
+}
+
+export type RunCli = (file: string, args: string[], env: Record<string, string | undefined>) => Promise<CliResult>
+
+const runCli: RunCli = (file, args, env) =>
+  new Promise(resolve => {
+    execFile(file, args, { env, timeout: CLI_TIMEOUT_MS, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+      const code = error ? (typeof error.code === 'number' ? error.code : 1) : 0
+      resolve({ code, stderr: String(stderr ?? '') || (error && code !== 0 ? error.message : ''), stdout: String(stdout ?? '') })
+    })
+  })
+
+const firstLine = (text: string) =>
+  text
+    .split('\n')
+    .map(line => line.trim())
+    .find(Boolean) ?? ''
+
+export interface ToolPrefsOptions {
+  /** The Profile's `$HERMES_HOME` (the CLI gets it as `HERMES_HOME`). */
+  hermesHome: string
+  env?: Record<string, string | undefined>
+  /** The PATH the app was launched with (default: `env.PATH` now, i.e. at install). */
+  launchPath?: string
+  log: (line: string) => void
+  run?: RunCli
+  isExecutable?: (file: string) => boolean
+}
+
+export class AthenaToolPrefs {
+  readonly file: string
+  private readonly env: Record<string, string | undefined>
+  private readonly launchPath: string | undefined
+  private queue: Promise<unknown> = Promise.resolve()
+
+  constructor(private readonly options: ToolPrefsOptions) {
+    this.env = options.env ?? process.env
+    this.launchPath = options.launchPath ?? this.env.PATH
+    this.file = path.join(options.hermesHome, 'athena', TOOL_PREFS_FILE)
+  }
+
+  prefs(): ToolPrefs {
+    return readToolPrefs(this.file)
+  }
+
+  cli(): string | null {
+    return resolveAthenaCli(this.env, this.launchPath, this.options.isExecutable)
+  }
+
+  /** One toggle at a time: each runs the CLI (write + apply) after the previous one finished. */
+  set(id: unknown, on: unknown): Promise<ToolToggleResult> {
+    const next = this.queue.then(() => this.setNow(id, on))
+    this.queue = next.catch(() => undefined)
+
+    return next
+  }
+
+  private async setNow(id: unknown, on: unknown): Promise<ToolToggleResult> {
+    if (typeof id !== 'string' || !ENTRY_ID.test(id) || typeof on !== 'boolean') {
+      return { ok: false, applied: false, enabled: this.prefs(), message: 'Not a catalog tool.' }
+    }
+
+    const state = on ? 'on' : 'off'
+    const cli = this.cli()
+
+    if (!cli) {
+      writeToolPref(this.file, id, on)
+      this.options.log(`[athena] tool ${id} ${state}: no athena CLI (ATHENA_CLI or PATH); wrote ${this.file} only`)
+
+      return {
+        ok: true,
+        applied: false,
+        enabled: this.prefs(),
+        message: 'Saved. It applies to new chats after the next config sync.'
+      }
+    }
+
+    // The CLI's own venv, not whatever Python main's environment points at.
+    const env: Record<string, string | undefined> = { ...this.env, HERMES_HOME: this.options.hermesHome }
+    delete env.PYTHONHOME
+    delete env.PYTHONPATH
+    delete env.VIRTUAL_ENV
+    const result = await (this.options.run ?? runCli)(cli, ['config', 'tool', id, state], env)
+    const message = firstLine(result.code === 0 ? result.stdout : result.stderr || result.stdout)
+    this.options.log(`[athena] ${cli} config tool ${id} ${state}: exit ${result.code}${message ? ` (${message})` : ''}`)
+
+    if (result.code !== 0) {
+      return { ok: false, applied: false, enabled: this.prefs(), message: message || `athena exited ${result.code}` }
+    }
+
+    return { ok: true, applied: true, enabled: this.prefs(), message: message || 'Applies to new chats.' }
+  }
+}
+
+export interface InstallToolPrefsOptions extends ToolPrefsOptions {
+  ipcMain: Pick<IpcMain, 'handle'>
+}
+
+export function installAthenaToolPrefs(options: InstallToolPrefsOptions): AthenaToolPrefs {
+  const prefs = new AthenaToolPrefs(options)
+  options.ipcMain.handle(TOOL_PREFS_CHANNELS.get, () => prefs.prefs())
+  options.ipcMain.handle(TOOL_PREFS_CHANNELS.set, (_event, request: unknown) => {
+    const { id, on } = isRecord(request) ? request : {}
+
+    return prefs.set(id, on)
+  })
+  const cli = prefs.cli()
+  options.log(`[athena] tool prefs: ${prefs.file}; athena CLI ${cli ?? 'not found (toggles write the file only)'}`)
+
+  return prefs
+}

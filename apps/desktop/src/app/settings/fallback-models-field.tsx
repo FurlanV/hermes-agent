@@ -2,13 +2,14 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
+import { modelPickerProviders } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getGlobalModelOptions } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { Plus, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { $customModels, withCustomModels } from '@/store/custom-models'
+import { $customModels } from '@/store/custom-models'
 
 import { CONTROL_TEXT } from './constants'
 import { ModelSelect } from './model-select'
@@ -86,7 +87,7 @@ export function FallbackModelsField({
 
   const customModels = useStore($customModels)
 
-  const providers = withCustomModels(
+  const providers = modelPickerProviders(
     (modelOptions.data?.providers ?? []).filter(provider => provider.slug),
     customModels
   )

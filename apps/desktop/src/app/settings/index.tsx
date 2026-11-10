@@ -2,6 +2,9 @@ import { useStore } from '@nanostores/react'
 import { type ComponentType, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router'
 
+import { useFeatureEntry, useFeatureFilter } from '@/athena/managed/features'
+import { filterSettingsNav } from '@/athena/managed/settings-entries'
+import { useSettingsRouteGuard } from '@/athena/managed/settings-route-guard'
 import { codiconIcon } from '@/components/ui/codicon'
 import { KbdCombo } from '@/components/ui/kbd'
 import { Tip } from '@/components/ui/tooltip'
@@ -167,8 +170,10 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
   const [providerView, setProviderView] = useRouteEnumParam<ProviderView>('pview', PROVIDER_VIEWS, 'accounts')
   const [keysView] = useRouteEnumParam<KeysView>('kview', KEYS_VIEWS, 'tools')
   const [billingView] = useRouteEnumParam<BillingSubView>('bview', BILLING_VIEWS, 'overview')
-  const billingState = useBillingState()
-  const subscriptionState = useSubscriptionState()
+  // Athena (F02 slice 18): Billing (S77) is not in the Athena variant, so opening Settings asks Nous nothing.
+  const billingAllowed = useFeatureEntry('settings:billing')
+  const billingState = useBillingState(billingAllowed)
+  const subscriptionState = useSubscriptionState(billingAllowed)
   const billingPresentation = deriveBillingView(billingState.data, subscriptionState.data)
   const canViewPlans = billingPresentation.status === 'normal' && Boolean(billingPresentation.plan?.action)
 
@@ -253,7 +258,9 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
     }
   }, [activeView, setActiveView, webAccessAvailable])
 
-  const navGroups: OverlayNavGroup[] = useMemo(
+  const featureFilter = useFeatureFilter()
+
+  const registeredNavGroups: OverlayNavGroup[] = useMemo(
     () =>
       (
         [
@@ -441,7 +448,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
         ] as OverlayNavGroup[]
       ).map(group => {
         const view = group.id as SettingsViewId
-        const children = settingsSubpages(view)
+        const children = settingsSubpages(view, featureFilter)
 
         return children.length
           ? {
@@ -460,6 +467,7 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
       activeView,
       billingView,
       canViewPlans,
+      featureFilter,
       keysView,
       plugins,
       providerView,
@@ -473,6 +481,18 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
       openSubView
     ]
   )
+
+  const navGroups = useMemo(
+    () => filterSettingsNav(registeredNavGroups, featureFilter),
+    [featureFilter, registeredNavGroups]
+  )
+
+  const openSettingsHome = useCallback(
+    () => navigate({ hash, pathname, search: '' }, { replace: true }),
+    [hash, navigate, pathname]
+  )
+
+  useSettingsRouteGuard({ filter: featureFilter, navGroups, openHome: openSettingsHome, search })
 
   const activeGroup = navGroups.find(group => group.active)
   const activeChild = activeGroup?.children?.find(child => child.active)
@@ -531,32 +551,38 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
 
   const navFooter = (
     <>
-      <Tip label={t.settings.exportConfig}>
-        <OverlayIconButton onClick={() => void exportConfig()}>
-          <Download />
-        </OverlayIconButton>
-      </Tip>
-      <Tip label={t.settings.importConfig}>
-        <OverlayIconButton
-          onClick={() => {
-            triggerHaptic('open')
-            importInputRef.current?.click()
-          }}
-        >
-          <Upload />
-        </OverlayIconButton>
-      </Tip>
-      <Tip label={t.settings.resetToDefaults}>
-        <OverlayIconButton
-          className="hover:text-destructive"
-          onClick={() => {
-            triggerHaptic('warning')
-            void resetConfig()
-          }}
-        >
-          <RefreshCw />
-        </OverlayIconButton>
-      </Tip>
+      {featureFilter('settings-control:export-config') && (
+        <Tip label={t.settings.exportConfig}>
+          <OverlayIconButton onClick={() => void exportConfig()}>
+            <Download />
+          </OverlayIconButton>
+        </Tip>
+      )}
+      {featureFilter('settings-control:import-config') && (
+        <Tip label={t.settings.importConfig}>
+          <OverlayIconButton
+            onClick={() => {
+              triggerHaptic('open')
+              importInputRef.current?.click()
+            }}
+          >
+            <Upload />
+          </OverlayIconButton>
+        </Tip>
+      )}
+      {featureFilter('settings-control:reset-config') && (
+        <Tip label={t.settings.resetToDefaults}>
+          <OverlayIconButton
+            className="hover:text-destructive"
+            onClick={() => {
+              triggerHaptic('warning')
+              void resetConfig()
+            }}
+          >
+            <RefreshCw />
+          </OverlayIconButton>
+        </Tip>
+      )}
     </>
   )
 

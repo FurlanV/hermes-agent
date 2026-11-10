@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
 import { useDebounced } from '@/app/hooks/use-debounced'
+import { FeatureGate } from '@/athena/managed/feature-gate'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { SearchField } from '@/components/ui/search-field'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -652,7 +653,9 @@ export function AppearanceSettings({ subpage }: AppearanceSettingsProps = {}) {
                         })}
                       </div>
                     )}
-                    <MarketplaceThemeResults installs={installs} onInstalled={name => setTheme(name)} query={query} />
+                    <FeatureGate entry="settings-control:marketplace-themes">
+                      <MarketplaceThemeResults installs={installs} onInstalled={name => setTheme(name)} query={query} />
+                    </FeatureGate>
                   </div>
                   {showProfileNote && (
                     <p className="mt-3 text-[length:var(--conversation-caption-font-size)] leading-(--conversation-caption-line-height) text-(--ui-text-tertiary)">

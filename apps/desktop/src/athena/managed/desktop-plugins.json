@@ -1,0 +1,10 @@
+{
+  "about": "Desktop plugins the Athena build loads from $HERMES_HOME/desktop-plugins while managed.tools is enforce or report (slice 29). Each entry is the plugin id its default export declares and the sha256 of its plugin.js. Regenerate with `node apps/desktop/src/athena/scripts/desktop-plugin-hash.mjs --write` (builds athena's client/desktop-plugins/athena in a temporary copy); `--check` fails when this file is stale.",
+  "plugins": [
+    {
+      "id": "athena",
+      "source": "athena client/desktop-plugins/athena (npm run build → dist/athena/plugin.js)",
+      "sha256": ["b3ead015ff7975cb1f892be9c1c74c6f0c8c5a810149a305529996c224b272ff"]
+    }
+  ]
+}

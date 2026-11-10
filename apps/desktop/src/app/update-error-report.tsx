@@ -6,6 +6,7 @@
 import { useStore } from '@nanostores/react'
 import { type SyntheticEvent, useEffect, useRef } from 'react'
 
+import { useFeatureEntry } from '@/athena/managed/features'
 import { DiagnosticsLinkRow } from '@/components/send-diagnostics-dialog'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -29,6 +30,8 @@ export function UpdateErrorReport({ log, message }: { log: readonly string[]; me
   const logRef = useRef<HTMLPreElement>(null)
   const reportRef = useRef<HTMLDivElement>(null)
   const phase = report?.phase
+  // Athena (F02 slice 18): no diagnostics upload to Nous (S117); the output stays copyable.
+  const diagnosticsAllowed = useFeatureEntry('dialog:send-diagnostics')
 
   // The inline report belongs to the failure this box shows: retry, close or a
   // target switch unmounts the box and drops it, so it never resurfaces later.
@@ -84,7 +87,7 @@ export function UpdateErrorReport({ log, message }: { log: readonly string[]; me
         </details>
       ) : null}
 
-      {!report ? (
+      {!diagnosticsAllowed ? null : !report ? (
         <Button onClick={startReport} variant="text">
           {t.errors.sendDiagnostics}
         </Button>

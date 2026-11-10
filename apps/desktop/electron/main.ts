@@ -1,3 +1,6 @@
+// Athena (F02 slice 17): first, so every later ipcMain registration of a policy channel is tracked.
+import './athena/ipc-guard-install'
+
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
 
 import type { GatewayEndpoint } from './local-gateway'
@@ -65,6 +68,16 @@ import {
 } from './app-version'
 import { runAppInstallerChecker } from './appinstaller-checker'
 import { installApplicationMenuAfterFirstWindow } from './application-menu-startup'
+import { installAthenaClientConfig } from './athena/client-config-ipc'
+import { onMainPoliciesChanged } from './athena/main-policy'
+import {
+  ATHENA_POLICY_REFUSED,
+  deepLinkAllowed,
+  devToolsAllowed,
+  guardedIpcMain,
+  refuseRestRequest
+} from './athena/policy-seams'
+import { installAthenaToolPrefs } from './athena/tool-prefs'
 import { stopBackendChild as stopBackendChildImpl, waitForBackendExit } from './backend-child'
 import {
   execText,
@@ -6390,6 +6403,8 @@ function buildApplicationMenu() {
       {
         label: 'Toggle Developer Tools',
         accelerator: process.platform === 'darwin' ? 'Alt+Cmd+I' : 'Ctrl+Shift+I',
+        // Athena (F02 slice 17): absent while the policy refuses DevTools (S65); rebuilt on change.
+        visible: devToolsAllowed(),
         click: (_menuItem, browserWindow) => toggleDevTools(browserWindow || mainWindow)
       },
       { type: 'separator' },
@@ -6438,6 +6453,14 @@ function toggleDevTools(window) {
   // increase versus a much better support story when WS connection or
   // CSP issues surface in the field.
   const { webContents } = window
+
+  // Athena (F02 slice 17): DevTools stay shut while the policy refuses them (S65 off).
+  if (!devToolsAllowed()) {
+    webContents.closeDevTools()
+    rememberLog('[athena] devtools refused by policy')
+
+    return
+  }
 
   if (webContents.isDevToolsOpened()) {
     webContents.closeDevTools()
@@ -11876,6 +11899,12 @@ async function startHermes(requestedProfile?: string, inheritsPrimary = false) {
 function wireCommonWindowHandlers(win, { zoom = true }: { zoom?: boolean } = {}) {
   installPreviewShortcut(win)
   installDevToolsShortcut(win)
+  // Athena (F02 slice 17): DevTools opened by any other route close again while the policy refuses them.
+  win.webContents.on('devtools-opened', () => {
+    if (!devToolsAllowed()) {
+      win.webContents.closeDevTools()
+    }
+  })
   installBrowserNavGestures(win)
 
   // Claim Ctrl/Cmd+F in the main process — on Pop!_OS / GNOME-based Linux
@@ -15212,29 +15241,46 @@ ipcMain.handle('hermes:connection-config:oauth-logout', async (_event, rawUrl) =
   return { ok: true, connected }
 })
 
+// Athena (F02): the verified client config for this Profile, loaded before any
+// guarded channel registers and pushed to every window on change.
+installAthenaClientConfig({
+  allWindows: () => BrowserWindow.getAllWindows(),
+  athenaDir: path.join(HERMES_HOME, 'athena'),
+  installStamp: INSTALL_STAMP,
+  ipcMain,
+  log: rememberLog
+})
+
+// Athena (F02 slice 28): the Capabilities page's tool switches run `athena config tool` (tool-prefs.json + apply).
+installAthenaToolPrefs({ hermesHome: HERMES_HOME, ipcMain, log: rememberLog })
+
+// Privileged channels (Hermes Cloud, updates) register through the Athena
+// policy seam: a channel the policy refuses is never registered.
+const athenaIpc = guardedIpcMain(ipcMain)
+
 // --- Hermes Cloud (cloud-auto-discovery Phase 3) ---
 // One portal login in the OAuth partition powers both discovery and the silent
 // per-agent cascade. See the discovery/cascade helpers above.
-ipcMain.handle('hermes:cloud:status', async () => ({
+athenaIpc.handle('hermes:cloud:status', async () => ({
   portalBaseUrl: resolvePortalBaseUrl(),
   signedIn: await hasLivePortalSession()
 }))
-ipcMain.handle('hermes:cloud:login', async () => {
+athenaIpc.handle('hermes:cloud:login', async () => {
   await openPortalLoginWindow()
 
   return { ok: true, signedIn: await hasLivePortalSession() }
 })
-ipcMain.handle('hermes:cloud:logout', async () => {
+athenaIpc.handle('hermes:cloud:logout', async () => {
   await clearOauthSession(resolvePortalBaseUrl())
 
   return { ok: true, signedIn: await hasLivePortalSession() }
 })
-ipcMain.handle('hermes:cloud:discover', async (_event, org) => {
+athenaIpc.handle('hermes:cloud:discover', async (_event, org) => {
   // Returns { agents } or { needsOrgSelection: true, orgs }. `org` (optional)
   // scopes discovery to a chosen org for multi-org users.
   return discoverCloudAgents(typeof org === 'string' && org ? org : undefined)
 })
-ipcMain.handle('hermes:cloud:agent-sign-in', async (_event, dashboardUrl) => {
+athenaIpc.handle('hermes:cloud:agent-sign-in', async (_event, dashboardUrl) => {
   // Silent per-agent sign-in via the shared portal session. Returns the agent's
   // gateway baseUrl + whether its session cookie landed; the renderer then
   // saves a cloud-mode connection pointed at this dashboardUrl.
@@ -15936,6 +15982,14 @@ function formatApiRequestFailure(
 }
 
 ipcMain.handle('hermes:api', async (_event, request) => {
+  const refusal = refuseRestRequest(request)
+
+  if (refusal) {
+    rememberLog(`[athena] ${refusal[ATHENA_POLICY_REFUSED]}`)
+
+    return refusal
+  }
+
   // Hold the deletion gate for BOTH profile deletes and renames: a concurrent
   // renderer reconnect entering ensureBackend() mid-mutation would otherwise
   // respawn the old-name backend and recreate its HERMES_HOME (#45474).
@@ -16899,7 +16953,7 @@ const terminalIpc = registerTerminalIpc({
 
 const disposeTerminalSession = terminalIpc.disposeTerminalSession
 
-ipcMain.handle(
+athenaIpc.handle(
   'hermes:updates:check',
   async (_event: Electron.IpcMainInvokeEvent, opts?: { force?: boolean }): Promise<UpdaterStatusWire> =>
     checkUpdates({ force: Boolean(opts?.force) }).catch((error: Error): UpdaterStatusWire => ({
@@ -16911,7 +16965,7 @@ ipcMain.handle(
     }))
 )
 
-ipcMain.handle('hermes:updates:apply', async (_event, payload) =>
+athenaIpc.handle('hermes:updates:apply', async (_event, payload) =>
   applyUpdates().catch(error => ({
     ok: false,
     error: 'apply-failed',
@@ -16920,7 +16974,7 @@ ipcMain.handle('hermes:updates:apply', async (_event, payload) =>
 )
 
 // About ▸ Updates channel selector; source checkouts only (packages bake their channel).
-ipcMain.handle('hermes:updates:channel:set', async (_event, name: unknown): Promise<UpdaterStatusWire> => {
+athenaIpc.handle('hermes:updates:channel:set', async (_event, name: unknown): Promise<UpdaterStatusWire> => {
   assertSourceUpdateChannel(INSTALL_STAMP)
 
   return resolveCheckoutUpdateStrategy().check({ force: true, setChannel: sourceChannelName(name) })
@@ -17400,6 +17454,12 @@ function handleDeepLink(url) {
   })
   const payload = { kind, name, params }
 
+  if (!deepLinkAllowed(payload)) {
+    rememberLog(`[deeplink] refused by policy: ${kind}/${name}`)
+
+    return
+  }
+
   // Route the Windows Copilot hardware key (registered by the MSIX
   // copilotkeyprovider fragment). quick-entry is the eventual summon; for
   // now it falls through to the renderer's deep-link listener. stop and
@@ -17697,6 +17757,12 @@ app.whenReady().then(() => {
     buildMenu: buildApplicationMenu,
     setApplicationMenu: menu => Menu.setApplicationMenu(menu),
     createWindow
+  })
+  // Athena (F02 slice 17): a policy change rebuilds the menu, so its DevTools item follows S65.
+  onMainPoliciesChanged(() => {
+    if (Menu.getApplicationMenu()) {
+      Menu.setApplicationMenu(buildApplicationMenu())
+    }
   })
 
   // Win/Linux cold start: the launching hermes:// URL is in our own argv.

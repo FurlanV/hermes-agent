@@ -1,3 +1,5 @@
+import type { FeatureFilter } from '@/athena/managed/features'
+import { allowedSettingsSubpages } from '@/athena/managed/settings-entries'
 import {
   Archive,
   Bell,
@@ -95,7 +97,11 @@ export function settingsSubpageIcon(page: SettingsSubpage, fallback: IconCompone
   return SUBPAGE_ICONS[page.labelKey] ?? fallback
 }
 
-export function settingsSubpages(view: SettingsView): readonly SettingsSubpage[] {
+export function settingsSubpages(view: SettingsView, filter?: FeatureFilter): readonly SettingsSubpage[] {
+  return allowedSettingsSubpages(view, registeredSettingsSubpages(view), filter)
+}
+
+function registeredSettingsSubpages(view: SettingsView): readonly SettingsSubpage[] {
   if (view === 'config:appearance') {
     return APPEARANCE_SUBPAGES
   }

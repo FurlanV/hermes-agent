@@ -6,6 +6,7 @@ import { SessionDraftTitle } from '@/app/chat/session-draft-title'
 import { SessionStatusDot } from '@/app/chat/session-status-dot'
 import { PALETTE_AREA, type PaletteContribution, paletteToggle } from '@/app/command-palette/contrib'
 import { type StatusbarItem } from '@/app/shell/statusbar-controls'
+import { FeatureGate } from '@/athena/managed/feature-gate'
 import { InlinePreviewDirective } from '@/components/assistant-ui/inline-preview-directive'
 import { IdleMount } from '@/components/idle-mount'
 import { $layoutEditMode, toggleLayoutEditMode } from '@/components/pane-shell/edit-mode'
@@ -842,7 +843,10 @@ export function ContribController() {
           {/* Notices registered through `registerButterbar` / `useButterbar`;
               renders nothing while none are registered. */}
           <Butterbar />
-          <TermsButterbar />
+          {/* Athena (F02 slice 18): the Nous free-tier terms bar (S110) is not in the Athena variant. */}
+          <FeatureGate entry="dialog:portal-terms">
+            <TermsButterbar />
+          </FeatureGate>
           {statusbarVisible && <WiredPane part="statusbar" />}
         </div>
       </ContribWiring>

@@ -1,6 +1,8 @@
 import { useStore } from '@nanostores/react'
 import { useContext, useMemo, useState } from 'react'
 
+import { isKeybindAllowed } from '@/athena/managed/entry-points'
+import { useFeatureFilter } from '@/athena/managed/features'
 import { Button } from '@/components/ui/button'
 import { Codicon } from '@/components/ui/codicon'
 import { DisclosureCaret } from '@/components/ui/disclosure-caret'
@@ -73,7 +75,9 @@ function ShortcutSettings({ includeScreenshot }: { includeScreenshot: boolean })
   // snapshot feeds the list: under React Compiler an independently called
   // allKeybindActions() stays memoized across that registration.
   const contributions = useContributions(KEYBINDS_AREA)
-  const actionList = allKeybindActions(contributions)
+  const featureFilter = useFeatureFilter()
+  // Athena (F02): refused actions drop out of the map (their chords do nothing).
+  const actionList = allKeybindActions(contributions).filter(action => isKeybindAllowed(action.id, featureFilter))
   const [query, setQuery] = useState('')
 
   const openCombo = bindings[KEYBIND_PANEL_ACTION]?.[0]

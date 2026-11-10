@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Settings default-model select rows > provider rows and model rows (custom ids included) are unchanged 1`] = `
+[
+  "gpt-6-sol",
+  "gpt-6-luna",
+  "gpt-6-custom-preview",
+  "Custom model…",
+]
+`;

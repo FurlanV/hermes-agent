@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 
 import { useGatewayRequest } from '@/app/gateway/hooks/use-gateway-request'
+import { allowedEntries, useFeatureFilter } from '@/athena/managed/features'
+import { allowedSettingsSearchEntries } from '@/athena/managed/settings-entries'
 import { $pluginRecords } from '@/contrib/plugins-store'
 import { getEnvVars, getHermesConfigSchema } from '@/hermes'
 import { useI18n } from '@/i18n'
@@ -17,7 +19,7 @@ import { SECTIONS } from './constants'
 import { OTHER_SUBPAGES } from './other-subpages'
 import { settingSearchTargets } from './settings-manifest'
 import { buildConfigSearchEntries, buildCredentialSearchEntries, type SettingsSearchEntry } from './settings-search'
-import { settingsSubpages } from './subpages'
+import { settingsSubpageForTarget, settingsSubpages } from './subpages'
 import type { SettingsView } from './types'
 
 /** An installed plugin row, deep-linkable as `/capabilities?tab=plugins&plugin=<id>`. */
@@ -39,6 +41,7 @@ export interface PluginSearchEntry {
  */
 export function useSettingsSearchCatalog(enabled: boolean) {
   const { t } = useI18n()
+  const featureFilter = useFeatureFilter()
   const configQuery = useHermesConfigRecord()
 
   const schemaQuery = useQuery({
@@ -174,11 +177,14 @@ export function useSettingsSearchCatalog(enabled: boolean) {
     )
     .filter(entry => !settingLabels.has(`${entry.context}\u0000${entry.label}`))
 
+  const allowed = (entries: SettingsSearchEntry[]) =>
+    allowedSettingsSearchEntries(entries, settingsSubpageForTarget, featureFilter)
+
   return {
-    subpageEntries,
-    settingEntries,
-    configEntries,
-    credentialEntries,
-    pluginEntries
+    subpageEntries: allowed(subpageEntries),
+    settingEntries: allowed(settingEntries),
+    configEntries: allowed(configEntries),
+    credentialEntries: allowed(credentialEntries),
+    pluginEntries: allowedEntries(pluginEntries, entry => featureFilter(entry.id))
   }
 }

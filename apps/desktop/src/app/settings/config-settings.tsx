@@ -4,6 +4,7 @@ import type { ChangeEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
+import { FeatureGate } from '@/athena/managed/feature-gate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -502,7 +503,9 @@ function ConfigSettingsInner({
             onChange={setAlwaysExternalLinks}
           />
           <QuickEntrySettings />
-          <OnboardingSettings />
+          <FeatureGate entry="settings-control:rerun-onboarding">
+            <OnboardingSettings />
+          </FeatureGate>
         </>
       )}
       {/* Device-local attach/preview byte cap (main-process IPC guard). Chat is
@@ -511,7 +514,11 @@ function ConfigSettingsInner({
       {showAttachments ? <AttachmentSizeSetting /> : null}
       {/* Shared metrics are two coupled opt-ins with a consent side effect, so they
           go through their own RPC rather than the generic field autosave. */}
-      {showSharedMetrics ? <SharedMetricsSettings /> : null}
+      {showSharedMetrics ? (
+        <FeatureGate entry="settings-control:shared-metrics">
+          <SharedMetricsSettings />
+        </FeatureGate>
+      ) : null}
       <MemoryLayersSlot
         builtin={{
           memory: getNested(config, 'memory.memory_enabled') !== false,

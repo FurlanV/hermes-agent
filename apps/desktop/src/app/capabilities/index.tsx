@@ -3,6 +3,7 @@ import './ui/page.css'
 import type * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { AthenaCatalogPage, useCuratedCapabilities } from '@/athena/catalog/catalog-page'
 import { PageLoader } from '@/components/page-loader'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n'
@@ -58,7 +59,7 @@ interface CapabilitiesViewProps extends React.ComponentProps<'section'> {
  *  per tab. Each tab owns its list, detail pane and writes; the two installed
  *  lists are fetched here because the tab pills count them for the tab the user
  *  is NOT on. */
-export function CapabilitiesView({
+function StockCapabilitiesView({
   embedded = false,
   fixedConnection,
   fixedProfile,
@@ -187,6 +188,11 @@ export function CapabilitiesView({
       </div>
     </PageSearchShell>
   )
+}
+
+// Athena (F02 slice 28): while `managed.tools` is enforce or report, the curated catalog replaces the tabs.
+export function CapabilitiesView(props: CapabilitiesViewProps) {
+  return useCuratedCapabilities() ? <AthenaCatalogPage /> : <StockCapabilitiesView {...props} />
 }
 
 // Feature-detection flag for plugins (Bot Mode): TRUE means this build's

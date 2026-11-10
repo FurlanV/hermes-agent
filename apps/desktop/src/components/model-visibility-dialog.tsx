@@ -3,6 +3,7 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
+import { modelPickerCustomCandidate, modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,11 +22,9 @@ import { confirm } from '@/store/confirm'
 import {
   $customModels,
   addCustomModel,
-  customModelCandidate,
   isCustomModel,
   removeCustomModel,
-  resetModelVisibilityKeepingCustoms,
-  withCustomModels
+  resetModelVisibilityKeepingCustoms
 } from '@/store/custom-models'
 import {
   $visibleModels,
@@ -82,6 +81,7 @@ export function ModelVisibilityDialog({
   const stored = useStore($visibleModels)
   const collapsedProviders = useStore($collapsedProviders)
   const customModels = useStore($customModels)
+  const modelPolicy = useModelPolicy()
 
   const modelOptions = useQuery({
     queryKey: modelOptionsQueryKey(profile, sessionId, ownerConnectionId),
@@ -92,11 +92,12 @@ export function ModelVisibilityDialog({
 
   const providers = useMemo(
     () =>
-      withCustomModels(
+      modelPickerProviders(
         (modelOptions.data?.providers ?? []).filter(provider => (provider.models ?? []).length > 0),
-        customModels
+        customModels,
+        modelPolicy
       ),
-    [modelOptions.data, customModels]
+    [modelOptions.data, customModels, modelPolicy]
   )
 
   useEffect(() => seedKnownModels(providers), [providers])
@@ -136,7 +137,7 @@ export function ModelVisibilityDialog({
     collapseModelFamilies(provider.models ?? []).some(family => matches(provider, family.id))
   )
 
-  const customSlug = hasMatches ? null : customModelCandidate(search, providers)
+  const customSlug = hasMatches ? null : modelPickerCustomCandidate(search, providers, modelPolicy)
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>

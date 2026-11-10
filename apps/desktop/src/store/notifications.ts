@@ -1,5 +1,6 @@
 import { atom } from 'nanostores'
 
+import { allowedNotificationAction, entryAction, routeAction } from '@/athena/managed/entry-points'
 import { translateNow } from '@/i18n'
 import { isOutOfSyncRpcParams } from '@/lib/gateway-rpc'
 import { servedByHermesCloud } from '@/lib/hermes-cloud-host'
@@ -106,10 +107,11 @@ const MAINTENANCE_ROUTE = '/command-center?section=maintenance'
 
 /** One-click recoveries reused by several rules. */
 export const RECOVERY_ACTIONS = {
-  openUpdates: (): NotificationAction => ({
-    label: translateNow('notifications.updateHermes'),
-    onClick: () => void import('@/store/updates').then(({ openUpdatesWindow }) => openUpdatesWindow())
-  }),
+  openUpdates: (): NotificationAction =>
+    entryAction('command-center:update-hermes', {
+      label: translateNow('notifications.updateHermes'),
+      onClick: () => void import('@/store/updates').then(({ openUpdatesWindow }) => openUpdatesWindow())
+    }),
   reload: (): NotificationAction => ({
     label: translateNow('commandCenter.reloadWindow'),
     onClick: () => window.location.reload()
@@ -118,18 +120,21 @@ export const RECOVERY_ACTIONS = {
     label: translateNow('notifications.actions.restartHermes'),
     onClick: requestBackendRestart
   }),
-  openKeys: (envKey: string): NotificationAction => ({
-    label: translateNow('notifications.actions.openKeys'),
-    onClick: () => requestRoute(KEYS_ROUTE(envKey))
-  }),
-  openGateways: (): NotificationAction => ({
-    label: translateNow('notifications.actions.openGateways'),
-    onClick: () => requestRoute(GATEWAY_SETTINGS_ROUTE)
-  }),
-  openMaintenance: (): NotificationAction => ({
-    label: translateNow('notifications.actions.openMaintenance'),
-    onClick: () => requestRoute(MAINTENANCE_ROUTE)
-  })
+  openKeys: (envKey: string): NotificationAction =>
+    routeAction(KEYS_ROUTE(envKey), {
+      label: translateNow('notifications.actions.openKeys'),
+      onClick: () => requestRoute(KEYS_ROUTE(envKey))
+    }),
+  openGateways: (): NotificationAction =>
+    routeAction(GATEWAY_SETTINGS_ROUTE, {
+      label: translateNow('notifications.actions.openGateways'),
+      onClick: () => requestRoute(GATEWAY_SETTINGS_ROUTE)
+    }),
+  openMaintenance: (): NotificationAction =>
+    routeAction(MAINTENANCE_ROUTE, {
+      label: translateNow('notifications.actions.openMaintenance'),
+      onClick: () => requestRoute(MAINTENANCE_ROUTE)
+    })
 }
 
 /** Structured storage failure codes the backend puts in RPC/HTTP error data
@@ -331,8 +336,9 @@ function showNotification(input: NotificationInput, errorCategory: ErrorToastCat
     title: input.title,
     message: input.message,
     detail: input.detail,
-    action: input.action,
-    secondaryAction: input.secondaryAction,
+    // Athena (F02): a button into a refused feature is left off the toast.
+    action: allowedNotificationAction(input.action),
+    secondaryAction: allowedNotificationAction(input.secondaryAction),
     onDismiss: input.onDismiss,
     createdAt: Date.now(),
     placement: input.placement ?? defaultPlacement(kind, input.action),

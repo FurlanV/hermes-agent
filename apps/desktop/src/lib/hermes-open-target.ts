@@ -12,6 +12,8 @@
  *  - `/my-page?item=x` / `#/my-page?item=x` (hash-router paths)
  */
 
+import { allowedOpenPath } from '@/athena/managed/entry-points'
+
 export type HermesOpenTarget = string | { href: string } | { path: string; params?: Record<string, string> }
 
 const HERMES_PROTOCOL = 'hermes:'
@@ -122,6 +124,11 @@ export function normalizeHermesOpenString(raw: string): string | null {
 
 /** Resolve any supported activate/open target to a hash-router path, or null. */
 export function resolveHermesOpenPath(target: HermesOpenTarget | null | undefined): string | null {
+  // Athena (F02): a path to a refused feature resolves to nothing (logged), like main's deep-link refusal.
+  return allowedOpenPath(resolveOpenPath(target))
+}
+
+function resolveOpenPath(target: HermesOpenTarget | null | undefined): string | null {
   if (target == null) {
     return null
   }

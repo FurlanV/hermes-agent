@@ -8,6 +8,7 @@ import path from 'node:path'
 
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 
+import { guardedIpcMain } from './athena/policy-seams'
 import { platformDefaultHermesHome } from './data-paths'
 import { installDesktopPluginFromGit, probePluginRepo } from './desktop-plugin-install'
 import { removeDesktopPlugin } from './desktop-plugin-remove'
@@ -151,6 +152,9 @@ export function registerFsIpc({
     return root
   }
 
+  // Plugin install channels register through the Athena policy seam.
+  const athenaIpc = guardedIpcMain(ipcMain)
+
   ipcMain.handle('hermes:fs:desktopPluginsRoot', async () => desktopPluginsRoot())
 
   // Re-run the unified-half reconcile on demand (after an agent-plugin install /
@@ -172,7 +176,7 @@ export function registerFsIpc({
   // one, not the one whose agent.log holds the failure (#119080).
   ipcMain.handle('hermes:fs:logsRoot', async (_event, profile) => localPluginsRoot('logs', profile))
 
-  ipcMain.handle('hermes:plugin:probe', async (_event, payload) => {
+  athenaIpc.handle('hermes:plugin:probe', async (_event, payload) => {
     const identifier = String(payload?.identifier || payload?.repo || '').trim()
 
     if (!identifier) {
@@ -182,7 +186,7 @@ export function registerFsIpc({
     return probePluginRepo(resolveGitBinary(), identifier)
   })
 
-  ipcMain.handle('hermes:plugin:installDesktop', async (_event, payload) => {
+  athenaIpc.handle('hermes:plugin:installDesktop', async (_event, payload) => {
     const identifier = String(payload?.identifier || payload?.repo || '').trim()
 
     if (!identifier) {

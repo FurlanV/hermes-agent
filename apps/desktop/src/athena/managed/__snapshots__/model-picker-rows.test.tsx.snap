@@ -1,0 +1,19 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`model picker dialog rows > a typed custom id is offered as before 1`] = `
+[
+  "lab/typed-model-xAthena gateway",
+  "lab/typed-model-xAnthropic",
+]
+`;
+
+exports[`model picker dialog rows > catalog and remembered custom ids are unchanged 1`] = `
+[
+  "gpt-6-sol",
+  "gpt-6-luna",
+  "gpt-6-custom-preview",
+  "claude-opus-4.8",
+  "claude-sonnet-4.8",
+  "claude-custom-lab",
+]
+`;

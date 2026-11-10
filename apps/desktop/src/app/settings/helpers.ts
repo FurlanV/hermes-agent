@@ -1,3 +1,4 @@
+import { isConfigFieldAllowed } from '@/athena/managed/settings-entries'
 import { foldPersonalityName } from '@/lib/personalities'
 import { asText, normalize } from '@/lib/text'
 import { localShowReasoning } from '@/store/reasoning-disclosure'
@@ -222,6 +223,10 @@ export function sectionFieldEntries(
     SECTIONS.map(s => [
       s.id,
       s.keys.flatMap(k => {
+        if (!isConfigFieldAllowed(s.id, k)) {
+          return []
+        }
+
         const value = getNested(config, k)
         const field = schema[k] ?? (value === undefined ? undefined : inferFieldSchema(value))
 

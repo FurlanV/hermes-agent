@@ -5,6 +5,10 @@ import { type MutableRefObject, useCallback, useRef } from 'react'
 import { mergeOlderTranscriptPage } from '@/app/chat/transcript-backfill'
 import { prepareDefaultNewSession } from '@/app/session/new-session-route'
 import { invalidateContextBreakdown } from '@/app/shell/hooks/use-context-breakdown'
+import { isSlashCommandAllowed, SLASH_NOT_AVAILABLE } from '@/athena/managed/entry-points'
+import { reasoningSlashRefusal } from '@/athena/managed/model-reasoning'
+import { sessionModel } from '@/athena/managed/model-reasoning-reset'
+import { isModelSelectable, modelNotSelectableMessage, modelSlashChoice } from '@/athena/managed/models'
 import { getProfiles } from '@/hermes'
 import type { Translations } from '@/i18n'
 import { translateNow } from '@/i18n/runtime'
@@ -1009,6 +1013,15 @@ export function useSlashCommand(deps: SlashCommandDeps) {
           }
 
           const { render: renderSlashOutput, sessionId } = resolved
+          // Athena (F02 slice 23): only the levels the session's model offers.
+          const refusal = reasoningSlashRefusal(ctx.arg, sessionModel(sessionId))
+
+          if (refusal) {
+            renderSlashOutput(refusal)
+
+            return
+          }
+
           const params = reasoningSlashParams(ctx.arg, sessionId)
 
           try {
@@ -1402,6 +1415,16 @@ export function useSlashCommand(deps: SlashCommandDeps) {
             return
           }
 
+          // The same check every model picker applies (Athena managed models).
+          const choice = modelSlashChoice(ctx.arg)
+
+          if (choice && !isModelSelectable(choice)) {
+            const resolved = await withSlashOutput(ctx)
+            resolved?.render(modelNotSelectableMessage(choice.model))
+
+            return
+          }
+
           // Power users can still type `/model <name>` — run it on the backend.
           await runExec(ctx)
 
@@ -1478,7 +1501,16 @@ export function useSlashCommand(deps: SlashCommandDeps) {
         }
 
         const ctx: SlashActionCtx = { arg, command, name, recordInput, sessionHint }
-        const surface = resolveDesktopCommand(`/${name}`)?.surface
+        const resolvedCommand = resolveDesktopCommand(`/${name}`)
+        const surface = resolvedCommand?.surface
+
+        // Athena (F02): a command the feature policy refuses (`slash:<name>`) answers and runs nothing.
+        if (!isSlashCommandAllowed([name, resolvedCommand?.name])) {
+          const resolved = await withSlashOutput(ctx)
+          resolved?.render(SLASH_NOT_AVAILABLE)
+
+          return
+        }
 
         switch (surface?.kind) {
           case 'unavailable': {

@@ -1,3 +1,4 @@
+import { toolInstallAllowed } from '@/athena/managed/tool-installs'
 import { getApiRequestConnection, getApiRequestProfile, type ProfileScope } from '@/hermes'
 import { translateNow } from '@/i18n'
 
@@ -8,6 +9,11 @@ import { notify } from './notifications'
 
 /** The URL supplies only an identifier, never a destination profile or scan override. */
 export async function requestSkillInstallFromDeepLink(identifier: string): Promise<void> {
+  // Athena (F02 slice 29): no skill installs while managed.tools is enforce.
+  if (!toolInstallAllowed('ui:skill-install', identifier)) {
+    return
+  }
+
   const connectionId = getApiRequestConnection()
   const profile = getApiRequestProfile()
   const scope: ProfileScope = { connectionId, profile }

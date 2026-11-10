@@ -37,6 +37,7 @@
 
 import { atom } from 'nanostores'
 
+import { desktopPluginVerdict, onDesktopPluginModeChanged } from '@/athena/managed/desktop-plugin-gate'
 import { isReadFileErrorResult } from '@/lib/desktop-fs'
 import { installPluginSdk, sdkImportMap } from '@/sdk/runtime'
 import { notifyError } from '@/store/notifications'
@@ -390,6 +391,13 @@ export async function loadRuntimePlugin(
   installPluginSdk()
 
   try {
+    // Athena (F02 slice 29): under managed.tools enforce only the build's allowlisted sources are evaluated.
+    const athena = await desktopPluginVerdict(source, origin)
+
+    if (!athena.allowed) {
+      return null
+    }
+
     const unsupported = unsupportedImports(source)
 
     if (unsupported.length > 0) {
@@ -426,6 +434,10 @@ export async function loadRuntimePlugin(
 
     if (!plugin?.id || typeof plugin.register !== 'function') {
       throw new Error(`${origin} has no valid default HermesPlugin export`)
+    }
+
+    if (athena.id && plugin.id !== athena.id) {
+      throw new Error(`${origin} declares id "${plugin.id}", but its allowlisted hash is the "${athena.id}" plugin`)
     }
 
     // A disk/runtime copy of a plugin that now ships BUNDLED (e.g. a
@@ -1123,6 +1135,8 @@ export function watchRuntimePlugins(): void {
   }
 
   void scanDiskPlugins().then(() => $diskPluginsScanPending.set(false))
+  // Athena (F02 slice 29): a managed.tools change re-checks every plugin.js (an ignored one may load, or unload).
+  onDesktopPluginModeChanged(() => void scanDiskPlugins(true))
   void startDirWatches().then(watched => {
     if (watched) {
       return

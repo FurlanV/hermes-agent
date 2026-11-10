@@ -144,3 +144,439 @@ Keep the diff to these, plus this folder (D05 › Upstream files touched).
 | `src/components/onboarding/index.tsx` | No featured Nous row on the key form; custom-endpoint docs link → `supportUrl` |
 | `src/app/settings/constants.ts` | Hidden provider key groups filtered (Nous Portal) |
 | `src/lib/docs.ts`, `src/lib/error-surface.ts`, `src/app/chat/sidebar/section-states.tsx`, `src/components/version-details.tsx` | Docs / support / commit links → `supportUrl` |
+
+## Managed client (F02)
+
+The managed client (F02) narrows what Settings, the pickers and the backend
+calls offer, per role, from an admin-signed client config. Its code lives in
+`src/athena/managed/` (renderer) and `electron/athena/` (main), with small
+hooks into upstream files. Every hook is a no-op until a later slice installs
+a real filter.
+
+- `managed/features.ts`: the feature filter (`$featureFilter`, allow-all by
+  default). `setFeatureFilter` installs one; `useFeatureFilter` subscribes.
+- `managed/settings-entries.ts`: the stable entry ids every Settings list is
+  filtered by, and one helper per list. Ids: `settings:<view>` for a page
+  (`?tab=`), `settings:<view>/<page>` for a subpage or sub-view
+  (`?page=`, `?pview=`, `?kview=`, `?bview=`), `config-field:<key>` for a
+  config field, and the search rows' own ids (`setting:<view>.<kebab>`,
+  `credential:<KEY>`, `plugin:desktop:<id>`, `plugin:agent:<key>`). A denied
+  page takes its children, fields and search rows with it.
+- Seams that refuse, not just hide (allow-all today):
+  - REST, IPC and deep links in main: `electron/athena/policy-seams.ts`
+    (`setMainPolicySeams`). A refused REST call resolves a sentinel that
+    preload rethrows as `refused_by_policy: rest <METHOD> <path>`; a refused IPC
+    channel is never registered (`GUARDED_IPC_CHANNELS`: plugin install,
+    Hermes Cloud, updates; web access is REST only); a refused deep link is
+    dropped with a log line.
+  - JSON-RPC in the renderer: `managed/rpc-seam.ts` (`setRpcPolicy`), asked
+    first by `HermesGateway.request`, so desktop plugins' `host.request` and
+    `requestProfile` pass it too. The renderer dials the gateway's `/api/ws`
+    itself; main only mints the one-use ticket, so main never sees JSON-RPC.
+  - `managed/policy-refusal.ts`: `PolicyRefusedError` (`code`, `kind`,
+    `target`); `PolicyRefusedError.from(error)` reads a bridged REST refusal.
+- `managed/models.ts`: the one model-options selector. Every picker (composer
+  menu, picker dialog, Edit Models, the Settings model selects) lists
+  `modelPickerProviders(catalog, customModels)` (catalog plus remembered custom
+  ids) and offers `modelPickerCustomCandidate` as its typed-id row;
+  `/model <id>` asks `isModelSelectable`. The policy (`setModelPolicy`:
+  `selectable` per model, `customIds` on/off, optional `rows`) allows
+  everything without a client config. `allowsCustomModelIds` gates the
+  "Add custom model…" / "Custom model…" entries.
+  `model-selector-scope.test.ts` fails if a UI file merges custom ids itself.
+- The role's models (slice 20): `managed/model-policy.ts` follows
+  `$clientConfig` (`models` section, read by `electron/athena/model-policy.ts`,
+  shared with main). Under `managed.models: enforce` the selector's `rows` are
+  the gateway row with exactly the visible `models.allowed` ids in config
+  order (built from the config, not hermes's cached discovery; `hidden`
+  entries such as `mock` stay callable but are never listed; an
+  `athena-vllm` row only when it serves an allowed id; every other provider
+  dropped), custom ids are off, and `/model <id>` outside the list answers
+  "Not available for your role" (`/model reset` passes). Labels go through
+  `managed/model-labels.ts` into `modelDisplayParts`; notes are a
+  `modelMenu.row` badge. A pick outside the list is also refused at the
+  JSON-RPC seam (`config.set key=model`, `/model`, `session.model`) and the
+  Settings default at main's REST seam (`POST /api/model/set`), each
+  recorded (`kind: "model"`). `report`: nothing narrowed, each outside pick
+  recorded `allowed_in_report`; `off`: stock. A new `config_version` drops
+  the cached `model-options` queries.
+- A removed model (slice 21): `managed/model-switch.tsx`. On every config or
+  session change, each idle open session (the primary composer, draft
+  included, and every tile in `$sessionStates`) whose model id left the list
+  is switched once to the role default (first listed model if the default is
+  hidden) through the controller's own `selectModel` (`config.set key=model
+  … --provider custom:athena-gateway`, sent as slice 08's fenced
+  `session.mutate`). A busy session waits for its turn to end. One toast per
+  session ("GPT-6 Sol is no longer available. Switched to GPT-6 Luna.").
+  With no listed model left, or a failed switch for the active session, a
+  `composer.top` banner and a first-in-chain `composer.middleware` say "No
+  model available. Contact your administrator." and cancel sends (slash
+  commands pass).
+- Reasoning effort per model (slice 23): `managed/model-reasoning.ts`. Under
+  `managed.models: enforce`, the options content the composer reasoning pill
+  and each model row's submenu share (`ModelOptionsContent`), Settings ›
+  Model's reasoning select and `/reasoning` offer only the selected model's
+  `reasoning.levels` (`none` is the Thinking toggle, the rest the effort
+  radio). A model with only `none` (or not on the list) reads "Not available
+  for this model yet" (the pill shows Off). `models.reasoning_control: off`
+  hides the pill and the Settings row and `/reasoning` answers "Reasoning
+  effort is not available." (the display words show/hide still run).
+  `useManagedReasoningReset` (`managed/model-reasoning-reset.ts`, kept apart
+  so the menus do not load the session stores; mounted by the controller) resets, once per
+  session, model and level, any level the session's model does not offer to
+  that model's default (`applyModelPreset`, the pill's own write); an empty
+  level is checked as the profile default it inherits. `report`/`off`:
+  stock.
+
+- The signed client config (slice 14):
+  - Electron main (`electron/athena/client-config.ts`) reads
+    `$HERMES_HOME/athena/client-config.jws` (stored by `athena config sync`)
+    and re-verifies it with the bundled keys (`electron/athena/bundled-config-data.ts`, a copy of athena's `trusted-keys.json`):
+    signature, `typ: athena-client-config+jws`, `aud: athena-desktop`, the
+    schema major, `sub` = the signed-in `oid` (from `token.json`: an `oid` key,
+    else the access token's `oid` claim) and no `config_version` below the
+    highest seen. A bad file keeps the last good copy (until 7 days past its
+    expiry); no file means the bundled default
+    (the same file, a copy of `client-config.default.json`). Never the CLI's
+    unsigned `client-config.json`.
+  - It polls the inputs every second and pushes each new snapshot to every
+    window: `athena:client-config:snapshot` (sendSync, read by preload before
+    the first paint), `athena:client-config:get` (invoke),
+    `athena:client-config:changed` (push). The renderer reads them through
+    `window.athenaDesktop.clientConfig` (`electron/athena/preload-bridge.ts`)
+    into `managed/client-config.ts` (`$clientConfig`).
+  - Main writes `$HERMES_HOME/athena/desktop-status.json`
+    (`dev_overrides_active`, `config_version_seen`, `updated_at`) for the
+    Shipper's heartbeat. `config_version_seen` is also the replay floor across
+    restarts.
+  - Dev override: with `ATHENA_DEV_OVERRIDES=1` and a build that is not a
+    managed release, `ATHENA_DEV_OVERRIDES_FILE` (default
+    `~/athena-demo/athena-overrides.json`) is merged on top (dicts merge, lists
+    replace). `ATHENA_MANAGED_RELEASE=1` at build time stamps
+    `athenaManagedRelease: true` into the install stamp, and such a build
+    ignores the override. The demo build is not a managed release.
+  - Settings › About shows "Managed by SickKids · role researcher · config v118 (server)".
+  - The bundled copies must match the athena repo
+    (`shared/athena_schemas/src/athena_schemas/data/`); `client-config.test.ts`
+    compares them when a checkout is present (`ATHENA_REPO`).
+
+- The feature registry (slice 15): `electron/athena/feature-registry.ts`,
+  shared by main and the renderer (no imports). One row per line of the
+  plan's audit (S01–S124 with the a/b splits): its mark (`keep`, `disable`,
+  `remove`), its build default (keep → on, disable → off, remove → no flag,
+  always off) and the entry ids that reach it: `settings:<view>[/<page>]`,
+  `config-field:<key>`, `setting:<view>.<kebab>`, `credential:<KEY>`,
+  `settings-control:<name>` (an id ending in `*` is a prefix). An entry stays
+  while any row listing it is on; an entry no row lists is left alone.
+  - Flags: build default < bundled default config < server config < dev
+    override; main layers the documents, `featureStates(config)` reads
+    `features` (exceptions, `"on"`/`"off"`). `managed.features: report` and
+    `off` turn filtering off (remove rows stay off); see slice 19 below.
+  - `managed/feature-policy.ts` installs `featureEntryFilter(config)` as the
+    feature filter on every `$clientConfig` change (build defaults until the
+    first snapshot, and on hosts with no Electron bridge).
+  - In-page rows: `managed/hidden-rows.ts` hides refused `setting:` and
+    `credential:` rows by their DOM ids (`setting-field-…`,
+    `credential-key-…`) with one `<style>`; controls with no id use
+    `managed/feature-gate.tsx` (`<FeatureGate entry="settings-control:…">`) or
+    `useFeatureEntry`.
+  - Route guard: `managed/settings-route-guard.ts` sends a refused `?tab=`
+    (or a refused `page`, sub-view, `field`, `setting` or `key`) to the
+    Settings home with a quiet notice; a page whose default sub-view is refused
+    opens its first allowed child (Providers → Local models).
+  - Export: `electron/athena/features.json` (`{schema_version, source,
+    features: [{id, mark, default, area, title}]}`) is generated from the
+    registry; `feature-registry.test.ts` fails when it is stale
+    (`ATHENA_WRITE_FEATURES=1` rewrites it), when the athena copy
+    (`shared/athena_schemas/src/athena_schemas/data/features.json`) differs, or
+    when a mark differs from the plan's audit table (with the OKF bundle
+    present, `ATHENA_OKF`). The admin API refuses unknown ids and remove rows
+    with 422.
+  - `managed/settings-registry.test.tsx` drives every Settings row through
+    the real nav, palette, search, field lists, in-page rows and route guard.
+  - `client-config.e2e.test.ts` (opt-in, `ATHENA_E2E=1`) runs admin API →
+    `athena config sync` → main's verifier → filter on the compose stack.
+
+- Entry points outside Settings (slice 16) use the same registry and filter,
+  with more entry kinds: `keybind:<action>`, `route:<path>`,
+  `command-center:<tab|button>`, `palette:<row id>`, `statusbar:<item id>`,
+  `nav:<sidebar row>`, `slash:<command>`, `error-action:<id>`,
+  `deep-link:<kind>`, `plugin:<id>`, `pane:<id>`, `dialog:<name>`.
+  - `electron/athena/app-locations.ts` (pure, shared): the entries an in-app
+    path or an OS deep link reaches (`/settings?…` → the Settings entries,
+    `/cron` → `route:/cron`, `/command-center?section=usage` →
+    `command-center:usage`, `hermes://<kind>/…` → `deep-link:<kind>`).
+  - Main: `electron/athena/main-policy.ts` installs the deep-link seam on every
+    snapshot; `handleDeepLink` drops a refused link with
+    `[deeplink] refused by policy`.
+  - Renderer: `managed/entry-points.ts` (shortcuts, open targets, palette,
+    status bar, slash commands, error-card buttons, toast buttons) and
+    `managed/entry-point-guards.ts` (the app route guard, the sidebar rows
+    through core's `sidebarNav.prefs` area, the terminal pane, flagged bundled
+    plugins: Bot Mode stays listed but off).
+  - A refused slash command answers "Not available in Athena." and is not
+    offered in the popover; a refused shortcut drops out of Settings ›
+    Keyboard Shortcuts and its chord does nothing.
+  - `managed/entry-points.test.tsx` drives every such row off and on, the
+    deep links, toasts, slash replies, Bot Mode and the terminal, and holds a
+    tripwire on each upstream hook.
+
+- The curated catalog in Capabilities (slice 28): while `managed.tools` is
+  `enforce` or `report`, `CapabilitiesView` renders `catalog/catalog-page.tsx`
+  instead of the Skills, Plugins, Connectors and Toolsets tabs (`off`, or no
+  client config at all, keeps the stock page).
+  - `catalog/catalog.json` is a byte copy of athena's
+    `client/catalog/catalog.json`; `catalog-bundle.test.ts` compares them when
+    a checkout is present (`ATHENA_REPO`). Re-copy it after
+    `athena-build-catalog`.
+  - Cards are the config's `tools.available` (in that order, grouped by the
+    entry's `group`): title, version, summary, the "Sends:" line from
+    `permissions.data`, and a switch. `locked_on` entries and entries with
+    `user_toggle: false` say "Managed" with no switch; `status: experimental`
+    shows a badge. On/off mirrors the applier (`tool_pins.is_on`).
+  - A switch calls `window.athenaDesktop.tools.set(id, on)` →
+    `athena:tool-prefs:set` → `electron/athena/tool-prefs.ts`, which runs
+    `athena config tool <id> on|off` (writes `$HERMES_HOME/athena/tool-prefs.json`
+    and re-applies managed scope), one toggle at a time. The CLI is
+    `ATHENA_CLI` (the dev launcher sets it), else `athena` on the PATH the app
+    was launched with (captured before the login-shell PATH merge). With no CLI,
+    main writes the file in the CLI's format and the next sync applies it.
+    `athena:tool-prefs:get` reads the file.
+  - Learned skills (`catalog/learned-skills.tsx`): local skills that managed
+    scope leaves on and the catalog did not install, viewed through
+    `/api/skills/content` and deleted with the stock archive
+    (`DELETE /api/learning/node`). No add, import, URL or editor.
+  - "Ask Research IT" shows only when the config has `tools.request_url`.
+
+- Backend refusals (slice 17): a disabled feature is refused, not just
+  hidden. Rows also list their backend surfaces: `rest:<path>`,
+  `rest:<METHOD> <path>` and `rest:WRITE <path>` (any method but GET/HEAD),
+  `rpc:<method>` and `rpc:<method>/<action>` (the `config.set` key, a
+  `*.manage` action, the `command.dispatch` name), `ipc:<channel>`,
+  `env:<KEY>` (an /api/env write of a key no `credential:` entry names) and
+  `devtools:open`. `electron/athena/backend-policy.ts` (pure, shared) turns a
+  call into the entries it reaches and decides it with the same flags.
+  - Main (`main-policy.ts`, every snapshot): `hermes:api` refuses a REST call
+    reaching a refused entry; a refused IPC channel is unregistered and comes
+    back when its row turns on (`policy-seams.ts` tracks every registration of
+    an `ipc:` channel: `guardedIpcMain`, or any `ipcMain.handle`/`on` once
+    `ipc-guard-install.ts`, the first import of `main.ts`, wrapped
+    `ipcMain`); DevTools (S65) do not open from F12, the inspect chord or the
+    View menu item (hidden, rebuilt on change), and DevTools opened any other
+    way close again.
+  - Always refused, in every mode: `PUT`/`DELETE /api/env` of
+    `HERMES_MANAGED_DIR`, `HERMES_MANAGED`, `HERMES_HOME`,
+    `PYTEST_CURRENT_TEST` and any `ATHENA_*` variable (spike 05: the app's own
+    env editor could unpin the running daemon).
+  - Renderer (`managed/feature-policy.ts`): the JSON-RPC seam refuses a
+    method or action reaching a refused entry, so a desktop plugin's
+    `host.request` is refused too; `command.dispatch` / `slash.exec` also ask
+    `slash:<command>`.
+  - Config keys: `features.json` exports each row's `config_keys` (its
+    `config-field:` entries; `*` is a prefix). `athena config apply` pins the
+    keys of every row that is off in managed scope, at the Athena value, so
+    Import config, Reset to defaults and hand-made `PUT /api/config` cannot
+    change them; a row turned on is unpinned on the next sync.
+  - Desktop settings a row pins (`managed/desktop-pins.ts`): S36 holds inline
+    embeds at `off`; S87 refuses `hermes:secret-storage:set`; S65 is DevTools.
+  - Refusals are appended to `$HERMES_HOME/athena/policy-decisions.jsonl`
+    (`policy-decisions.ts`; the renderer sends its own over
+    `athena:policy-decision`).
+  - Tests: `electron/athena/backend-policy.test.ts` and
+    `managed/backend-refusal.test.tsx` send every surface of every row that is
+    off by default (off → refused, on → through, remove → refused even "on").
+
+- Removed features (slice 18): the 22 `remove` rows are left out of the Athena
+  variant. A remove row has no flag: `featureStates` keeps it off whatever the
+  server config, the dev override or `managed.features: off` say (main logs
+  `features.<id> = "on" ignored`; the admin API refuses it with 422). Its UI is
+  not mounted (pages, controls and dialogs ask their entry: stock onboarding,
+  the free-tier dialog, notice strip and terms bar, the usage-stats consent,
+  Hermes Cloud in the mode control, the diagnostics upload, "Check now",
+  Advanced Delegation's install), its IPC handlers are not registered, and its
+  REST, JSON-RPC and config keys are refused and pinned as in slice 17.
+  Opening Settings no longer reads `billing.state` / `subscription.state`.
+  - **Bringing a removed feature back** is a registry change and a build:
+    change the row's mark in `electron/athena/feature-registry.ts` from
+    `remove` to `disable` (or `keep`), regenerate `features.json`
+    (`ATHENA_WRITE_FEATURES=1`) and copy it to athena, update the plan's audit
+    table (the mark test reads it), rebuild. No upstream code was deleted.
+  - Variant-gated: `electron/athena/variant.ts` tells the Athena variant (the
+    install stamp's `brand: "athena"`, or the baked `ca.sickkids.athena` app
+    id) from a stock build. In a stock build every snapshot says
+    `variant: "stock"` and the managed client is inert: allow-all filter,
+    JSON-RPC and main seams, no pins.
+  - Startup egress: `managed/nous-egress.test.ts` classifies every main and
+    renderer source naming a Nous host and checks each fetch is shut in the
+    Athena variant; athena's `tests/hook_sequence/test_egress.py` runs the
+    gateway daemon headless with a socket audit hook through a connected chat
+    and a Settings walk and sees only loopback.
+  - Tests: `managed/removed-features.test.tsx`.
+
+- Master switches and report mode (slice 19): `managedMode(config, area)`
+  (`electron/athena/feature-registry.ts`) reads `managed.features`,
+  `managed.models` and `managed.tools` (`enforce` | `report` | `off`; missing
+  or unknown is `enforce`), for slices 20 and 27 too. For features:
+  - `enforce`: hide and refuse (slices 15-18), and record each refusal;
+  - `report`: hide and refuse nothing (remove rows stay out), pin nothing
+    (`athena config apply` pins only remove rows), and record each *use* of a
+    feature an `enforce` config would refuse as `allowed_in_report`;
+  - `off`: stock behaviour for features, nothing recorded.
+  - A list (nav, palette, search, the key map, card buttons) asks the
+    visibility filter; a use asks the decider: REST, IPC (each invoke of a
+    tracked channel), DevTools and deep links in main; JSON-RPC, slash
+    commands, shortcuts and page opens (the route guards) in the renderer
+    (`managed/feature-use.ts`, `decideUse`). Slash suggestions are a list
+    (`isSlashCommandOffered`).
+  - Records: Electron main appends one JSON line per decision to
+    `$HERMES_HOME/athena/policy-decisions.jsonl`:
+    `{"ts", "source": "desktop", "kind": "feature", "id": <row>, "action":
+    "refused"|"allowed_in_report", "mode", "surface", "target"}` (the renderer
+    sends its own over `athena:policy-decision`; main validates and stamps
+    them). The same feature decision within 5 s is written once (one use
+    crosses several surfaces; pages poll), a refusal once per 10 min (the
+    stock app polls some refused methods in the background). Past 1 MiB the
+    file starts over.
+    The athena Shipper tails it into `athena:policy_decision` events
+    (`athena_guard` writes the same file with `source: "guard"`).
+  - Tests: `electron/athena/report-mode.test.ts`, `managed/report-mode.test.tsx`;
+    `managed/settings-lists.test.tsx` checks that with every master switch
+    `off` the Settings nav and palette equal the D05 lists less the removed
+    features.
+
+- Tool install paths closed (slice 29): every way to add a skill, plugin,
+  connector or MCP server follows `managed.tools`, not a feature row, so a row
+  turned on (Bot Mode, S123) does not reopen the installs it offers.
+  `electron/athena/tool-install-policy.ts` (pure, shared) is the deny table;
+  `backendDecider(config)` asks the feature rows first, then the table, and
+  is the decider main's seams and the renderer's JSON-RPC seam use. Under
+  `enforce` a call is refused and recorded (`"kind": "tool"`, `id` the
+  table row, e.g. `install:skill-hub`); under `report` it goes through and is
+  recorded as `allowed_in_report`; `off` is stock.
+  - The table: `install:skill-hub` (`/api/skills/hub/*`, `skills.manage`
+    install/search/browse/inspect, `hermes://skill/…`), `install:skill-write`
+    (`POST /api/skills`, `PUT /api/skills/content`), `install:plugin`
+    (`plugins.manage` install/inspect/update/update_all/auto_update/remove,
+    `plugins.catalog.lookup`, `hermes://plugin/…`, `plugin-agent`, `install`),
+    `install:desktop-plugin` (`plugins.manage` install_desktop/remove_desktop,
+    IPC `hermes:plugin:probe`/`installDesktop`/`removeDesktop`,
+    `hermes://plugin-desktop/…`, any disk `plugin.js` not on the list),
+    `install:mcp-server` (`POST`/`PUT /api/mcp/servers`, `PUT
+    /api/mcp/servers/{name}/enabled`, `DELETE /api/mcp/servers/{name}`,
+    `/api/mcp/catalog/install`, `mcp.servers.add`/`remove`, `hermes://mcp/…`),
+    `install:connector` (`connectors.*`, `hermes://connections/…`),
+    `install:raw-config` (writes to `/api/config/raw`), `install:toolsets`
+    (`PUT /api/tools/toolsets/{name}`, its `post-setup`, `tools.configure`).
+    Profile import stays under S122. Left open: `PUT /api/config` (managed
+    scope pins `mcp_servers`, `plugins`, `skills` and the toolsets),
+    toggles of what is installed, `mcp.servers.test`/`set_api_key`/`oauth.*`.
+  - IPC: `ipc-guard-install.ts` also tracks the install channels, so they are
+    not registered under `enforce` and come back with the next snapshot.
+  - Renderer (`managed/tool-installs.tsx`): the plugin install dialog, the
+    MCP and skill deep-link confirmations and the plugin catalog lookup (so no
+    fetch of the Nous-hosted feed) ask `toolInstallAllowed('ui:…')`; the
+    `manage_catalog` and `manage_connections` chat cards render as a plain tool
+    row, and the setup chat's plugins and connectors beats show no card and
+    answer "nothing added", while `managed.tools` is `enforce`.
+  - Desktop plugins (`managed/desktop-plugin-gate.ts`): bundled plugins are
+    the build and never pass here. A `desktop-plugins/<folder>/plugin.js` is
+    evaluated only when the sha256 of its source is in
+    `managed/desktop-plugins.json` and it declares the id listed with it (today
+    only `athena`); anything else is ignored with `[athena] desktop plugin …
+    ignored` and the refusal recorded (`report` loads it and records the load).
+    A switch change re-checks every loaded plugin. The list is part of the
+    build: `node src/athena/scripts/desktop-plugin-hash.mjs --write` builds
+    athena's `client/desktop-plugins/athena` in a temporary copy (its own
+    `build.mjs` and pinned esbuild; the output is byte-stable) and records the
+    hash; `--check` (also run by `desktop-plugin-gate.test.ts` with a checkout)
+    fails when it is stale. A developer's rebuilt plugin loads under the dev
+    override `managed: {tools: "report"}`.
+  - Tests: `electron/athena/tool-install-policy.test.ts` (every REST, IPC and
+    deep-link install call, enforce / report / off),
+    `managed/tool-installs.test.tsx` (every JSON-RPC install call, the
+    dialogs, cards and beats), `managed/bot-mode-installs.test.tsx` (Bot Mode
+    on: its hub and MCP add are refused), `managed/desktop-plugin-gate.test.ts`
+    (a dropped-in `plugin.js` does not load; the built Athena plugin does).
+
+### Upstream files touched (F02)
+
+Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
+`managed/diff-scope.test.ts` fails when the branch touches anything else
+(paths are relative to `apps/desktop/`; the base is `feature/athena-demo`,
+override with `ATHENA_F02_BASE`).
+
+| File | Change |
+|---|---|
+| `src/app/settings/index.tsx` | Nav groups go through `filterSettingsNav`; subpage children read the live filter; the Athena route guard; Export / Import / Reset ask the filter |
+| `src/app/settings/subpages.ts` | `settingsSubpages` (every subpage registry) asks the filter |
+| `src/app/settings/helpers.ts` | `sectionFieldEntries` (config section field lists, page and search) asks per field |
+| `src/app/settings/use-settings-search.ts` | Every settings-search list goes through `allowedSettingsSearchEntries` |
+| `src/app/command-palette/index.tsx` | Settings rows (root and Settings page) ask the filter |
+| `electron/main.ts` | `hermes:api` asks the REST seam first; `handleDeepLink` asks the deep-link seam before routing; Hermes Cloud and updates channels register through `guardedIpcMain` |
+| `electron/fs-ipc.ts` | Plugin install channels (`hermes:plugin:probe`, `hermes:plugin:installDesktop`) register through `guardedIpcMain` |
+| `electron/preload.ts` | `api` turns a REST refusal sentinel into the rejection (`unwrapPolicyRefusal`) |
+| `src/api/client.ts` | `HermesGateway.request` asks the JSON-RPC seam first |
+| `src/app/shell/model-catalog-menu.tsx` | Composer model menu rows and its typed-id row come from the model-options selector |
+| `src/components/model-picker.tsx` | Model picker dialog rows and its typed-id row come from the selector |
+| `src/components/model-visibility-dialog.tsx` | Edit Models rows and its typed-id row come from the selector |
+| `src/app/settings/model-settings.tsx` | Settings model selects (default model, auxiliary, MoA) read the selector's rows; the Provider row and Speed ask the filter |
+| `src/app/settings/fallback-models-field.tsx` | Fallback model rows read the selector |
+| `src/app/settings/delegation-model-provider-field.tsx` | Subagent model rows read the selector |
+| `src/app/session/hooks/use-prompt-actions/slash.ts` | `/model <id>` asks `isModelSelectable` before running on the backend |
+| `electron/main.ts` | Installs the Athena client config (`installAthenaClientConfig`) before the guarded channels register |
+| `electron/preload.ts` | Exposes `window.athenaDesktop` (`exposeAthenaBridge`) |
+| `src/main.tsx` | Imports `athena/managed/boot` (follow main's client config) before the first render |
+| `src/app/settings/about-settings.tsx` | The "Managed by SickKids · role … · config v…" line under the version; update channel, backend update card and inline Uninstall ask the filter |
+| `scripts/write-build-stamp.mjs` | `ATHENA_MANAGED_RELEASE=1` stamps `athenaManagedRelease: true` (no dev overrides) |
+| `src/app/settings/profile-scope.tsx` | The "Applies to" chips ask the filter (S04) |
+| `src/app/settings/config-settings.tsx` | Run onboarding again (S68) and Share usage stats (S49) ask the filter |
+| `src/app/settings/appearance-settings.tsx` | Marketplace theme results (S24) ask the filter |
+| `src/app/hooks/use-keybinds.ts` | A refused shortcut (`keybind:<id>`) does nothing, from a chord or a plugin's `runAction` |
+| `src/app/settings/keybind-settings.tsx` | Refused shortcuts drop out of the key map |
+| `src/lib/hermes-open-target.ts` | `resolveHermesOpenPath` resolves a refused in-app path to nothing |
+| `src/app/shell/hooks/use-overlay-routing.ts` | The Athena app route guard (refused page → new chat) |
+| `src/app/shell/hooks/use-statusbar-items.tsx` | Status-bar items go through `allowedStatusbarItems` |
+| `src/app/command-palette/index.tsx` | Palette groups go through `allowedPaletteGroups` (row id and its shortcut) |
+| `src/app/session/hooks/use-prompt-actions/slash.ts` | A refused slash command answers "Not available in Athena." |
+| `src/lib/desktop-slash-commands.ts` | Refused slash commands are not suggested |
+| `src/components/assistant-ui/thread/assistant-message.tsx` | Error-card buttons into refused features are not offered |
+| `src/store/notifications.ts` | Recovery buttons are tagged with what they open; refused ones are left off the toast |
+| `src/app/command-center/index.tsx` | Command Center tabs and the Restart / Update buttons ask the filter |
+| `src/contrib/plugins-store.ts` | A plugin the policy refuses (`plugin:<id>`) never activates; `pluginPolicyHandle` for live switching |
+| `src/app/right-sidebar/terminal/reveal-focus.ts` | The terminal pane opens only while `pane:terminal` is allowed |
+| `src/store/profile.ts` | `requestProfileCreate` asks the filter |
+| `src/store/profile-share.ts` | `runImportProfileFlow` asks the filter |
+| `src/app/profiles/create-profile-dialog.tsx` | The create/import dialog opens only while allowed |
+| `src/store/send-diagnostics.ts` | `requestSendDiagnostics` asks the filter |
+| `src/app/capabilities/index.tsx` | `CapabilitiesView` renders the Athena catalog page while `managed.tools` is enforce or report; the stock view is `StockCapabilitiesView`, unchanged (slice 28) |
+| `electron/main.ts` | Installs the Capabilities tool switches (`installAthenaToolPrefs`, `athena:tool-prefs:get`/`set`) (slice 28) |
+| `electron/main.ts` | Imports `athena/ipc-guard-install` first (policy IPC channels follow the flags); `toggleDevTools`, `devtools-opened` and the View menu's DevTools item ask the DevTools seam; the menu is rebuilt on a policy change (slice 17) |
+| `src/app/settings/config-field.tsx` | `ConfigField` returns `athenaConfigField(…)` when it gives a control: Max agent steps (`agent.max_turns`) takes 10 to the role's `models.max_turns_limit` (`managed/max-turns-field.tsx`, slice 24) |
+| `src/app/contrib/wiring.tsx` | Stock onboarding (S109) is not decided or mounted; the usage-stats consent (S49) and free-tier sign-in (S110) dialogs are not mounted (slice 18) |
+| `src/app/contrib/controller.tsx` | The free-tier terms bar asks `dialog:portal-terms` (S110, slice 18) |
+| `src/app/chat/composer/status-stack/index.tsx` | The free-tier notice and usage-stats consent strips ask the filter (S110, S49, slice 18) |
+| `src/app/settings/gateway-settings.tsx` | Each connection-mode card asks its entry; Hermes Cloud (S84) is not offered (slice 18) |
+| `src/app/settings/delegation/routing-section.tsx` | Routing follows S13; Advanced Delegation's catalog install (S14) is not offered (slice 18) |
+| `src/components/update-status.tsx` | "Check now" asks `settings-control:updates-check-now` (S69/S105, slice 18) |
+| `src/app/update-error-report.tsx` | The diagnostics upload to Nous is not offered (S117, slice 18) |
+| `src/components/error-boundary.tsx` | The crash screen's Send diagnostics is not offered (S117, slice 18) |
+| `src/components/assistant-ui/thread/assistant-message.tsx` | The error card's Send diagnostics is not offered (S117, slice 18) |
+| `src/app/settings/index.tsx` | `billing.state` / `subscription.state` are read only while Billing is allowed (S77, slice 18) |
+| `src/lib/desktop-slash-commands.ts` | Slash suggestions ask `isSlashCommandOffered` (a list, not a use: nothing recorded) (slice 19) |
+| `src/lib/model-status-label.ts` | `modelDisplayParts` returns the admin's label for a role model ("GPT-6 Sol") on every surface (slice 20) |
+| `src/app/shell/model-catalog-menu.tsx` | "Add custom model…" is offered only while `allowsCustomModelIds` (slice 20) |
+| `src/components/model-picker.tsx` | Rows show the admin's labels; the "Add custom model…" button only while `allowsCustomModelIds` (slice 20) |
+| `src/app/settings/model-select.tsx` | Rows show the admin's labels; "Custom model…" only while `allowsCustomModelIds` (slice 20) |
+| `src/app/contrib/wiring.tsx` | The main controller mounts `useManagedModelSwitch(selectModel)`: open sessions on a removed model switch to the role default (slice 21) |
+| `src/app/contrib/wiring.tsx` | The main controller mounts `useManagedReasoningReset(requestGateway)`: a level the session's model does not offer resets to its default (slice 23) |
+| `src/app/shell/model-edit-submenu.tsx` | `ModelOptionsContent` (the reasoning pill's menu and each row's submenu) offers only the model's configured levels, or "Not available for this model yet" (slice 23) |
+| `src/app/chat/composer/reasoning-pill.tsx` | Hidden while `models.reasoning_control` is off; Off for a model that takes no reasoning (slice 23) |
+| `src/app/settings/model-settings.tsx` | The main model's reasoning select offers only its configured levels; hidden while the control is off (slice 23) |
+| `src/app/session/hooks/use-prompt-actions/slash.ts` | `/reasoning <level>` asks `reasoningSlashRefusal` (a level the model does not offer, or the control off) (slice 23) |
+| `src/contrib/runtime-loader.ts` | A disk `plugin.js` is evaluated only when `desktopPluginVerdict` allows it (allowlisted sha256, and the listed id); a `managed.tools` change re-scans (slice 29) |
+| `src/components/assistant-ui/thread/message-parts.tsx` | The `manage_catalog` and `manage_connections` cards go through `gateInstallCard` (a plain tool row under `managed.tools: enforce`) (slice 29) |
+| `src/components/assistant-ui/setup-beat/setup-beat-tool.tsx` | The plugins and connectors beats show no card and answer "nothing added" under `managed.tools: enforce` (slice 29) |
+| `src/store/plugin-install-request.ts` | `openPluginInstallRequest` asks `toolInstallAllowed('ui:plugin-install')` (slice 29) |
+| `src/store/mcp-deeplink-install.ts` | `requestMcpInstallFromDeepLink` asks `toolInstallAllowed('ui:mcp-install')` (slice 29) |
+| `src/store/skill-deeplink-install.ts` | `requestSkillInstallFromDeepLink` asks `toolInstallAllowed('ui:skill-install')` (slice 29) |
+| `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
