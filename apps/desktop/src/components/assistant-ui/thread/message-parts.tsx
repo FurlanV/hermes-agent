@@ -10,6 +10,7 @@ import { useStore } from '@nanostores/react'
 import { type ComponentProps, type FC, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSessionView } from '@/app/chat/session-view'
+import { gateInstallCard } from '@/athena/managed/tool-installs'
 import { CatalogInstallTool } from '@/components/assistant-ui/catalog-install-tool'
 import { ClarifyTool } from '@/components/assistant-ui/clarify'
 import { ConnectorExecution, ConnectorTool } from '@/components/assistant-ui/connector-tool'
@@ -131,8 +132,9 @@ const TOOL_CARDS: Record<CardToolName, FC<TimelineToolCallProps>> = {
   clarify: ClarifyToolPart,
   delegate_task: DelegateToolPart,
   image_generate: ImageGenerateTool,
-  manage_catalog: CatalogInstallTool,
-  manage_connections: ConnectionsToolPart,
+  // Athena (F02 slice 29): install cards are a plain tool row while managed.tools is enforce.
+  manage_catalog: gateInstallCard<TimelineToolCallProps>(CatalogInstallTool, ToolFallback),
+  manage_connections: gateInstallCard<TimelineToolCallProps>(ConnectionsToolPart, ToolFallback),
   set_theme: ThemeToolPart,
   setup_beat: SetupBeatToolPart
 }

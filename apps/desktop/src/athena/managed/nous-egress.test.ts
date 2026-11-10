@@ -10,9 +10,10 @@ import path from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
-import { featureDecider, ipcEntries, restEntries, rpcEntries } from '../../../electron/athena/backend-policy'
+import { ipcEntries, restEntries, rpcEntries } from '../../../electron/athena/backend-policy'
 import { BUNDLED_DEFAULT_CONFIG } from '../../../electron/athena/bundled-config-data'
 import { featureEntryFilter } from '../../../electron/athena/feature-registry'
+import { backendDecider } from '../../../electron/athena/tool-install-policy'
 
 const desktop = path.resolve(import.meta.dirname, '../../..')
 const NOUS_HOST = /nousresearch\.com|nousresearch\.github\.io/
@@ -50,8 +51,9 @@ const INVENTORY: Record<string, Use> = {
   'src/components/update-status.tsx': { kind: 'link', why: 'the installer page link' },
   'src/lib/error-surface.ts': { kind: 'link', why: 'provider console links on error cards' },
   'src/lib/plugin-catalog.ts': {
-    kind: 'fetch-other',
-    why: 'the plugin catalog, fetched only when an install dialog opens (S14 gated here; other install paths: slice 29)'
+    gate: 'rpc:plugins.catalog.lookup',
+    kind: 'fetch',
+    why: 'the plugin catalog lookup and its feed fallback, refused (with the lookup itself) under managed.tools (slice 29)'
   },
   'src/plugins/hermes-bots/skills-hub.tsx': { gate: 'plugin:hermes-bots', kind: 'fetch', why: 'Bot Mode (S123, off)' },
   'src/store/shared-metrics.ts': { gate: 'rpc:shared_metrics.status', kind: 'fetch', why: 'usage stats to Nous (S49)' }
@@ -72,7 +74,7 @@ function sources(dir: string): string[] {
 /** Whether the Athena variant (bundled default config) refuses an inventory gate. */
 function refused(gate: string): boolean {
   const filter = featureEntryFilter(BUNDLED_DEFAULT_CONFIG)
-  const decide = featureDecider(BUNDLED_DEFAULT_CONFIG)
+  const decide = backendDecider(BUNDLED_DEFAULT_CONFIG)
 
   if (gate.startsWith('rpc:')) {
     return !decide(rpcEntries(gate.slice(4)), 'rpc', gate).allowed

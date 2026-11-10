@@ -10,8 +10,9 @@
  * re-filters and re-opens them all at once.
  */
 
-import { featureDecider, rpcEntries } from '../../../electron/athena/backend-policy'
+import { rpcEntries } from '../../../electron/athena/backend-policy'
 import { featureEntryFilter } from '../../../electron/athena/feature-registry'
+import { backendDecider } from '../../../electron/athena/tool-install-policy'
 
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
 import { setFeatureDecider } from './feature-use'
@@ -36,7 +37,7 @@ export function rpcPolicyForSnapshot(snapshot: ClientConfigSnapshot | null): Rpc
     return ALLOW_ALL_RPC
   }
 
-  const decide = featureDecider(snapshot?.config ?? {})
+  const decide = backendDecider(snapshot?.config ?? {})
   const models = managedModelsForSnapshot(snapshot)
 
   return (method, params) => {
@@ -53,7 +54,7 @@ export function installFeaturePolicy(): () => void {
   const off = $clientConfig.subscribe(snapshot => {
     setFeatureFilter(filterForSnapshot(snapshot))
     setRpcPolicy(rpcPolicyForSnapshot(snapshot))
-    setFeatureDecider(snapshot?.variant === 'stock' ? null : featureDecider(snapshot?.config ?? {}))
+    setFeatureDecider(snapshot?.variant === 'stock' ? null : backendDecider(snapshot?.config ?? {}))
   })
 
   return () => {

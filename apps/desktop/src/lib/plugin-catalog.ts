@@ -21,6 +21,7 @@
 import type { ConnectionState } from '@hermes/shared'
 import type { ReadableAtom } from 'nanostores'
 
+import { toolInstallAllowed } from '@/athena/managed/tool-installs'
 import { isMissingRpcMethod } from '@/lib/gateway-rpc'
 import { BACKEND_BOOT_WAIT_TIMEOUT_MS, withTimeout } from '@/lib/with-timeout'
 import { requestGatewayForActiveRoute } from '@/store/active-route-request'
@@ -200,6 +201,11 @@ export async function lookupPluginCatalogEntry(
 
   if (!PLUGIN_CATALOG_NAME_RE.test(trimmed)) {
     return { ok: false, error: 'invalid_name' }
+  }
+
+  // Athena (F02 slice 29): no catalog lookup (and so no fetch of the Nous-hosted feed) while managed.tools is enforce.
+  if (!toolInstallAllowed('ui:plugin-catalog-lookup', trimmed)) {
+    return { ok: false, error: 'unavailable' }
   }
 
   let reply: CatalogLookupReply | null | undefined

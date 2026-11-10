@@ -7,6 +7,7 @@ import { Puzzle } from 'lucide-react'
 import { type ComponentType, type ReactNode, useState } from 'react'
 
 import { useSessionView } from '@/app/chat/session-view'
+import { SkippedInstallBeat, useToolInstallsVisible } from '@/athena/managed/tool-installs'
 import { CLARIFY_ICON_CLASS } from '@/components/assistant-ui/clarify/core/shell'
 import { ConnectorDirectoryCard } from '@/components/assistant-ui/connector-directory-card'
 import { AccentPickerCard } from '@/components/assistant-ui/theme-picker/accent-picker-card'
@@ -37,6 +38,7 @@ import {
 function BeatBody({ answer, request }: { answer: (picks: SetupBeatAnswer) => boolean; request: SetupBeatRequest }) {
   const { card } = request
   const tourLabel = useTourLabel()
+  const installsVisible = useToolInstallsVisible()
 
   const commit = (applied: boolean, picks: SetupBeatAnswer): boolean => applied && answer(picks)
 
@@ -60,7 +62,10 @@ function BeatBody({ answer, request }: { answer: (picks: SetupBeatAnswer) => boo
       return <LayoutPickerCard onContinue={layout => commit(applyAppearance({ layout }).success, { layout })} />
 
     case 'plugins':
-      return (
+      // Athena (F02 slice 29): no plugin installs while managed.tools is enforce; the beat is skipped.
+      return !installsVisible ? (
+        <SkippedInstallBeat onSkip={() => answer({ installed: [], label: '' })} />
+      ) : (
         <PluginsCard
           names={card.plugins ?? []}
           onContinue={(installed, titles) => answer({ installed, label: titles.join(', ') })}
@@ -121,6 +126,7 @@ export function SetupBeatTool(props: ToolCallMessagePartProps) {
   const busy = useStore(view.$busy)
   const requests = useStore($setupBeatRequests)
   const [settled, setSettled] = useState<null | SetupBeatOutcome>(null)
+  const installsVisible = useToolInstallsVisible()
 
   if (props.result !== undefined) {
     const outcome = setupBeatOutcome(setupBeatResult(props.result))
@@ -153,6 +159,11 @@ export function SetupBeatTool(props: ToolCallMessagePartProps) {
 
   // The directory card has its own header and plug icon; a frame label above it would be a second header.
   if (request.beat === 'connectors') {
+    // Athena (F02 slice 29): no hosted connectors while managed.tools is enforce; the beat is skipped.
+    if (!installsVisible) {
+      return <SkippedInstallBeat onSkip={() => answer({ connected: [], newly_connected: [] })} />
+    }
+
     return (
       <div data-setup-beat="connectors">
         <ConnectorDirectoryCard

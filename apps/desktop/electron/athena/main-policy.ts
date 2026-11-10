@@ -19,7 +19,6 @@
 import { deepLinkEntries, type DeepLinkLike } from './app-locations'
 import {
   type FeatureDecider,
-  featureDecider,
   type FeatureDecisionRecord,
   ipcEntries,
   isManagedScopeEnvWrite,
@@ -30,6 +29,7 @@ import { FEATURE_ROW_BY_ID, featureEntryFilter, featureMode } from './feature-re
 import { managedModels, modelUseDecision, restModelChoice } from './model-policy'
 import type { PolicyDecisionLog } from './policy-decisions'
 import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
+import { backendDecider } from './tool-install-policy'
 
 export function deepLinkPolicy(config: unknown): (link: DeepLinkLike) => boolean {
   const filter = featureEntryFilter(config)
@@ -63,8 +63,8 @@ export function recordFeatureDecision(record: FeatureDecisionRecord | null): voi
   }
 }
 
-/** The main seams for one effective client config. */
-export function mainPolicySeams(config: unknown, decide: FeatureDecider = featureDecider(config)): MainPolicySeams {
+/** The main seams for one effective client config. The decider also refuses install paths under `managed.tools` (slice 29). */
+export function mainPolicySeams(config: unknown, decide: FeatureDecider = backendDecider(config)): MainPolicySeams {
   const mode = featureMode(config)
   const models = managedModels(config)
 

@@ -155,6 +155,8 @@ export interface FeatureDecisionRecord {
   action: DecisionAction
   /** The row id that decided (the first, in registry order, of the rows refusing the entry). */
   id: string
+  /** `feature` when absent; `tool` for an install path (tool-install-policy.ts, under `managed.tools`). */
+  kind?: 'feature' | 'tool'
   mode: 'enforce' | 'off' | 'report'
   /** Which surface: `rest`, `rpc`, `ipc`, `deep-link`, `devtools`, `route`, `slash`, `keybind`, … */
   surface: string

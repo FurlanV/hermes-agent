@@ -11,12 +11,14 @@ import { installEntryPointPolicies } from './entry-point-guards'
 import { installFeaturePolicy } from './feature-policy'
 import { installHiddenRowsStyle } from './hidden-rows'
 import { installModelPolicy } from './model-policy'
+import { installToolInstallPolicy } from './tool-installs'
 
 installFeaturePolicy()
 connectClientConfig()
 installEntryPointPolicies()
 installDesktopPins()
 installModelPolicy()
+installToolInstallPolicy()
 
 if (typeof document !== 'undefined') {
   installHiddenRowsStyle()

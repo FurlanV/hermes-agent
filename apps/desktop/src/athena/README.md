@@ -429,6 +429,60 @@ a real filter.
     `off` the Settings nav and palette equal the D05 lists less the removed
     features.
 
+- Tool install paths closed (slice 29): every way to add a skill, plugin,
+  connector or MCP server follows `managed.tools`, not a feature row, so a row
+  turned on (Bot Mode, S123) does not reopen the installs it offers.
+  `electron/athena/tool-install-policy.ts` (pure, shared) is the deny table;
+  `backendDecider(config)` asks the feature rows first, then the table, and
+  is the decider main's seams and the renderer's JSON-RPC seam use. Under
+  `enforce` a call is refused and recorded (`"kind": "tool"`, `id` the
+  table row, e.g. `install:skill-hub`); under `report` it goes through and is
+  recorded as `allowed_in_report`; `off` is stock.
+  - The table: `install:skill-hub` (`/api/skills/hub/*`, `skills.manage`
+    install/search/browse/inspect, `hermes://skill/…`), `install:skill-write`
+    (`POST /api/skills`, `PUT /api/skills/content`), `install:plugin`
+    (`plugins.manage` install/inspect/update/update_all/auto_update/remove,
+    `plugins.catalog.lookup`, `hermes://plugin/…`, `plugin-agent`, `install`),
+    `install:desktop-plugin` (`plugins.manage` install_desktop/remove_desktop,
+    IPC `hermes:plugin:probe`/`installDesktop`/`removeDesktop`,
+    `hermes://plugin-desktop/…`, any disk `plugin.js` not on the list),
+    `install:mcp-server` (`POST`/`PUT /api/mcp/servers`, `PUT
+    /api/mcp/servers/{name}/enabled`, `DELETE /api/mcp/servers/{name}`,
+    `/api/mcp/catalog/install`, `mcp.servers.add`/`remove`, `hermes://mcp/…`),
+    `install:connector` (`connectors.*`, `hermes://connections/…`),
+    `install:raw-config` (writes to `/api/config/raw`), `install:toolsets`
+    (`PUT /api/tools/toolsets/{name}`, its `post-setup`, `tools.configure`).
+    Profile import stays under S122. Left open: `PUT /api/config` (managed
+    scope pins `mcp_servers`, `plugins`, `skills` and the toolsets),
+    toggles of what is installed, `mcp.servers.test`/`set_api_key`/`oauth.*`.
+  - IPC: `ipc-guard-install.ts` also tracks the install channels, so they are
+    not registered under `enforce` and come back with the next snapshot.
+  - Renderer (`managed/tool-installs.tsx`): the plugin install dialog, the
+    MCP and skill deep-link confirmations and the plugin catalog lookup (so no
+    fetch of the Nous-hosted feed) ask `toolInstallAllowed('ui:…')`; the
+    `manage_catalog` and `manage_connections` chat cards render as a plain tool
+    row, and the setup chat's plugins and connectors beats show no card and
+    answer "nothing added", while `managed.tools` is `enforce`.
+  - Desktop plugins (`managed/desktop-plugin-gate.ts`): bundled plugins are
+    the build and never pass here. A `desktop-plugins/<folder>/plugin.js` is
+    evaluated only when the sha256 of its source is in
+    `managed/desktop-plugins.json` and it declares the id listed with it (today
+    only `athena`); anything else is ignored with `[athena] desktop plugin …
+    ignored` and the refusal recorded (`report` loads it and records the load).
+    A switch change re-checks every loaded plugin. The list is part of the
+    build: `node src/athena/scripts/desktop-plugin-hash.mjs --write` builds
+    athena's `client/desktop-plugins/athena` in a temporary copy (its own
+    `build.mjs` and pinned esbuild; the output is byte-stable) and records the
+    hash; `--check` (also run by `desktop-plugin-gate.test.ts` with a checkout)
+    fails when it is stale. A developer's rebuilt plugin loads under the dev
+    override `managed: {tools: "report"}`.
+  - Tests: `electron/athena/tool-install-policy.test.ts` (every REST, IPC and
+    deep-link install call, enforce / report / off),
+    `managed/tool-installs.test.tsx` (every JSON-RPC install call, the
+    dialogs, cards and beats), `managed/bot-mode-installs.test.tsx` (Bot Mode
+    on: its hub and MCP add are refused), `managed/desktop-plugin-gate.test.ts`
+    (a dropped-in `plugin.js` does not load; the built Athena plugin does).
+
 ### Upstream files touched (F02)
 
 Keep the F02 diff to these, plus `src/athena/**` and `electron/athena/**`.
@@ -499,3 +553,10 @@ override with `ATHENA_F02_BASE`).
 | `src/components/model-picker.tsx` | Rows show the admin's labels; the "Add custom model…" button only while `allowsCustomModelIds` (slice 20) |
 | `src/app/settings/model-select.tsx` | Rows show the admin's labels; "Custom model…" only while `allowsCustomModelIds` (slice 20) |
 | `src/app/contrib/wiring.tsx` | The main controller mounts `useManagedModelSwitch(selectModel)`: open sessions on a removed model switch to the role default (slice 21) |
+| `src/contrib/runtime-loader.ts` | A disk `plugin.js` is evaluated only when `desktopPluginVerdict` allows it (allowlisted sha256, and the listed id); a `managed.tools` change re-scans (slice 29) |
+| `src/components/assistant-ui/thread/message-parts.tsx` | The `manage_catalog` and `manage_connections` cards go through `gateInstallCard` (a plain tool row under `managed.tools: enforce`) (slice 29) |
+| `src/components/assistant-ui/setup-beat/setup-beat-tool.tsx` | The plugins and connectors beats show no card and answer "nothing added" under `managed.tools: enforce` (slice 29) |
+| `src/store/plugin-install-request.ts` | `openPluginInstallRequest` asks `toolInstallAllowed('ui:plugin-install')` (slice 29) |
+| `src/store/mcp-deeplink-install.ts` | `requestMcpInstallFromDeepLink` asks `toolInstallAllowed('ui:mcp-install')` (slice 29) |
+| `src/store/skill-deeplink-install.ts` | `requestSkillInstallFromDeepLink` asks `toolInstallAllowed('ui:skill-install')` (slice 29) |
+| `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
