@@ -1,14 +1,17 @@
 /**
  * The curated tool catalog on the Capabilities page (F02 slice 28, plan section D "What users see").
  *
- * `catalog.json` is a byte copy of the athena repo's `client/catalog/catalog.json` (built by
- * `athena-build-catalog`); `catalog-bundle.test.ts` fails when they drift. The role's client config says which
+ * The catalog comes from `currentCatalog()` (`catalog-source.ts`, F03 slice 02): today the bundled `catalog.json`,
+ * a byte copy of the athena repo's `client/catalog/catalog.json` (built by `athena-build-catalog`;
+ * `catalog-bundle.test.ts` fails when they drift). The role's client config says which
  * entries the user sees (`tools.available`) and which are locked; `tool-prefs.json` holds the user's own toggles.
  * Whether a card is on mirrors the applier (`athena_shipper.tool_pins.is_on`), so the page shows what the next
  * new chat gets.
  */
 
-import catalogJson from './catalog.json'
+import { BUNDLED_CATALOG, currentCatalog } from './catalog-source'
+
+export { BUNDLED_CATALOG }
 
 /** A remote package's tool group (F03): what an admin grants, with its data classification. */
 export interface CatalogScope {
@@ -74,8 +77,6 @@ export interface Catalog {
   entries: Record<string, CatalogEntry>
   hermes_commit: string
 }
-
-export const BUNDLED_CATALOG = catalogJson as unknown as Catalog
 
 export type ToolsMode = 'enforce' | 'off' | 'report'
 
@@ -157,7 +158,7 @@ export function entryIsOn(entry: CatalogEntry, tools: ToolsSection, prefs: Recor
 export function catalogCards(
   config: unknown,
   prefs: Record<string, boolean> = {},
-  catalog: Catalog = BUNDLED_CATALOG
+  catalog: Catalog = currentCatalog().catalog
 ): CatalogCard[] {
   const tools = toolsSection(config)
   const cards: CatalogCard[] = []
@@ -221,6 +222,6 @@ export function sendsLine(entry: CatalogEntry): string {
 }
 
 /** The skill names the catalog itself installs (kind `skill`): not "learned", even though hermes lists them as local. */
-export function catalogSkillIds(catalog: Catalog = BUNDLED_CATALOG): Set<string> {
+export function catalogSkillIds(catalog: Catalog = currentCatalog().catalog): Set<string> {
   return new Set(Object.values(catalog.entries).filter(entry => entry.kind === 'skill').map(entry => entry.id))
 }

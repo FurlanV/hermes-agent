@@ -39,6 +39,7 @@ import branding from '../branding.json'
 import { useClientConfig } from '../managed/client-config'
 
 import { type CatalogCard, catalogCards, groupCards, requestToolsUrl, sendsLine, toolsMode } from './catalog'
+import { type CurrentCatalog, currentCatalog } from './catalog-source'
 import { LearnedSkills } from './learned-skills'
 import { $toolPrefs, loadToolPrefs, setToolEnabled } from './tool-prefs'
 
@@ -168,6 +169,16 @@ function CatalogCardView({ busy, card, note, onToggle }: CardProps) {
   )
 }
 
+/** The page's diagnostics line: the catalog version and where it came from (F03 slice 02). */
+export function CatalogDiagnostics({ current }: { current: CurrentCatalog }) {
+  return (
+    <p className="mt-6 text-[0.68rem] text-(--ui-text-tertiary)" data-slot="athena-catalog-diagnostics">
+      Catalog {current.version} · source: {current.source}
+      {current.error && <span title={current.error}> (fallback)</span>}
+    </p>
+  )
+}
+
 export function AthenaCatalogPage() {
   const snapshot = useClientConfig()
   const prefs = useStore($toolPrefs)
@@ -181,7 +192,8 @@ export function AthenaCatalogPage() {
     void loadToolPrefs()
   }, [])
 
-  const cards = useMemo(() => catalogCards(config, prefs), [config, prefs])
+  const current = useMemo(() => currentCatalog(), [])
+  const cards = useMemo(() => catalogCards(config, prefs, current.catalog), [config, prefs, current])
   const groups = useMemo(() => groupCards(cards, query), [cards, query])
   const requestUrl = requestToolsUrl(config)
 
@@ -265,6 +277,7 @@ export function AthenaCatalogPage() {
             </a>
           </p>
         )}
+        <CatalogDiagnostics current={current} />
       </div>
     </section>
   )

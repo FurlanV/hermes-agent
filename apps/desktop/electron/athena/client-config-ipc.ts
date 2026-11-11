@@ -8,6 +8,8 @@
 // - `athena:policy-decision` (renderer → main, send): a decision the renderer
 //   made (a JSON-RPC refusal, a report-mode use), appended to the decisions
 //   file (policy-decisions.ts) with main's timestamp.
+// The tool catalog's source channels (`athena:catalog:*`, catalog-source.ts) are installed here too, so main.ts
+// needs no new hook (F03 slice 02).
 
 import path from 'node:path'
 
@@ -15,6 +17,7 @@ import type { BrowserWindow, IpcMain } from 'electron'
 
 import { PRODUCT_IDENTITY } from '../product-identity'
 
+import { installAthenaCatalogSource } from './catalog-source'
 import { AthenaClientConfig, type ClientConfigSnapshot, devOverridesFromEnv } from './client-config'
 import { applyMainPolicies, configureMainPolicies, ignoredRemoveRows } from './main-policy'
 import { parsePolicyDecision, POLICY_DECISIONS_FILE, PolicyDecisionLog } from './policy-decisions'
@@ -99,6 +102,7 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
       decisions.record(decision)
     }
   })
+  installAthenaCatalogSource(options.ipcMain, options.log)
   source.start()
   installed = source
   const first = source.snapshot()
