@@ -58,6 +58,7 @@ import {
   groupCards,
   isBuiltIn,
   packageTools,
+  type PackageUpdate,
   requestToolsUrl,
   sendsLine,
   statusBanner,
@@ -115,6 +116,7 @@ interface CardProps {
   card: CatalogCard
   note: null | string
   onInstall: () => void
+  onAccept: () => void
   onRemove: () => void
   onToggle: (on: boolean) => void
   view: CatalogView
@@ -194,8 +196,40 @@ function CardDetails({ card, id }: { card: CatalogCard; id: string }) {
   )
 }
 
-function CatalogCardView({ busy, card, note, onInstall, onRemove, onToggle, view }: CardProps) {
-  const { entry, experimental, installed, managed, on, removable } = card
+function UpdateLine({ busy, onAccept, title, update }: { busy: boolean; onAccept: () => void; title: string; update: PackageUpdate }) {
+  if (update.kind === 'updated') {
+    return (
+      <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-updated">
+        Updated from v{update.from}
+      </p>
+    )
+  }
+
+  if (update.kind === 'held') {
+    return (
+      <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-held" role="note">
+        Not updated: {update.reason}. Off in new chats until Athena is updated.
+      </p>
+    )
+  }
+
+  return (
+    <div className="mt-1 rounded bg-amber-500/10 px-2 py-1 text-[0.68rem]" data-slot="athena-catalog-update-review" role="note">
+      <p className="font-medium">Update needs review: v{update.version} is off in new chats until you accept it.</p>
+      <ul className="list-disc pl-4">
+        {update.changes.map(change => (
+          <li key={change}>{change}</li>
+        ))}
+      </ul>
+      <Button aria-label={`Accept the update of ${title}`} className="mt-1" disabled={busy} onClick={onAccept} size="xs" variant="secondary">
+        Accept
+      </Button>
+    </div>
+  )
+}
+
+function CatalogCardView({ busy, card, note, onAccept, onInstall, onRemove, onToggle, view }: CardProps) {
+  const { entry, experimental, installed, managed, on, removable, update } = card
   const banner = statusBanner(entry)
   const worksBestWith = worksBestWithLine(card)
   const [open, setOpen] = useState(false)
@@ -286,6 +320,7 @@ function CatalogCardView({ busy, card, note, onInstall, onRemove, onToggle, view
           <p className="text-[0.68rem] text-(--ui-text-tertiary)" data-slot="athena-catalog-sends">
             {sendsLine(entry)}
           </p>
+          {update && <UpdateLine busy={busy} onAccept={onAccept} title={entry.title} update={update} />}
           {worksBestWith && (
             <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-works-best-with">
               {worksBestWith}
@@ -491,6 +526,19 @@ export function AthenaCatalogPage() {
     await reloadIfNeeded(id, true)
   }
 
+  const acceptUpdate = async (id: string) => {
+    const result = await withBusy(id, () => packageAction(id, 'accept'))
+
+    if (!result.ok) {
+      notifyError(new Error(result.message || 'The update was not accepted'), 'Could not accept this update')
+
+      return
+    }
+
+    note(id, 'Accepted. Applies to new chats')
+    await reloadIfNeeded(id, true)
+  }
+
   const remove = async (id: string) => {
     const result = await withBusy(id, () => packageAction(id, 'remove'))
 
@@ -540,6 +588,7 @@ export function AthenaCatalogPage() {
                   card={card}
                   key={card.entry.id}
                   note={notes[card.entry.id] ?? null}
+                  onAccept={() => void acceptUpdate(card.entry.id)}
                   onInstall={() => void install(card.entry.id)}
                   onRemove={() => void remove(card.entry.id)}
                   onToggle={on => void toggle(card.entry.id, on)}

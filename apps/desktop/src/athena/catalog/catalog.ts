@@ -178,8 +178,47 @@ export function entryIsInstalled(
   )
 }
 
+/** What the installed record says about the listed version (F03 slice 22). */
+export type PackageUpdate =
+  | { changes: string[]; kind: 'review'; version: string }
+  | { from: string; kind: 'updated' }
+  | { kind: 'held'; reason: string }
+
+const UPDATED_SHOWN_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * The card's update line from the installed record: a major update waiting for review (left out of new chats until
+ * accepted), a version this client cannot run (held, with why), or a recent minor/patch update ("Updated").
+ */
+export function packageUpdate(entry: CatalogEntry, record: unknown, now = Date.now()): null | PackageUpdate {
+  if (!isRecord(record)) {
+    return null
+  }
+
+  const held = isRecord(record.held) ? record.held : null
+  const pending = isRecord(record.pending) ? record.pending : null
+
+  if (held && held.version === entry.version) {
+    return { kind: 'held', reason: String(held.reason ?? '') }
+  }
+
+  if (pending && pending.version === entry.version) {
+    return { changes: ids(pending.changes), kind: 'review', version: entry.version }
+  }
+
+  const at = Date.parse(String(record.updated_at ?? ''))
+
+  if (typeof record.updated_from === 'string' && record.version === entry.version && now - at < UPDATED_SHOWN_MS) {
+    return { from: record.updated_from, kind: 'updated' }
+  }
+
+  return null
+}
+
 export interface CatalogCard {
   entry: CatalogEntry
+  /** Slice 22: the update line, from the installed record. */
+  update: null | PackageUpdate
   /** Installed for this user (built-ins always): in the Installed view; else in Browse with Install. */
   installed: boolean
   /** Installed by the user (not a built-in, not installed for the role by the admin): the card offers Remove. */
@@ -237,6 +276,7 @@ export function catalogCards(
       cards.push({
         entry,
         installed: entryIsInstalled(entry, tools, prefs, installed),
+        update: packageUpdate(entry, installed[id]),
         removable:
           !isBuiltIn(entry) &&
           !tools.locked_on.includes(id) &&

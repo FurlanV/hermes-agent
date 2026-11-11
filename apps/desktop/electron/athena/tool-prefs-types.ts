@@ -26,8 +26,10 @@ export interface InstalledPackage {
   /** Slice 22: the version a minor or patch update replaced, and when. */
   updated_from?: string
   updated_at?: string
-  /** Slice 22: why the listed version is not applied here (e.g. it needs a newer Athena). */
-  held?: string
+  /** Slice 22: the listed version cannot run here (e.g. it needs a newer Athena): left out of new chats. */
+  held?: { reason: string; version: string }
+  /** Slice 22: a major update waits for the user to accept these changes: left out of new chats until then. */
+  pending?: { changes: string[]; version: string }
 }
 
 export type InstalledPackages = Record<string, InstalledPackage>

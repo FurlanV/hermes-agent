@@ -228,3 +228,36 @@ describe('Remove, deprecated and withdrawn (F03 slice 21)', { timeout: 30_000 },
     }
   })
 })
+
+describe('updates by version (F03 slice 22)', { timeout: 30_000 }, () => {
+  test('the model: review waits for the listed version, held says why, a recent update says Updated', async () => {
+    const { packageUpdate } = await import('./catalog')
+    const entry = { ...REMOTE, version: '2.0.0' }
+    const now = Date.parse('2026-11-12T00:00:00Z')
+    expect(packageUpdate(entry, { pending: { changes: ['adds scope echo.shout'], version: '2.0.0' }, version: '1.0.0' }, now)).toEqual({
+      changes: ['adds scope echo.shout'],
+      kind: 'review',
+      version: '2.0.0'
+    })
+    expect(packageUpdate(entry, { held: { reason: 'needs Athena 9.0.0 or later (this is 0.1.0)', version: '2.0.0' }, version: '1.0.0' }, now)).toEqual({
+      kind: 'held',
+      reason: 'needs Athena 9.0.0 or later (this is 0.1.0)'
+    })
+    expect(packageUpdate(entry, { updated_at: '2026-11-11T00:00:00Z', updated_from: '1.9.0', version: '2.0.0' }, now)).toEqual({ from: '1.9.0', kind: 'updated' })
+    expect(packageUpdate(entry, { updated_at: '2026-10-01T00:00:00Z', updated_from: '1.9.0', version: '2.0.0' }, now)).toBeNull()
+    expect(packageUpdate(entry, { pending: { changes: [], version: '1.5.0' }, version: '1.0.0' }, now)).toBeNull()
+  })
+
+  test('a major update shows what changed and Accept runs accept through main', async () => {
+    const tools = bridge()
+    tools.getInstalled.mockResolvedValue({
+      'remote-echo': { pending: { changes: ['adds scope echo.shout'], version: STUB.version }, sha256: 'b'.repeat(64), version: '0.1.0' }
+    })
+    tools.getPrefs.mockResolvedValue({ 'remote-echo': true })
+    await renderPage()
+    await waitFor(() => expect(card('remote-echo')!.querySelector('[data-slot="athena-catalog-update-review"]')).toBeTruthy())
+    expect(card('remote-echo')!.textContent).toContain('adds scope echo.shout')
+    await act(async () => fireEvent.click(within(card('remote-echo')!).getByRole('button', { name: 'Accept the update of Remote echo' })))
+    expect(tools.package).toHaveBeenLastCalledWith('remote-echo', 'accept')
+  })
+})
