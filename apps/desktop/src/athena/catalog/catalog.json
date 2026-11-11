@@ -192,6 +192,91 @@
       "user_toggle": true,
       "version": "1.1.0"
     },
+    "eagle-asd-evidence": {
+      "category": "database",
+      "default_on": false,
+      "group": "Research",
+      "icon": "book-search",
+      "id": "eagle-asd-evidence",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols and search terms, to EAGLE through the Athena capability gateway"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "results": "live-only",
+      "review": {
+        "at": "2026-11-11",
+        "by": "claude-code/implement-plan",
+        "notes": "F03 slice 12: EAGLE holds published data only, so the evidence.gene scope is public and granted to every role (plan decision 3). Read-only tools (readOnlyHint). Awaiting human review and the EAGLE team's sign-off (decision 6)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "evidence.gene",
+          "title": "Gene evidence (scores, counts, findings, paper metadata)",
+          "tools": [
+            "search_genes",
+            "get_gene_details",
+            "get_gene_score",
+            "get_gene_level_findings",
+            "search_papers",
+            "describe"
+          ]
+        }
+      ],
+      "sha256": "ff37ea8c5ca70e4ab1a655a09f58fe3cece4fdcb79034faf0e98c228e994f5aa",
+      "skill": {
+        "path": "skills/eagle-asd-evidence",
+        "sha256": "a29ea3958142e84c5c242a6134db07bb342f31fb5d15b3a8b1a62004b5ea5779"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "describe": "2c75a9b0cf817c6477820509402b081d26fb66f3999372947d79099aabea1e0f",
+            "get_gene_details": "c80334ef930d8e1205719ee0c3251dfbb5d047439f5530e468aa1b4711b27404",
+            "get_gene_level_findings": "8d548f9ccf410cc3a7ba57232efc9aa27707b4458f02288caf2bb89d889ec27d",
+            "get_gene_score": "9c96718f5ce51619d6466e2dad0e557e085e8c9fd10b194f595682fb58b36850",
+            "search_genes": "a840170df8cbebd326baf648ef864e3f2eb1b464b16e287a7bfd59677d6e0141",
+            "search_papers": "e7f04d0efd2c76d402b5150c9358d4886b4e1eeaf440d969ced2672a0c85429d"
+          },
+          "tools": [
+            "search_genes",
+            "get_gene_details",
+            "get_gene_score",
+            "get_gene_level_findings",
+            "search_papers",
+            "describe"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Gene-level autism evidence from EAGLE, read live, with the papers behind it.",
+      "title": "EAGLE ASD evidence",
+      "user_toggle": true,
+      "version": "0.1.0"
+    },
     "files": {
       "category": "built-in",
       "default_on": true,
