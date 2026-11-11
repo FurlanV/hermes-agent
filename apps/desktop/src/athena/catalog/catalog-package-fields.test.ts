@@ -17,12 +17,13 @@ const withEntries = (change: (entries: Record<string, CatalogEntry>) => void): C
 }
 
 describe('package fields', () => {
-  test('the 13 bundled entries are built-ins', () => {
-    expect(ALL).toHaveLength(13)
+  test('the 13 bundled built-ins keep their category; every other entry is a gateway package', () => {
+    const entries = Object.values(BUNDLED_CATALOG.entries)
 
-    for (const entry of Object.values(BUNDLED_CATALOG.entries)) {
-      expect(entry.category).toBe('built-in')
-    }
+    expect(entries.filter(entry => entry.category === 'built-in')).toHaveLength(13)
+    expect(entries.filter(entry => entry.category !== 'built-in').map(entry => entry.kind)).toEqual(
+      entries.filter(entry => entry.category !== 'built-in').map(() => 'gateway')
+    )
   })
 
   test('fields the page does not use change no card', () => {

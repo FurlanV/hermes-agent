@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.4",
+  "catalog_version": "2026.11.6",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -434,6 +434,82 @@
         "files"
       ]
     },
+    "stub-echo": {
+      "category": "agent",
+      "default_on": false,
+      "group": "Development",
+      "icon": "radio-tower",
+      "id": "stub-echo",
+      "kind": "gateway",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [
+          "the text to echo, to the Athena capability gateway"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "athena-team@example.org",
+        "name": "Athena",
+        "team": "athena-team"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "results": "live-only",
+      "review": {
+        "at": "2026-11-11",
+        "by": "claude-code/implement-plan",
+        "notes": "F03 slice 07: a stub package for the capability gateway tracer bullet; no data beyond the echoed text. Awaiting human review."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "echo.basic",
+          "title": "Echo",
+          "tools": [
+            "echo"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "echo.reverse",
+          "title": "Reverse",
+          "tools": [
+            "reverse"
+          ]
+        }
+      ],
+      "sha256": "b97508e4c2c937cb00f2bac43ef178c7d0cac2b7b0e25184267f12fbf559a90f",
+      "source": {
+        "gateway": {
+          "capability": "stub-echo",
+          "surface": {
+            "echo": "05bcb827febf9ff4b7fd6ad2300b6b411b003e2c85fab761701071749c796d8a",
+            "reverse": "a4f54a8e0946658a8c1268b0f29f13f54a7963ae559a322f49681d78e6f9ee03"
+          },
+          "tools": [
+            "echo",
+            "reverse"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Echoes text back through the capability gateway, to test remote packages.",
+      "title": "Stub echo (dev)",
+      "user_toggle": true,
+      "version": "0.2.0"
+    },
     "subagents": {
       "category": "built-in",
       "default_on": true,
@@ -620,5 +696,5 @@
       "version": "1.0.1"
     }
   },
-  "hermes_commit": "1a48bf2bf38bd881e0837e3192d2291de6184dc7"
+  "hermes_commit": "d667bd0da0579737c443307381923d1ccd2634ae"
 }

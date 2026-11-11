@@ -7,6 +7,8 @@ import { describe, expect, test } from 'vitest'
 import { BUNDLED_CATALOG, catalogCards, worksBestWithLine } from './catalog'
 
 const ALL = Object.keys(BUNDLED_CATALOG.entries)
+// Gateway packages (stub-echo, EAGLE) are off by default and live in the catalog beside the built-ins.
+const BUILT_INS = Object.values(BUNDLED_CATALOG.entries).filter(entry => entry.category === 'built-in')
 const ROLES = ['researcher', 'clinician', 'trainee', 'admin']
 
 // The compose seed's tools section for every role (athena deploy/compose/dev/client-config.roles.yaml).
@@ -21,11 +23,11 @@ const config = (tools: object) => ({ managed: { tools: 'enforce' }, tools })
 
 describe('built-in switches', () => {
   test('every built-in is on by default, switchable and for every role', () => {
-    for (const entry of Object.values(BUNDLED_CATALOG.entries)) {
+    for (const entry of BUILT_INS) {
       expect([entry.id, entry.default_on, entry.user_toggle, entry.roles]).toEqual([entry.id, true, true, ROLES])
     }
 
-    const cards = catalogCards(config(SEED))
+    const cards = catalogCards(config(SEED)).filter(card => card.entry.category === 'built-in')
     expect(cards).toHaveLength(13)
     expect(cards.filter(card => !card.on || card.managed)).toEqual([])
   })
