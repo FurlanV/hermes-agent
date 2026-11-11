@@ -182,6 +182,8 @@ export interface CatalogCard {
   entry: CatalogEntry
   /** Installed for this user (built-ins always): in the Installed view; else in Browse with Install. */
   installed: boolean
+  /** Installed by the user (not a built-in, not installed for the role by the admin): the card offers Remove. */
+  removable: boolean
   /** `status: experimental`: the card shows a badge. */
   experimental: boolean
   /** No switch: `locked_on` in the config, `user_toggle: false` in the catalog (the admin decides), or withdrawn. */
@@ -235,6 +237,11 @@ export function catalogCards(
       cards.push({
         entry,
         installed: entryIsInstalled(entry, tools, prefs, installed),
+        removable:
+          !isBuiltIn(entry) &&
+          !tools.locked_on.includes(id) &&
+          !tools.default_on.includes(id) &&
+          entryIsInstalled(entry, tools, prefs, installed),
         experimental: entry.status === 'experimental',
         managed: tools.locked_on.includes(id) || !entry.user_toggle || entry.status === 'withdrawn',
         on: entryIsOn(entry, tools, prefs),
@@ -316,6 +323,26 @@ export function groupCards(cards: CatalogCard[], query = ''): CardGroup[] {
   }
 
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([group, items]) => ({ cards: items, group }))
+}
+
+/**
+ * The card's status banner (F03 slice 21): deprecated with its end date, or withdrawn with who withdrew it and why.
+ * Null for stable and experimental entries. A withdrawn package stays listed; it is never on.
+ */
+export function statusBanner(entry: CatalogEntry): null | { kind: 'deprecated' | 'withdrawn'; text: string } {
+  const note = entry.status_note
+
+  if (entry.status === 'deprecated') {
+    const ends = note?.ends ? ` It will be withdrawn on ${note.ends}.` : ''
+
+    return { kind: 'deprecated', text: `Deprecated by ${note?.by ?? 'its publisher'}: ${note?.reason ?? ''}${ends}`.trim() }
+  }
+
+  if (entry.status === 'withdrawn') {
+    return { kind: 'withdrawn', text: `Withdrawn by ${note?.by ?? 'its publisher'}: ${note?.reason ?? ''}`.trim() }
+  }
+
+  return null
 }
 
 /** The card's "Sends:" line: what leaves the laptop, from the entry's reviewed permissions. */

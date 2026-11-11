@@ -60,6 +60,7 @@ import {
   packageTools,
   requestToolsUrl,
   sendsLine,
+  statusBanner,
   toolsMode,
   worksBestWithLine
 } from './catalog'
@@ -114,6 +115,7 @@ interface CardProps {
   card: CatalogCard
   note: null | string
   onInstall: () => void
+  onRemove: () => void
   onToggle: (on: boolean) => void
   view: CatalogView
 }
@@ -192,8 +194,9 @@ function CardDetails({ card, id }: { card: CatalogCard; id: string }) {
   )
 }
 
-function CatalogCardView({ busy, card, note, onInstall, onToggle, view }: CardProps) {
-  const { entry, experimental, installed, managed, on } = card
+function CatalogCardView({ busy, card, note, onInstall, onRemove, onToggle, view }: CardProps) {
+  const { entry, experimental, installed, managed, on, removable } = card
+  const banner = statusBanner(entry)
   const worksBestWith = worksBestWithLine(card)
   const [open, setOpen] = useState(false)
   const Icon = ICONS[entry.icon] ?? Wrench
@@ -267,6 +270,19 @@ function CatalogCardView({ busy, card, note, onInstall, onToggle, view }: CardPr
             </p>
           )}
           <p className="text-xs text-(--ui-text-secondary)">{entry.summary}</p>
+          {banner && (
+            <p
+              className={
+                banner.kind === 'withdrawn'
+                  ? 'mt-1 rounded bg-destructive/10 px-2 py-1 text-[0.68rem] text-destructive'
+                  : 'mt-1 rounded bg-amber-500/10 px-2 py-1 text-[0.68rem] text-amber-700 dark:text-amber-300'
+              }
+              data-slot={`athena-catalog-${banner.kind}`}
+              role="note"
+            >
+              {banner.text}
+            </p>
+          )}
           <p className="text-[0.68rem] text-(--ui-text-tertiary)" data-slot="athena-catalog-sends">
             {sendsLine(entry)}
           </p>
@@ -290,6 +306,19 @@ function CatalogCardView({ busy, card, note, onInstall, onToggle, view }: CardPr
           >
             {open ? 'Hide details' : 'Details'}
           </Button>
+          {view === 'installed' && removable && (
+            <Button
+              aria-label={`Remove ${entry.title}`}
+              className="mt-1 ml-3 h-auto px-0 text-[0.68rem]"
+              data-slot="athena-catalog-remove"
+              disabled={busy}
+              onClick={onRemove}
+              size="xs"
+              variant="text"
+            >
+              Remove
+            </Button>
+          )}
           {open && <CardDetails card={card} id={detailsId} />}
         </div>
         {control}
@@ -462,6 +491,18 @@ export function AthenaCatalogPage() {
     await reloadIfNeeded(id, true)
   }
 
+  const remove = async (id: string) => {
+    const result = await withBusy(id, () => packageAction(id, 'remove'))
+
+    if (!result.ok) {
+      notifyError(new Error(result.message || 'The package was not removed'), 'Could not remove this package')
+
+      return
+    }
+
+    note(id, 'Removed. New chats no longer get it')
+  }
+
   return (
     <section
       className="flex h-full min-w-0 flex-col overflow-hidden bg-(--ui-chat-surface-background)"
@@ -500,6 +541,7 @@ export function AthenaCatalogPage() {
                   key={card.entry.id}
                   note={notes[card.entry.id] ?? null}
                   onInstall={() => void install(card.entry.id)}
+                  onRemove={() => void remove(card.entry.id)}
                   onToggle={on => void toggle(card.entry.id, on)}
                   view={view}
                 />

@@ -47,7 +47,7 @@ const TOOLS = {
   locked_on: []
 }
 
-function bridge() {
+function bridge(entries: Record<string, unknown> = {}) {
   let enabled: Record<string, boolean> = {}
   let installed: Record<string, unknown> = {}
 
@@ -55,8 +55,15 @@ function bridge() {
     getInstalled: vi.fn(async () => installed),
     getPrefs: vi.fn(async () => enabled),
     package: vi.fn(async (id: string, action: string) => {
-      installed = { ...installed, [id]: { sha256: 'a'.repeat(64), version: '0.2.0' } }
-      enabled = { ...enabled, [id]: true }
+      if (action === 'remove') {
+        const { [id]: _record, ...rest } = installed
+        const { [id]: _on, ...others } = enabled
+        installed = rest
+        enabled = others
+      } else {
+        installed = { ...installed, [id]: { sha256: 'a'.repeat(64), version: '0.2.0' } }
+        enabled = { ...enabled, [id]: true }
+      }
 
       return { action, applied: true, enabled, installed, message: 'installed', ok: true }
     }),
@@ -68,7 +75,7 @@ function bridge() {
   }
 
   const catalog = {
-    catalog: { catalog_version: '2026.11.4', entries: { 'admin-only': HIDDEN, 'remote-echo': REMOTE } },
+    catalog: { catalog_version: '2026.11.4', entries: { 'admin-only': HIDDEN, 'remote-echo': REMOTE, ...entries } },
     error: null,
     rejected: [],
     source: 'remote'
@@ -162,5 +169,62 @@ describe('Browse and Installed', { timeout: 30_000 }, () => {
     expect(cardIds()).toEqual(['stub-echo', 'remote-echo'])
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Built-in' })))
     expect(cardIds()).toEqual(['files', 'python'])
+  })
+})
+
+describe('Remove, deprecated and withdrawn (F03 slice 21)', { timeout: 30_000 }, () => {
+  test('Remove sends the package back to Browse; built-ins and admin-installed packages have no Remove', async () => {
+    const tools = bridge()
+    await renderPage()
+    await browse()
+    await act(async () => fireEvent.click(within(card('remote-echo')!).getByRole('button', { name: 'Install Remote echo' })))
+    await act(async () => fireEvent.click(screen.getByRole('tab', { name: 'Installed' })))
+    expect(within(card('files')!).queryByRole('button', { name: /Remove/ })).toBeNull()
+    await act(async () => fireEvent.click(within(card('remote-echo')!).getByRole('button', { name: 'Remove Remote echo' })))
+    expect(tools.package).toHaveBeenLastCalledWith('remote-echo', 'remove')
+    await waitFor(() => expect(cardIds()).not.toContain('remote-echo'))
+    await browse()
+    expect(within(card('remote-echo')!).getByRole('button', { name: 'Install Remote echo' })).toBeTruthy() // reinstallable
+  })
+
+  test('a deprecated card shows its end date; a withdrawn one says who and why, with no switch or Install', async () => {
+    bridge({
+      'old-echo': {
+        ...REMOTE,
+        id: 'old-echo',
+        status: 'deprecated',
+        status_note: { by: 'Genomics Core', ends: '2026-12-31', reason: 'Use Remote echo.' },
+        title: 'Old echo'
+      },
+      'gone-echo': {
+        ...REMOTE,
+        id: 'gone-echo',
+        status: 'withdrawn',
+        status_note: { by: 'athena-admins', reason: 'The upstream was retired.' },
+        title: 'Gone echo'
+      }
+    })
+    $clientConfig.set(null)
+    TOOLS.available.push('old-echo', 'gone-echo')
+    TOOLS.default_on.push('old-echo', 'gone-echo')
+
+    try {
+      await renderPage()
+      const old = card('old-echo')!
+      expect(old.querySelector('[data-slot="athena-catalog-deprecated"]')?.textContent).toBe(
+        'Deprecated by Genomics Core: Use Remote echo. It will be withdrawn on 2026-12-31.'
+      )
+      expect(within(old).getByRole('switch').getAttribute('aria-checked')).toBe('true') // it still works
+      const gone = card('gone-echo')!
+      expect(gone.querySelector('[data-slot="athena-catalog-withdrawn"]')?.textContent).toBe(
+        'Withdrawn by athena-admins: The upstream was retired.'
+      )
+      expect(within(gone).queryByRole('switch')).toBeNull()
+      await browse()
+      expect(within(card('gone-echo')!).getByText('Installed')).toBeTruthy()
+    } finally {
+      TOOLS.available.splice(-2)
+      TOOLS.default_on.splice(-2)
+    }
   })
 })
