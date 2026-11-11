@@ -23,7 +23,7 @@ export interface CatalogScope {
   tools: string[]
 }
 
-/** One setting a package declares (F03); the page does not render settings yet. */
+/** One setting a package declares (F03); the detail view renders a form for them (slice 27). */
 export interface CatalogSetting {
   choices?: string[]
   default?: boolean | null | number | string
@@ -430,6 +430,72 @@ export function sendsLine(entry: CatalogEntry): string {
   const data = entry.permissions.data.filter(Boolean)
 
   return data.length ? `Sends: ${data.join('; ')}` : 'Sends: nothing beyond your chat'
+}
+
+const SETTING_TYPES: ReadonlySet<string> = new Set(['choice', 'number', 'text', 'toggle'])
+
+const SECRET_ID =
+  /(^|_)(password|passwd|passphrase|secret|token|api_?key|apikey|credentials?|private_?key|access_?key|client_?secret|bearer|cookie|session_?id)($|_)/
+
+export const MAX_TEXT_SETTING = 200
+
+/**
+ * A setting this app refuses to show (F03 slice 27): a type other than text, choice, toggle and number (such as
+ * `secret`), or an id that names a credential. Settings never carry secrets; the catalog build refuses them too.
+ */
+export function isSecretSetting(setting: CatalogSetting): boolean {
+  return !SETTING_TYPES.has(String(setting.type)) || SECRET_ID.test(setting.id)
+}
+
+/** Why `value` is not a valid value of `setting` (null: it is), in the words of `athena_schemas` `Setting.problem`. */
+export function settingProblem(setting: CatalogSetting, value: unknown): null | string {
+  if (setting.type === 'toggle') {
+    return typeof value === 'boolean' ? null : 'must be on or off'
+  }
+
+  if (setting.type === 'text') {
+    if (typeof value !== 'string') {
+      return 'must be text'
+    }
+
+    if (value.length > MAX_TEXT_SETTING) {
+      return `is longer than ${MAX_TEXT_SETTING} characters`
+    }
+
+    // eslint-disable-next-line no-control-regex
+    return /[\u0000-\u001f\u007f]/.test(value) ? 'must be one line of text' : null
+  }
+
+  if (setting.type === 'choice') {
+    return typeof value === 'string' && (setting.choices ?? []).includes(value)
+      ? null
+      : `must be one of ${(setting.choices ?? []).join(', ')}`
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'must be a number'
+  }
+
+  if (typeof setting.minimum === 'number' && value < setting.minimum) {
+    return `must be at least ${setting.minimum}`
+  }
+
+  if (typeof setting.maximum === 'number' && value > setting.maximum) {
+    return `must be at most ${setting.maximum}`
+  }
+
+  return null
+}
+
+/** The value a form shows: the user's stored value, else the default, else empty / off. */
+export function settingValue(setting: CatalogSetting, stored: Record<string, unknown> | undefined): boolean | number | string {
+  const value = stored?.[setting.id] ?? setting.default
+
+  if (value !== undefined && value !== null) {
+    return value as boolean | number | string
+  }
+
+  return setting.type === 'toggle' ? false : setting.type === 'number' ? Number.NaN : ''
 }
 
 /** The skill names the catalog itself installs (kind `skill`): not "learned", even though hermes lists them as local. */

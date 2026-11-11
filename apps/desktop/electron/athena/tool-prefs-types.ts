@@ -60,3 +60,19 @@ export interface PackageActionResult extends ToolToggleResult {
   /** Slice 26: the access file after the call (older mains leave it out). */
   access?: PackageAccess
 }
+
+/** One package's settings value (F03 slice 27): text, a choice, a toggle or a number. */
+export type SettingValue = boolean | number | string
+
+/** `tool-prefs.json` `settings`: the user's values per package (`athena config settings <id>` writes them). */
+export type PackageSettings = Record<string, Record<string, SettingValue>>
+
+/** What `athena:tool-prefs:set-settings` answers. */
+export interface SettingsResult {
+  ok: boolean
+  /** Managed scope was re-applied (the next new chat sends the values). */
+  applied: boolean
+  /** One line for the user: the CLI's answer, or why the values were refused. */
+  message: string
+  settings: PackageSettings
+}

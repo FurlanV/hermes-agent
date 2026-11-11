@@ -19,6 +19,10 @@
  * each sync) shows Request access in place of Install or the switch, then Requested. Requesting also installs it, so
  * the card turns on by itself once an administrator grants it and the next sync brings the grant. Scopes still
  * waiting show as pending. The capability gateway decides every call whatever the page shows.
+ *
+ * Settings (F03 slice 27): an installed package that declares `settings` shows a form in its details (text, choice,
+ * toggle, number with bounds). Values are checked here and again by `athena config settings <id>`, stored in
+ * tool-prefs.json and sent to the package with each call of new chats. A secret-typed setting is never shown.
  */
 
 import { useStore } from '@nanostores/react'
@@ -56,16 +60,20 @@ import {
   type CatalogCard,
   catalogCards,
   type CatalogCategory,
+  type CatalogSetting,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   classificationOf,
   groupByCategory,
   groupCards,
   isBuiltIn,
+  isSecretSetting,
   packageTools,
   type PackageUpdate,
   requestToolsUrl,
   sendsLine,
+  settingProblem,
+  settingValue,
   statusBanner,
   toolsMode,
   worksBestWithLine
@@ -76,11 +84,15 @@ import { needsMcpReload, reloadPackageServers } from './mcp-reload'
 import {
   $installedPackages,
   $packageAccess,
+  $packageSettings,
   $toolPrefs,
   loadInstalledPackages,
   loadPackageAccess,
+  loadPackageSettings,
   loadToolPrefs,
   packageAction,
+  savePackageSettings,
+  type SettingValue,
   setToolEnabled
 } from './tool-prefs'
 
@@ -161,6 +173,124 @@ function RequestForm({ busy, onCancel, onSend, title }: { busy: boolean; onCance
   )
 }
 
+type Draft = Record<string, boolean | number | string>
+
+/** The package's settings form (slice 27): one field per setting, checked before it is saved. */
+function SettingsForm({ id, settings }: { id: string; settings: CatalogSetting[] }) {
+  const stored = useStore($packageSettings)[id]
+  const [draft, setDraft] = useState<Draft>(() => Object.fromEntries(settings.map(s => [s.id, settingValue(s, stored)])))
+  const [problems, setProblems] = useState<Readonly<Record<string, string>>>({})
+  const [status, setStatus] = useState<null | string>(null)
+  const [saving, setSaving] = useState(false)
+
+  if (settings.some(isSecretSetting)) {
+    return (
+      <p className="text-[0.68rem] text-destructive" data-slot="athena-catalog-settings-refused" role="alert">
+        This package asks for a secret setting, which Athena does not allow. Ask its publisher to remove it.
+      </p>
+    )
+  }
+
+  const save = async () => {
+    const found = Object.fromEntries(
+      settings.flatMap(s => {
+        const problem = settingProblem(s, draft[s.id])
+
+        return problem ? [[s.id, `${s.title} ${problem}`]] : []
+      })
+    )
+
+    setProblems(found)
+    setStatus(null)
+
+    if (Object.keys(found).length > 0) {
+      return
+    }
+
+    // Only what differs from the default is stored: a default stays the publisher's.
+    const values: Record<string, SettingValue> = Object.fromEntries(
+      settings.filter(s => draft[s.id] !== s.default).map(s => [s.id, draft[s.id]])
+    )
+
+    setSaving(true)
+
+    try {
+      const result = await savePackageSettings(id, values)
+      setStatus(result.ok ? 'Saved. Applies to new chats.' : result.message || 'The settings were not saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form
+      className="grid gap-1.5"
+      data-slot="athena-catalog-settings"
+      noValidate
+      onSubmit={event => {
+        event.preventDefault()
+        void save()
+      }}
+    >
+      {settings.map(setting => {
+        const fieldId = `athena-setting-${id}-${setting.id}`
+        const value = draft[setting.id]
+        const set = (next: boolean | number | string) => setDraft(state => ({ ...state, [setting.id]: next }))
+
+        return (
+          <div className="grid gap-0.5" data-setting={setting.id} key={setting.id}>
+            <label className="text-(--ui-text-secondary)" htmlFor={fieldId}>
+              {setting.title}
+            </label>
+            {setting.type === 'toggle' ? (
+              <Switch checked={value === true} id={fieldId} onCheckedChange={set} size="xs" />
+            ) : setting.type === 'choice' ? (
+              <select
+                className="rounded border border-(--ui-stroke-secondary) bg-transparent px-1 py-0.5"
+                id={fieldId}
+                onChange={event => set(event.target.value)}
+                value={String(value)}
+              >
+                {(setting.choices ?? []).map(choice => (
+                  <option key={choice} value={choice}>
+                    {choice}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="rounded border border-(--ui-stroke-secondary) bg-transparent px-1 py-0.5"
+                id={fieldId}
+                max={setting.type === 'number' ? (setting.maximum ?? undefined) : undefined}
+                min={setting.type === 'number' ? (setting.minimum ?? undefined) : undefined}
+                onChange={event => set(setting.type === 'number' ? (event.target.value === '' ? Number.NaN : Number(event.target.value)) : event.target.value)}
+                type={setting.type === 'number' ? 'number' : 'text'}
+                value={typeof value === 'number' && Number.isNaN(value) ? '' : String(value)}
+              />
+            )}
+            {setting.description && <span className="text-(--ui-text-tertiary)">{setting.description}</span>}
+            {problems[setting.id] && (
+              <span className="text-destructive" data-slot="athena-catalog-setting-problem" role="alert">
+                {problems[setting.id]}
+              </span>
+            )}
+          </div>
+        )
+      })}
+      <div className="flex items-center gap-2">
+        <Button disabled={saving} size="xs" type="submit" variant="secondary">
+          Save settings
+        </Button>
+        {status && (
+          <span className="text-(--ui-text-secondary)" data-slot="athena-catalog-settings-status" role="status">
+            {status}
+          </span>
+        )}
+      </div>
+    </form>
+  )
+}
+
 function CardDetails({ card, id }: { card: CatalogCard; id: string }) {
   const { entry } = card
   const tools = packageTools(entry)
@@ -219,6 +349,14 @@ function CardDetails({ card, id }: { card: CatalogCard; id: string }) {
           ({entry.review.by}, {entry.review.at})
         </span>
       </dd>
+      {card.installed && (entry.settings ?? []).length > 0 && (
+        <>
+          <dt className="text-(--ui-text-tertiary)">Settings</dt>
+          <dd>
+            <SettingsForm id={entry.id} settings={entry.settings ?? []} />
+          </dd>
+        </>
+      )}
       {examples.length > 0 && (
         <>
           <dt className="text-(--ui-text-tertiary)">Try</dt>
@@ -538,6 +676,7 @@ export function AthenaCatalogPage() {
     void loadToolPrefs()
     void loadInstalledPackages()
     void loadPackageAccess()
+    void loadPackageSettings()
   }, [])
 
   // Ask main again on each visit: a remote catalog synced while the app ran shows without a restart.

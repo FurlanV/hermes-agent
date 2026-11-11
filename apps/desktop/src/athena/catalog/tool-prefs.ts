@@ -14,11 +14,24 @@ import type {
   PackageAction,
   PackageActionOptions,
   PackageActionResult,
+  PackageSettings,
+  SettingsResult,
+  SettingValue,
   ToolPrefs,
   ToolToggleResult
 } from '../../../electron/athena/tool-prefs-types'
 
-export type { InstalledPackages, PackageAccess, PackageAction, PackageActionResult, ToolPrefs, ToolToggleResult }
+export type {
+  InstalledPackages,
+  PackageAccess,
+  PackageAction,
+  PackageActionResult,
+  PackageSettings,
+  SettingsResult,
+  SettingValue,
+  ToolPrefs,
+  ToolToggleResult
+}
 
 export interface AthenaToolsBridge {
   getPrefs: () => Promise<unknown>
@@ -28,6 +41,9 @@ export interface AthenaToolsBridge {
   package?: (id: string, action: PackageAction, options?: PackageActionOptions) => Promise<unknown>
   /** F03 slice 26. */
   getAccess?: () => Promise<unknown>
+  /** F03 slice 27. */
+  getSettings?: () => Promise<unknown>
+  setSettings?: (id: string, values: Record<string, SettingValue>) => Promise<unknown>
 }
 
 /** The bridge preload exposes (`window.athenaDesktop.tools`); undefined outside Electron. */
@@ -49,6 +65,9 @@ export const $installedPackages = atom<InstalledPackages>({})
  * `null` until main answered (or without a main that knows it): the page then shows no access state at all.
  */
 export const $packageAccess = atom<null | PackageAccess>(null)
+
+/** `tool-prefs.json` `settings`: the user's values per package (F03 slice 27). */
+export const $packageSettings = atom<PackageSettings>({})
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -180,5 +199,53 @@ export async function packageAction(
     }
   } catch (error) {
     return failed(error instanceof Error ? error.message : String(error))
+  }
+}
+
+const asSettings = (value: unknown): PackageSettings =>
+  isRecord(value)
+    ? (Object.fromEntries(Object.entries(value).filter(([, values]) => isRecord(values))) as PackageSettings)
+    : {}
+
+export async function loadPackageSettings(bridge: AthenaToolsBridge | undefined = toolsBridge()): Promise<PackageSettings> {
+  if (bridge?.getSettings) {
+    try {
+      $packageSettings.set(asSettings(await bridge.getSettings()))
+    } catch {
+      // Keep what we had.
+    }
+  }
+
+  return $packageSettings.get()
+}
+
+/** Save one package's settings through main and the CLI (which checks them again). Never throws. */
+export async function savePackageSettings(
+  id: string,
+  values: Record<string, SettingValue>,
+  bridge: AthenaToolsBridge | undefined = toolsBridge()
+): Promise<SettingsResult> {
+  if (!bridge?.setSettings) {
+    return { applied: false, message: 'Package settings need the Athena desktop app.', ok: false, settings: $packageSettings.get() }
+  }
+
+  try {
+    const raw: unknown = await bridge.setSettings(id, values)
+    const result = isRecord(raw) ? raw : {}
+    $packageSettings.set(asSettings(result.settings))
+
+    return {
+      applied: result.applied === true,
+      message: typeof result.message === 'string' ? result.message : '',
+      ok: result.ok === true,
+      settings: $packageSettings.get()
+    }
+  } catch (error) {
+    return {
+      applied: false,
+      message: error instanceof Error ? error.message : String(error),
+      ok: false,
+      settings: $packageSettings.get()
+    }
   }
 }

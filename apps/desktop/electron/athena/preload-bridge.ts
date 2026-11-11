@@ -16,6 +16,8 @@ const TOOL_PREFS_SET = 'athena:tool-prefs:set'
 const TOOL_PREFS_INSTALLED = 'athena:tool-prefs:installed'
 const TOOL_PREFS_PACKAGE = 'athena:tool-prefs:package'
 const TOOL_PREFS_ACCESS = 'athena:tool-prefs:access'
+const TOOL_PREFS_SETTINGS = 'athena:tool-prefs:settings'
+const TOOL_PREFS_SET_SETTINGS = 'athena:tool-prefs:set-settings'
 // Mirrors CATALOG_CHANNELS in catalog-source.ts (F03 slice 02: where the tool catalog came from).
 const CATALOG_SNAPSHOT = 'athena:catalog:snapshot'
 const CATALOG_GET = 'athena:catalog:get'
@@ -66,7 +68,11 @@ export function exposeAthenaBridge(): void {
       package: (id: string, action: string, options?: { reason?: string }) =>
         ipcRenderer.invoke(TOOL_PREFS_PACKAGE, { action, id, reason: options?.reason }),
       // F03 slice 26: what the user holds of each gateway package (package-access.json).
-      getAccess: () => ipcRenderer.invoke(TOOL_PREFS_ACCESS)
+      getAccess: () => ipcRenderer.invoke(TOOL_PREFS_ACCESS),
+      // F03 slice 27: the user's package settings, saved through the CLI.
+      getSettings: () => ipcRenderer.invoke(TOOL_PREFS_SETTINGS),
+      setSettings: (id: string, values: Record<string, unknown>) =>
+        ipcRenderer.invoke(TOOL_PREFS_SET_SETTINGS, { id, values })
     }
   })
 }
