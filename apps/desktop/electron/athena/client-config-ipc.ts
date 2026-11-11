@@ -17,7 +17,7 @@ import type { BrowserWindow, IpcMain } from 'electron'
 
 import { PRODUCT_IDENTITY } from '../product-identity'
 
-import { installAthenaCatalogSource } from './catalog-source'
+import { AthenaCatalogSource, installAthenaCatalogSource } from './catalog-source'
 import { AthenaClientConfig, type ClientConfigSnapshot, devOverridesFromEnv } from './client-config'
 import { applyMainPolicies, configureMainPolicies, ignoredRemoveRows } from './main-policy'
 import { parsePolicyDecision, POLICY_DECISIONS_FILE, PolicyDecisionLog } from './policy-decisions'
@@ -102,7 +102,11 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
       decisions.record(decision)
     }
   })
-  installAthenaCatalogSource(options.ipcMain, options.log)
+  installAthenaCatalogSource(
+    options.ipcMain,
+    options.log,
+    new AthenaCatalogSource({ athenaDir: options.athenaDir, config: () => source.snapshot().config, log: options.log })
+  )
   source.start()
   installed = source
   const first = source.snapshot()

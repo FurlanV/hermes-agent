@@ -47,7 +47,7 @@ import {
   toolsMode,
   worksBestWithLine
 } from './catalog'
-import { type CurrentCatalog, currentCatalog } from './catalog-source'
+import { type CurrentCatalog, currentCatalog, refreshCatalog } from './catalog-source'
 import { LearnedSkills } from './learned-skills'
 import { needsMcpReload, reloadPackageServers } from './mcp-reload'
 import { $toolPrefs, loadToolPrefs, setToolEnabled } from './tool-prefs'
@@ -188,8 +188,15 @@ function CatalogCardView({ busy, card, note, onToggle }: CardProps) {
 export function CatalogDiagnostics({ current }: { current: CurrentCatalog }) {
   return (
     <p className="mt-6 text-[0.68rem] text-(--ui-text-tertiary)" data-slot="athena-catalog-diagnostics">
-      Catalog {current.version} · source: {current.source}
-      {current.error && <span title={current.error}> (fallback)</span>}
+      Catalog {current.version}
+      {current.remoteVersion && ` + remote ${current.remoteVersion}`} · source: {current.source}
+      {current.error && <span title={current.error}> ({current.source === 'bundled' ? 'fallback' : current.error})</span>}
+      {current.rejected.length > 0 && (
+        <span data-slot="athena-catalog-rejected" title={current.rejected.map(r => `${r.id}: ${r.reason}`).join('\n')}>
+          {' '}
+          · {current.rejected.length} remote {current.rejected.length === 1 ? 'entry' : 'entries'} refused
+        </span>
+      )}
     </p>
   )
 }
@@ -207,7 +214,17 @@ export function AthenaCatalogPage() {
     void loadToolPrefs()
   }, [])
 
-  const current = useMemo(() => currentCatalog(), [])
+  const [current, setCurrent] = useState<CurrentCatalog>(() => currentCatalog())
+
+  // Ask main again on each visit: a remote catalog synced while the app ran shows without a restart.
+  useEffect(() => {
+    let live = true
+    void refreshCatalog().then(next => live && setCurrent(next))
+
+    return () => {
+      live = false
+    }
+  }, [])
   const cards = useMemo(() => catalogCards(config, prefs, current.catalog), [config, prefs, current])
   const groups = useMemo(() => groupCards(cards, query), [cards, query])
   const requestUrl = requestToolsUrl(config)
