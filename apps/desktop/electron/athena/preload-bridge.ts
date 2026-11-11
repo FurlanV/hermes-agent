@@ -13,6 +13,8 @@ const DECISION = 'athena:policy-decision'
 // Mirrors TOOL_PREFS_CHANNELS in tool-prefs.ts (slice 28: the Capabilities page's tool switches).
 const TOOL_PREFS_GET = 'athena:tool-prefs:get'
 const TOOL_PREFS_SET = 'athena:tool-prefs:set'
+const TOOL_PREFS_INSTALLED = 'athena:tool-prefs:installed'
+const TOOL_PREFS_PACKAGE = 'athena:tool-prefs:package'
 // Mirrors CATALOG_CHANNELS in catalog-source.ts (F03 slice 02: where the tool catalog came from).
 const CATALOG_SNAPSHOT = 'athena:catalog:snapshot'
 const CATALOG_GET = 'athena:catalog:get'
@@ -57,7 +59,10 @@ export function exposeAthenaBridge(): void {
     },
     tools: {
       getPrefs: () => ipcRenderer.invoke(TOOL_PREFS_GET),
-      set: (id: string, on: boolean) => ipcRenderer.invoke(TOOL_PREFS_SET, { id, on })
+      set: (id: string, on: boolean) => ipcRenderer.invoke(TOOL_PREFS_SET, { id, on }),
+      // F03 slices 20-22: the installed packages, and install / remove / accept through the CLI.
+      getInstalled: () => ipcRenderer.invoke(TOOL_PREFS_INSTALLED),
+      package: (id: string, action: string) => ipcRenderer.invoke(TOOL_PREFS_PACKAGE, { action, id })
     }
   })
 }

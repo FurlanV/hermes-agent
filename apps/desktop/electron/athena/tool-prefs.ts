@@ -1,10 +1,14 @@
 // Athena: the Capabilities page's tool switches (F02 slice 28).
 //
-// The renderer never writes the prefs file or runs anything itself. It asks main over two Athena channels:
+// The renderer never writes the prefs file or runs anything itself. It asks main over Athena channels:
 // - `athena:tool-prefs:get` (invoke): the user's toggles, `$HERMES_HOME/athena/tool-prefs.json` `enabled`;
 // - `athena:tool-prefs:set` (invoke, `{id, on}`): runs `athena config tool <id> on|off`, which writes that file and
 //   re-applies managed scope (`athena config apply`), so the next new chat gets the change. Open chats keep their
-//   tools (hermes builds a session's tool list at `session.create`).
+//   tools (hermes builds a session's tool list at `session.create`);
+// - `athena:tool-prefs:installed` (invoke): the installed packages, `tool-prefs.json` `installed` (F03 slice 20);
+// - `athena:tool-prefs:package` (invoke, `{id, action}`): runs `athena config tool <id> install|remove|accept`
+//   (slices 20-22). These need the CLI (it records the version and hash from the verified catalog): without it they
+//   are refused, never written by main.
 //
 // The CLI is found, in order, at `ATHENA_CLI` (the dev launcher passes the monorepo venv's `athena` by absolute
 // path), else as `athena` on the PATH the app was launched with, captured when main installs this module (before
@@ -18,14 +22,24 @@ import path from 'node:path'
 
 import type { IpcMain } from 'electron'
 
-import type { ToolPrefs, ToolToggleResult } from './tool-prefs-types'
+import type {
+  InstalledPackages,
+  PackageAction,
+  PackageActionResult,
+  ToolPrefs,
+  ToolToggleResult
+} from './tool-prefs-types'
 
-export type { ToolPrefs, ToolToggleResult }
+export type { InstalledPackages, PackageAction, PackageActionResult, ToolPrefs, ToolToggleResult }
 
 export const TOOL_PREFS_CHANNELS = Object.freeze({
   get: 'athena:tool-prefs:get',
+  installed: 'athena:tool-prefs:installed',
+  package: 'athena:tool-prefs:package',
   set: 'athena:tool-prefs:set'
 } as const)
+
+const PACKAGE_ACTIONS: ReadonlySet<string> = new Set(['accept', 'install', 'remove'])
 
 export const TOOL_PREFS_FILE = 'tool-prefs.json'
 
@@ -53,6 +67,29 @@ export function readToolPrefs(file: string): ToolPrefs {
   }
 
   return Object.fromEntries(Object.entries(enabled).filter((pair): pair is [string, boolean] => typeof pair[1] === 'boolean'))
+}
+
+/** `tool-prefs.json`'s `installed` records (anything unreadable: none). */
+export function readInstalledPackages(file: string): InstalledPackages {
+  let data: unknown
+
+  try {
+    data = JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return {}
+  }
+
+  const installed = isRecord(data) ? data.installed : undefined
+
+  if (!isRecord(installed)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(installed).filter(
+      (pair): pair is [string, InstalledPackages[string]] => isRecord(pair[1]) && typeof pair[1].version === 'string'
+    )
+  )
 }
 
 /** Set one toggle, keeping the others and any other keys: the CLI's format (sorted, 2-space JSON, 0600, atomic). */
@@ -174,6 +211,60 @@ export class AthenaToolPrefs {
     return readToolPrefs(this.file)
   }
 
+  installed(): InstalledPackages {
+    return readInstalledPackages(this.file)
+  }
+
+  /** Install, remove or accept one package through the CLI, queued with the toggles. */
+  package(id: unknown, action: unknown): Promise<PackageActionResult> {
+    const next = this.queue.then(() => this.packageNow(id, action))
+    this.queue = next.catch(() => undefined)
+
+    return next
+  }
+
+  private async packageNow(id: unknown, action: unknown): Promise<PackageActionResult> {
+    const refused = (message: string): PackageActionResult => ({
+      applied: false,
+      enabled: this.prefs(),
+      installed: this.installed(),
+      message,
+      ok: false
+    })
+
+    if (typeof id !== 'string' || !ENTRY_ID.test(id) || typeof action !== 'string' || !PACKAGE_ACTIONS.has(action)) {
+      return refused('Not a catalog package.')
+    }
+
+    const cli = this.cli()
+
+    if (!cli) {
+      this.options.log(`[athena] package ${id} ${action}: no athena CLI (ATHENA_CLI or PATH); refused`)
+
+      return refused('Installing needs the Athena command-line tool, which this app cannot find.')
+    }
+
+    const result = await (this.options.run ?? runCli)(cli, ['config', 'tool', id, action], this.cliEnv())
+    const message = firstLine(result.code === 0 ? result.stdout : result.stderr || result.stdout)
+    this.options.log(`[athena] ${cli} config tool ${id} ${action}: exit ${result.code}${message ? ` (${message})` : ''}`)
+
+    if (result.code !== 0) {
+      return refused(message || `athena exited ${result.code}`)
+    }
+
+    return { applied: true, enabled: this.prefs(), installed: this.installed(), message, ok: true }
+  }
+
+  private cliEnv(): Record<string, string | undefined> {
+    // The CLI's own venv, not whatever Python main's environment points at.
+    const env: Record<string, string | undefined> = { ...this.env, HERMES_HOME: this.options.hermesHome }
+    delete env.PYTHONHOME
+    delete env.PYTHONPATH
+    delete env.VIRTUAL_ENV
+
+    return env
+  }
+
   cli(): string | null {
     return resolveAthenaCli(this.env, this.launchPath, this.options.isExecutable)
   }
@@ -206,12 +297,7 @@ export class AthenaToolPrefs {
       }
     }
 
-    // The CLI's own venv, not whatever Python main's environment points at.
-    const env: Record<string, string | undefined> = { ...this.env, HERMES_HOME: this.options.hermesHome }
-    delete env.PYTHONHOME
-    delete env.PYTHONPATH
-    delete env.VIRTUAL_ENV
-    const result = await (this.options.run ?? runCli)(cli, ['config', 'tool', id, state], env)
+    const result = await (this.options.run ?? runCli)(cli, ['config', 'tool', id, state], this.cliEnv())
     const message = firstLine(result.code === 0 ? result.stdout : result.stderr || result.stdout)
     this.options.log(`[athena] ${cli} config tool ${id} ${state}: exit ${result.code}${message ? ` (${message})` : ''}`)
 
@@ -234,6 +320,12 @@ export function installAthenaToolPrefs(options: InstallToolPrefsOptions): Athena
     const { id, on } = isRecord(request) ? request : {}
 
     return prefs.set(id, on)
+  })
+  options.ipcMain.handle(TOOL_PREFS_CHANNELS.installed, () => prefs.installed())
+  options.ipcMain.handle(TOOL_PREFS_CHANNELS.package, (_event, request: unknown) => {
+    const { action, id } = isRecord(request) ? request : {}
+
+    return prefs.package(id, action)
   })
   const cli = prefs.cli()
   options.log(`[athena] tool prefs: ${prefs.file}; athena CLI ${cli ?? 'not found (toggles write the file only)'}`)

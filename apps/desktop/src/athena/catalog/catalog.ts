@@ -40,6 +40,8 @@ export interface CatalogSetting {
 export interface CatalogEntry {
   category?: 'agent' | 'built-in' | 'database' | 'skill'
   default_on: boolean
+  /** Example prompts for the detail view (F03 slice 20). */
+  examples?: string[]
   group: string
   icon: string
   id: string
@@ -124,8 +126,62 @@ export function requestToolsUrl(config: unknown): null | string {
   return /^(https?:\/\/|mailto:)\S+$/i.test(url) ? url : null
 }
 
+export type CatalogCategory = NonNullable<CatalogEntry['category']>
+
+export const CATEGORY_LABELS: Readonly<Record<CatalogCategory, string>> = Object.freeze({
+  'built-in': 'Built-in',
+  agent: 'Agents',
+  database: 'Databases',
+  skill: 'Skills'
+})
+
+export const CATEGORY_ORDER: readonly CatalogCategory[] = ['built-in', 'agent', 'database', 'skill']
+
+const CLASSIFICATIONS: readonly CatalogScope['classification'][] = ['public', 'internal', 'confidential', 'restricted']
+
+/** Built-in packages are installed for everyone: no Install, no Remove (F03 decision 1). */
+export const isBuiltIn = (entry: CatalogEntry): boolean => (entry.category ?? 'built-in') === 'built-in'
+
+export const categoryOf = (entry: CatalogEntry): CatalogCategory => entry.category ?? 'built-in'
+
+/** The highest data classification of the package's scopes (the card's badge), or null without scopes. */
+export function classificationOf(entry: CatalogEntry): CatalogScope['classification'] | null {
+  const levels = (entry.scopes ?? []).map(scope => CLASSIFICATIONS.indexOf(scope.classification)).filter(i => i >= 0)
+
+  return levels.length ? CLASSIFICATIONS[Math.max(...levels)] : null
+}
+
+/** The tools a package brings: a gateway package's remote tools, else the hermes tools it provides. */
+export function packageTools(entry: CatalogEntry): string[] {
+  const gateway = isRecord(entry.source) && isRecord(entry.source.gateway) ? entry.source.gateway : null
+
+  return gateway ? ids(gateway.tools) : entry.provides.tools
+}
+
+/**
+ * Whether the user has the package (the Installed view), as `athena_shipper.tool_pins.is_installed`: a built-in; one
+ * the admin put in `locked_on` or `default_on`; one installed here (`tool-prefs.json` `installed`); or one with a
+ * switch of its own. Anything else is in Browse only, with Install.
+ */
+export function entryIsInstalled(
+  entry: CatalogEntry,
+  tools: ToolsSection,
+  prefs: Record<string, boolean>,
+  installed: Record<string, unknown>
+): boolean {
+  return (
+    isBuiltIn(entry) ||
+    tools.locked_on.includes(entry.id) ||
+    tools.default_on.includes(entry.id) ||
+    entry.id in installed ||
+    typeof prefs[entry.id] === 'boolean'
+  )
+}
+
 export interface CatalogCard {
   entry: CatalogEntry
+  /** Installed for this user (built-ins always): in the Installed view; else in Browse with Install. */
+  installed: boolean
   /** `status: experimental`: the card shows a badge. */
   experimental: boolean
   /** No switch: `locked_on` in the config, `user_toggle: false` in the catalog (the admin decides), or withdrawn. */
@@ -158,11 +214,16 @@ export function entryIsOn(entry: CatalogEntry, tools: ToolsSection, prefs: Recor
   return typeof prefs[entry.id] === 'boolean' ? prefs[entry.id] : fallback
 }
 
-/** One card per `tools.available` id this build's catalog has, in the config's order. Nothing else is shown. */
+/**
+ * One card per `tools.available` id the catalog has (and, when the role is known, whose `roles` include it), in the
+ * config's order. Nothing else is shown: a package the role may not see is not on the page at all.
+ */
 export function catalogCards(
   config: unknown,
   prefs: Record<string, boolean> = {},
-  catalog: Catalog = currentCatalog().catalog
+  catalog: Catalog = currentCatalog().catalog,
+  installed: Record<string, unknown> = {},
+  role: null | string = null
 ): CatalogCard[] {
   const tools = toolsSection(config)
   const cards: CatalogCard[] = []
@@ -170,9 +231,10 @@ export function catalogCards(
   for (const id of new Set(tools.available)) {
     const entry = catalog.entries[id]
 
-    if (entry) {
+    if (entry && (!role || !Array.isArray(entry.roles) || entry.roles.includes(role))) {
       cards.push({
         entry,
+        installed: entryIsInstalled(entry, tools, prefs, installed),
         experimental: entry.status === 'experimental',
         managed: tools.locked_on.includes(id) || !entry.user_toggle || entry.status === 'withdrawn',
         on: entryIsOn(entry, tools, prefs),
@@ -214,9 +276,27 @@ export function cardMatches(card: CatalogCard, query: string): boolean {
 
   const { entry } = card
 
-  return [entry.title, entry.summary, entry.group, entry.id, ...entry.provides.tools, ...entry.provides.toolsets].some(
-    text => normalize(text).includes(q)
-  )
+  const publisher = entry.publisher ? [entry.publisher.name, entry.publisher.team] : []
+
+  return [
+    entry.title,
+    entry.summary,
+    entry.group,
+    entry.id,
+    ...publisher,
+    ...packageTools(entry),
+    ...entry.provides.toolsets
+  ].some(text => normalize(String(text)).includes(q))
+}
+
+/** Browse: cards matching `query` (and `category`, when set), grouped Built-in, Agents, Databases, Skills. */
+export function groupByCategory(cards: CatalogCard[], query = '', category: CatalogCategory | null = null): CardGroup[] {
+  return CATEGORY_ORDER.filter(c => !category || c === category)
+    .map(c => ({
+      cards: cards.filter(card => categoryOf(card.entry) === c && cardMatches(card, query)),
+      group: CATEGORY_LABELS[c]
+    }))
+    .filter(group => group.cards.length > 0)
 }
 
 export interface CardGroup {

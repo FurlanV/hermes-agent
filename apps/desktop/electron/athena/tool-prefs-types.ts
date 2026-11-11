@@ -14,3 +14,28 @@ export interface ToolToggleResult {
   /** One line for the user (the CLI's answer, or why it could not run). */
   message: string
 }
+
+/** One installed package (`tool-prefs.json` `installed.<id>`, written by `athena config tool <id> install`). */
+export interface InstalledPackage {
+  version: string
+  sha256: string
+  installed_at?: string
+  scopes?: string[]
+  tools?: string[]
+  sends?: string[]
+  /** Slice 22: the version a minor or patch update replaced, and when. */
+  updated_from?: string
+  updated_at?: string
+  /** Slice 22: why the listed version is not applied here (e.g. it needs a newer Athena). */
+  held?: string
+}
+
+export type InstalledPackages = Record<string, InstalledPackage>
+
+/** What `athena:tool-prefs:package` does to one package. */
+export type PackageAction = 'accept' | 'install' | 'remove'
+
+/** What `athena:tool-prefs:package` answers. */
+export interface PackageActionResult extends ToolToggleResult {
+  installed: InstalledPackages
+}
