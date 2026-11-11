@@ -16,6 +16,7 @@ from hermes_platform import declaration
 from tools.registry import invalidate_check_fn_cache, tool_error
 from tools.ansi_strip import strip_unicode_tags
 from tools.mcp_tool_common import _exc_str, _sanitize_error, mcp_field, _core
+from tools import mcp_tool_auth_command as _auth_command
 from tools import mcp_tool_loop as _loop
 from tools.mcp_tool_content import (
     _MCP_HARD_RESULT_CAP_CHARS, _cache_mcp_audio_block, _cache_mcp_image_block, _mcp_result_with_native_images,
@@ -701,6 +702,12 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float, *,
         booked: list = []  # a costed call's charge; refunded when the call never reaches the server
         error = _trust_gate_check(server_name, tool_name, booked, args)
         if error is not None:
+            return error
+        # ``auth_command`` servers only: a command that cannot mint a token is this call's answer.
+        error = _auth_command.preflight_error(server_name)
+        if error is not None:
+            for charge in booked:
+                charge.refund()
             return error
         server, error = None, _check_circuit_breaker(server_name)
         if error is None:

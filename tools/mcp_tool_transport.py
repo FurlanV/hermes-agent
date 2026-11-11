@@ -17,6 +17,7 @@ from tools.mcp_tool_lifecycle import _filter_mcp_children, _leader_start_time, _
 from hermes_cli.process_identity import own_process_groups, register_child, release_process_groups
 from tools.mcp_tool_common import _core
 from tools.mcp_tool_node_abi import node_abi_error
+from tools import mcp_tool_auth_command as _auth_command
 from tools import mcp_tool_config as _config
 from tools import mcp_tool_events as _events
 from tools import mcp_tool_lifecycle as _lifecycle
@@ -367,6 +368,9 @@ class MCPServerTransportMixin:
         if config.get("identity_header") is not None:  # copy-pasted HTTP block: warn, don't mislead
             logger.warning("MCP server '%s': identity_header is only supported on "
                            "HTTP/SSE transports — ignored for stdio servers", self.name)
+        if config.get(_auth_command.CONFIG_KEY) is not None:
+            logger.warning("MCP server '%s': %s is only supported on HTTP/SSE transports — ignored for "
+                           "stdio servers", self.name, _auth_command.CONFIG_KEY)
         if not _core._ensure_mcp_sdk():
             raise ImportError(f"MCP server '{self.name}' requires the 'mcp' Python SDK, but "
                               "it is not installed. Run `hermes setup` to install MCP support, then retry.")
@@ -517,6 +521,17 @@ class MCPServerTransportMixin:
                      "(%r) — reconnecting immediately instead of backing off", self.name, eg)
         return "reconnect"
 
+    def _http_auth(self, url: str, config: dict):
+        """The httpx ``auth`` for this connection: the OAuth provider, else an ``auth_command`` bearer flow
+        (the token is set per request, outside the headers the identity digest covers), else None."""
+        source = _auth_command.source_for(self, config)
+        if source is None:
+            return self._build_oauth_auth(url, config)
+        if self._auth_type == "oauth":
+            raise ValueError(f"MCP server '{self.name}': auth: oauth and {_auth_command.CONFIG_KEY} "
+                             "cannot both be set")
+        return _auth_command.httpx_auth(_core.sdk_httpx(), source)
+
     def _build_oauth_auth(self, url: str, config: dict):
         """OAuth 2.1 PKCE via the central MCPOAuthManager (one provider reused across reconnects and
         CLI paths). Setup failures re-raise (after a warning) so only this server is reported failed."""
@@ -619,7 +634,7 @@ class MCPServerTransportMixin:
             headers["mcp-protocol-version"] = _core.LATEST_HANDSHAKE_VERSION
         connect_timeout = config.get("connect_timeout", _core._DEFAULT_CONNECT_TIMEOUT)
         common = (url, headers, connect_timeout, config.get("ssl_verify", True), _resolve_client_cert(self.name, config),
-                  self._build_oauth_auth(url, config), bool(config.get("strict_redirect_headers")))
+                  self._http_auth(url, config), bool(config.get("strict_redirect_headers")))
         if config.get("transport") == "sse":
             return await self._serve_transport(self._sse_transport(*common), "SSE", float(connect_timeout))
         if self._sse_fallback:
