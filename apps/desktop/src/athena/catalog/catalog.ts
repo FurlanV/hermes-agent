@@ -70,6 +70,8 @@ export interface CatalogEntry {
   title: string
   user_toggle: boolean
   version: string
+  /** Entries this one needs to be useful (F03 slice 05): the card says so while one is off; nothing forces it on. */
+  works_best_with?: string[]
 }
 
 export interface Catalog {
@@ -130,6 +132,8 @@ export interface CatalogCard {
   managed: boolean
   /** On for the next new chat. */
   on: boolean
+  /** Titles of the `works_best_with` entries that are off for the next new chat (or not offered to the role). */
+  worksBestWith: string[]
 }
 
 /**
@@ -171,12 +175,32 @@ export function catalogCards(
         entry,
         experimental: entry.status === 'experimental',
         managed: tools.locked_on.includes(id) || !entry.user_toggle || entry.status === 'withdrawn',
-        on: entryIsOn(entry, tools, prefs)
+        on: entryIsOn(entry, tools, prefs),
+        worksBestWith: missingCompanions(entry, tools, prefs, catalog)
       })
     }
   }
 
   return cards
+}
+
+/** The titles of `entry.works_best_with` entries that are not on for new chats; ids the catalog lacks are ignored. */
+function missingCompanions(
+  entry: CatalogEntry,
+  tools: ToolsSection,
+  prefs: Record<string, boolean>,
+  catalog: Catalog
+): string[] {
+  return ids(entry.works_best_with).flatMap(id => {
+    const other = catalog.entries[id]
+
+    return other && !(tools.available.includes(id) && entryIsOn(other, tools, prefs)) ? [other.title] : []
+  })
+}
+
+/** The card's note while a companion is off: "Works best with Files". */
+export function worksBestWithLine(card: CatalogCard): null | string {
+  return card.worksBestWith.length ? `Works best with ${card.worksBestWith.join(' and ')}` : null
 }
 
 const normalize = (text: string) => text.toLocaleLowerCase().trim()

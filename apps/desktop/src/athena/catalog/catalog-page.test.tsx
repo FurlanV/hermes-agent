@@ -39,7 +39,8 @@ vi.mock('@/store/notifications', () => ({ notify: vi.fn(), notifyError: vi.fn() 
 
 const { CapabilitiesView } = await import('@/app/capabilities')
 
-// The demo roles' `tools` sections, as athena's compose seed serves them (deploy/compose/dev/client-config.*.yaml).
+// The F02 demo roles' `tools` sections (athena's compose seed before F03 slice 05 turned every built-in on for every
+// role; catalog-built-in-switches.test.ts covers today's seed). Locks and narrower lists are still valid configs.
 const RESEARCHER_TOOLS = {
   available: ['files', 'python', 'terminal', 'literature-search', 'browser', 'memory', 'learned-skills', 'todo',
     'subagents', 'summarise-paper', 'data-cleaning-pandas', 'clarify', 'desktop-projects'],
@@ -155,7 +156,7 @@ describe('the catalog model', () => {
     expect(on({ files: false, memory: false, python: false, browser: true })).toMatchObject({
       browser: true, // user_toggle, the user's choice
       files: true, // locked_on
-      memory: true, // user_toggle: false in the catalog: default_on decides
+      memory: false, // a user switch since F03 slice 05 (no built-in is admin-decided any more)
       python: false,
       subagents: false // default off
     })
@@ -287,6 +288,19 @@ describe('the Capabilities page', { timeout: 30_000 }, () => {
     await waitFor(() => expect(within(literature).getByRole('status').textContent).toBe('Applies to new chats'))
     expect(within(literature).getByRole('switch').getAttribute('aria-checked')).toBe('false')
     expect($toolPrefs.get()).toEqual({ 'literature-search': false })
+  })
+
+  test('with Files off, the cards that need it say "Works best with Files" and Files stays off', async () => {
+    fakeBridge({ files: false })
+    await renderPage(config({ ...RESEARCHER_TOOLS, locked_on: [] }))
+
+    await waitFor(() => expect(within(card('files')!).getByRole('switch', { name: 'Files' }).getAttribute('aria-checked')).toBe('false'))
+
+    for (const id of ['python', 'summarise-paper', 'data-cleaning-pandas']) {
+      expect(card(id)!.querySelector('[data-slot="athena-catalog-works-best-with"]')?.textContent).toBe('Works best with Files')
+    }
+
+    expect(card('terminal')!.querySelector('[data-slot="athena-catalog-works-best-with"]')).toBeNull()
   })
 
   test("the user's saved toggles are read from main on open", async () => {

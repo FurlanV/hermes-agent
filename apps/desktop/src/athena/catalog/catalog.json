@@ -1,9 +1,9 @@
 {
-  "catalog_version": "2026.11.3",
+  "catalog_version": "2026.11.4",
   "entries": {
     "browser": {
       "category": "built-in",
-      "default_on": false,
+      "default_on": true,
       "group": "Research",
       "icon": "globe",
       "id": "browser",
@@ -34,12 +34,15 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Local browser only; any site, so experimental and researcher-only."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Local browser only; any site, so experimental and researcher-only. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
-        "researcher"
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
       ],
-      "sha256": "632f49bff6fc2f3d9cc0275eed546120739e438c58647b700facdef9be781f42",
+      "sha256": "a0ee91a946c2419ac9289fd985568c6e1bdb42b7aff3dc49d66eb5d430a6efd7",
       "source": {
         "config": {},
         "hermes_toolset": "browser"
@@ -48,7 +51,7 @@
       "summary": "Opens pages in a local browser the agent controls.",
       "title": "Browser",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "clarify": {
       "category": "built-in",
@@ -76,7 +79,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Added in F02 slice 28: without it hermes cannot ask the user a question, so it is locked on for every role (slice 26 found the toolset disabled). The question and the answer stay in the chat. Awaiting human review (Q4)."
+        "notes": "Added in F02 slice 28: without it hermes cannot ask the user a question, so it is locked on for every role (slice 26 found the toolset disabled). The question and the answer stay in the chat. Awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -84,7 +87,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "54eb5b9a0e0fc7a3c6611707bfdd44a338d7f8b6470e564de1ce86294fa5e6cb",
+      "sha256": "63906e194619b0fa5bd959be5d30b8af5f43c5e7554dbad1563483ddefa7cc45",
       "source": {
         "config": {},
         "hermes_toolset": "clarify"
@@ -92,8 +95,8 @@
       "status": "stable",
       "summary": "Lets the agent ask you a question, multiple-choice or open-ended, before it carries on.",
       "title": "Ask clarifying questions",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "data-cleaning-pandas": {
       "category": "built-in",
@@ -110,14 +113,19 @@
         "network": []
       },
       "provides": {
-        "tools": [],
-        "toolsets": []
+        "tools": [
+          "skills_list",
+          "skill_view"
+        ],
+        "toolsets": [
+          "skills"
+        ]
       },
       "requires_hermes": ">=1a48bf2b",
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Placeholder content (Q4: skills not named yet); experimental."
+        "notes": "Placeholder content (Q4: skills not named yet); experimental. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role. It brings skills_list and skill_view (reading skills), so it loads with Learned skills off; skill_manage stays with Learned skills."
       },
       "roles": [
         "researcher",
@@ -125,7 +133,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "48264491f298acefc641fe68a7a968d0cedd0c7be08b425ddb6b83a110b199a0",
+      "sha256": "3ca35f78d23f81ae85bc06f74970eafbc0d1e8dcaa962e349367cb667f3c043c",
       "source": {
         "path": "skills/data-cleaning-pandas",
         "sha256": "701b5f0a078d2414d539c96fd4bbe9d4b08d3e131e85cc48a9c4b17e793804aa"
@@ -134,7 +142,10 @@
       "summary": "Cleans a tabular dataset with pandas and reports every change.",
       "title": "Data cleaning in pandas",
       "user_toggle": true,
-      "version": "0.1.0"
+      "version": "0.2.0",
+      "works_best_with": [
+        "files"
+      ]
     },
     "desktop-projects": {
       "category": "built-in",
@@ -162,7 +173,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Added in F02 slice 28: the Desktop's Projects need it (the GUI gateway adds the toolset to every Desktop session; slice 26 found it disabled), so it is locked on for every role. It records projects in the Profile's projects.db and points the session at a folder; file access itself stays with Files. Awaiting human review (Q4)."
+        "notes": "Added in F02 slice 28: the Desktop's Projects need it (the GUI gateway adds the toolset to every Desktop session; slice 26 found it disabled), so it is locked on for every role. It records projects in the Profile's projects.db and points the session at a folder; file access itself stays with Files. Awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -170,7 +181,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "5c8ea24a7f7de415628e1fcef7f8f1332d31167d5947294a9f6eaaddd0ea0bda",
+      "sha256": "9e1f710e62e9d41c2f5520dd6c819c874f583f77aafaee2cfdaac24e73788f04",
       "source": {
         "config": {},
         "hermes_toolset": "project"
@@ -178,8 +189,8 @@
       "status": "stable",
       "summary": "Lets the agent create and switch the named project workspaces in the sidebar.",
       "title": "Desktop projects",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "files": {
       "category": "built-in",
@@ -210,7 +221,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -218,7 +229,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "aecc032440acd0eeccbb19c0ba7a3e53912984d22651a2fb8fe9cef493f607ce",
+      "sha256": "39751e04a6ed59cc4e79c25b8fc70233a244adedb774ea713294e8d1a18ad6c8",
       "source": {
         "config": {},
         "hermes_toolset": "file"
@@ -226,8 +237,8 @@
       "status": "stable",
       "summary": "Read, write and search files in your project.",
       "title": "Files",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "learned-skills": {
       "category": "built-in",
@@ -257,7 +268,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). skill_manage limited to the user's own skill folder (athena_guard, slice 27)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). skill_manage limited to the user's own skill folder (athena_guard, slice 27). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -265,7 +276,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "f068c733a4855369c474663b22afa7fa582df596da7501308ee3629f338c892f",
+      "sha256": "06243c52a6c21ca019b3ed444523d4a5870da16be92a06033e008957e8d139f5",
       "source": {
         "config": {},
         "hermes_toolset": "skills"
@@ -274,7 +285,7 @@
       "summary": "Skills the agent writes for you, kept in your own skill folder.",
       "title": "Learned skills",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     "literature-search": {
       "category": "built-in",
@@ -307,14 +318,15 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
         "clinician",
+        "trainee",
         "admin"
       ],
-      "sha256": "40f99938e3be2dec8a8bb653bb0383f95a31e920e81e1c4336fbde3a7fc37876",
+      "sha256": "9b26d1c36522120654388ef05396a23d1782a1049145d5e12db14610404d4579",
       "source": {
         "config": {
           "web": {
@@ -327,7 +339,7 @@
       "summary": "Search PubMed and the hospital library index.",
       "title": "Literature search",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "memory": {
       "category": "built-in",
@@ -355,7 +367,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Managed: users cannot turn it off (S55)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Managed: users cannot turn it off (S55). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -363,7 +375,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "f771b30480250782e14c4d4dde3bd999bc060532e8763c3a8c4440a9d561b14e",
+      "sha256": "fd508e9b5bbebdeb5f0d9a8caf26ff81261b1cf4bc07e4bbd81eafeefda19263",
       "source": {
         "config": {},
         "hermes_toolset": "memory"
@@ -371,8 +383,8 @@
       "status": "stable",
       "summary": "Remembers notes about you and your work across chats.",
       "title": "Memory",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "python": {
       "category": "built-in",
@@ -400,7 +412,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -408,7 +420,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "71e5eb21a45f059ca972eabc684d75415b72cc69d54530575114a0a897fc8b32",
+      "sha256": "8f2bce9ecdfc87756a67415504731a1f17fadd37a2d2242d57662911f26134f3",
       "source": {
         "config": {},
         "hermes_toolset": "code_execution"
@@ -417,11 +429,14 @@
       "summary": "Run Python scripts on this laptop to analyse data and call tools.",
       "title": "Python",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0",
+      "works_best_with": [
+        "files"
+      ]
     },
     "subagents": {
       "category": "built-in",
-      "default_on": false,
+      "default_on": true,
       "group": "Workspace",
       "icon": "users",
       "id": "subagents",
@@ -445,14 +460,15 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Not for trainee."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Not for trainee. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
         "clinician",
+        "trainee",
         "admin"
       ],
-      "sha256": "8e37abb7c2f54a765e0fa43c597eea063bddbd523a794a4260ae0112879eab44",
+      "sha256": "e55ebfa8d93bb604835e0f213219bdeaf6d0d8da31c66a40abb7708a79f6812b",
       "source": {
         "config": {},
         "hermes_toolset": "delegation"
@@ -461,7 +477,7 @@
       "summary": "Hands parts of a task to helper agents with their own context.",
       "title": "Subagents",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "summarise-paper": {
       "category": "built-in",
@@ -478,14 +494,19 @@
         "network": []
       },
       "provides": {
-        "tools": [],
-        "toolsets": []
+        "tools": [
+          "skills_list",
+          "skill_view"
+        ],
+        "toolsets": [
+          "skills"
+        ]
       },
       "requires_hermes": ">=1a48bf2b",
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Placeholder content (Q4: skills not named yet); experimental."
+        "notes": "Placeholder content (Q4: skills not named yet); experimental. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role. It brings skills_list and skill_view (reading skills), so it loads with Learned skills off; skill_manage stays with Learned skills."
       },
       "roles": [
         "researcher",
@@ -493,7 +514,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "4e08a77b3610e156c4c2e55fdce4d5ea876938c9d3b5ffc9db81a5313f83fea8",
+      "sha256": "95945e28f5a988b854caebb54639761a120dc39e900dbfed8c9d72c45335dfa0",
       "source": {
         "path": "skills/summarise-paper",
         "sha256": "dc17000e7b20406facf6133e02765416bed60d7869683deb31187a9a7713e3de"
@@ -502,11 +523,14 @@
       "summary": "Summarises a paper's question, methods, findings and limits.",
       "title": "Summarise a paper",
       "user_toggle": true,
-      "version": "0.1.0"
+      "version": "0.2.0",
+      "works_best_with": [
+        "files"
+      ]
     },
     "terminal": {
       "category": "built-in",
-      "default_on": false,
+      "default_on": true,
       "group": "Workspace",
       "icon": "terminal",
       "id": "terminal",
@@ -531,7 +555,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). On by default for researcher and admin only (role configs)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). On by default for researcher and admin only (role configs). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -539,7 +563,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "51af2a1250a58450e88d21cb646e78100336e5c41a1294eac4a24a0e90691468",
+      "sha256": "524010db327dc4229435ed1b5498cc5eef3d492f05c40920f52baf3a1510cb45",
       "source": {
         "config": {},
         "hermes_toolset": "terminal"
@@ -548,7 +572,7 @@
       "summary": "Run shell commands and manage processes on this laptop.",
       "title": "Terminal",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "todo": {
       "category": "built-in",
@@ -576,7 +600,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -584,7 +608,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "ce299e17092f767cc048cbec4f050b83efb821ee0c49b1abe2ebaa12073c0060",
+      "sha256": "254072d69eb26b46a2a86a4cf4f9af398300d8ed38ec94e50eede85bf67c4703",
       "source": {
         "config": {},
         "hermes_toolset": "todo"
@@ -593,7 +617,7 @@
       "summary": "Plans and tracks multi-step work in the chat.",
       "title": "To-do list",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   },
   "hermes_commit": "1a48bf2bf38bd881e0837e3192d2291de6184dc7"

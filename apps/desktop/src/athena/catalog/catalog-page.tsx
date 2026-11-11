@@ -38,7 +38,15 @@ import { notifyError } from '@/store/notifications'
 import branding from '../branding.json'
 import { useClientConfig } from '../managed/client-config'
 
-import { type CatalogCard, catalogCards, groupCards, requestToolsUrl, sendsLine, toolsMode } from './catalog'
+import {
+  type CatalogCard,
+  catalogCards,
+  groupCards,
+  requestToolsUrl,
+  sendsLine,
+  toolsMode,
+  worksBestWithLine
+} from './catalog'
 import { type CurrentCatalog, currentCatalog } from './catalog-source'
 import { LearnedSkills } from './learned-skills'
 import { $toolPrefs, loadToolPrefs, setToolEnabled } from './tool-prefs'
@@ -77,6 +85,7 @@ interface CardProps {
 
 function CatalogCardView({ busy, card, note, onToggle }: CardProps) {
   const { entry, experimental, managed, on } = card
+  const worksBestWith = worksBestWithLine(card)
   const [open, setOpen] = useState(false)
   const Icon = ICONS[entry.icon] ?? Wrench
   const detailsId = `athena-catalog-details-${entry.id}`
@@ -103,6 +112,11 @@ function CatalogCardView({ busy, card, note, onToggle }: CardProps) {
           <p className="text-[0.68rem] text-(--ui-text-tertiary)" data-slot="athena-catalog-sends">
             {sendsLine(entry)}
           </p>
+          {worksBestWith && (
+            <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-works-best-with">
+              {worksBestWith}
+            </p>
+          )}
           {note && (
             <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-note" role="status">
               {note}
