@@ -9,6 +9,8 @@
  * new chat gets.
  */
 
+import type { PackageAccess } from '../../../electron/athena/tool-prefs-types'
+
 import { BUNDLED_CATALOG, currentCatalog } from './catalog-source'
 
 export { BUNDLED_CATALOG }
@@ -215,7 +217,41 @@ export function packageUpdate(entry: CatalogEntry, record: unknown, now = Date.n
   return null
 }
 
+/**
+ * What the user holds of a gateway package (F03 slice 26), from `package-access.json`: scope titles not granted yet,
+ * split into requested and not. `blocked`: no scope granted (or the package is suspended), so new chats leave it out
+ * (as `athena_shipper.package_access.withheld`) and the card offers Request access in place of the switch. The
+ * capability gateway decides every call whatever this says.
+ */
+export interface CardAccess {
+  blocked: boolean
+  missing: string[]
+  pending: string[]
+  suspended: boolean
+}
+
+export function cardAccess(entry: CatalogEntry, access: null | PackageAccess): CardAccess | null {
+  const held = access?.packages?.[entry.id]
+  const scopes = entry.scopes ?? []
+
+  if (!held || !isRecord(held.scopes) || scopes.length === 0) {
+    return null
+  }
+
+  const state = (id: string) => held.scopes[id] ?? 'none'
+  const suspended = held.state === 'suspended'
+
+  return {
+    blocked: suspended || !scopes.some(scope => state(scope.id) === 'granted'),
+    missing: scopes.filter(scope => state(scope.id) === 'none').map(scope => scope.title),
+    pending: scopes.filter(scope => state(scope.id) === 'requested').map(scope => scope.title),
+    suspended
+  }
+}
+
 export interface CatalogCard {
+  /** Slice 26: what the user holds of a gateway package; null without scopes or without word from the platform. */
+  access: CardAccess | null
   entry: CatalogEntry
   /** Slice 22: the update line, from the installed record. */
   update: null | PackageUpdate
@@ -264,7 +300,8 @@ export function catalogCards(
   prefs: Record<string, boolean> = {},
   catalog: Catalog = currentCatalog().catalog,
   installed: Record<string, unknown> = {},
-  role: null | string = null
+  role: null | string = null,
+  access: null | PackageAccess = null
 ): CatalogCard[] {
   const tools = toolsSection(config)
   const cards: CatalogCard[] = []
@@ -273,7 +310,10 @@ export function catalogCards(
     const entry = catalog.entries[id]
 
     if (entry && (!role || !Array.isArray(entry.roles) || entry.roles.includes(role))) {
+      const held = cardAccess(entry, access)
+
       cards.push({
+        access: held,
         entry,
         installed: entryIsInstalled(entry, tools, prefs, installed),
         update: packageUpdate(entry, installed[id]),
@@ -284,7 +324,7 @@ export function catalogCards(
           entryIsInstalled(entry, tools, prefs, installed),
         experimental: entry.status === 'experimental',
         managed: tools.locked_on.includes(id) || !entry.user_toggle || entry.status === 'withdrawn',
-        on: entryIsOn(entry, tools, prefs),
+        on: entryIsOn(entry, tools, prefs) && !held?.blocked,
         worksBestWith: missingCompanions(entry, tools, prefs, catalog)
       })
     }

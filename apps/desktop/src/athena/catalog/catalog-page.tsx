@@ -14,6 +14,11 @@
  * A switch goes to Electron main, which runs `athena config tool <id> on|off`; Install runs `athena config tool <id>
  * install` (version and hash recorded in tool-prefs.json; nothing is downloaded from the publisher). Either reaches
  * new chats. There is no add, import, URL or JSON editor anywhere on the page.
+ *
+ * Access (F03 slice 26): a gateway package the user holds no grant for (`package-access.json`, from the platform at
+ * each sync) shows Request access in place of Install or the switch, then Requested. Requesting also installs it, so
+ * the card turns on by itself once an administrator grants it and the next sync brings the grant. Scopes still
+ * waiting show as pending. The capability gateway decides every call whatever the page shows.
  */
 
 import { useStore } from '@nanostores/react'
@@ -70,8 +75,10 @@ import { LearnedSkills } from './learned-skills'
 import { needsMcpReload, reloadPackageServers } from './mcp-reload'
 import {
   $installedPackages,
+  $packageAccess,
   $toolPrefs,
   loadInstalledPackages,
+  loadPackageAccess,
   loadToolPrefs,
   packageAction,
   setToolEnabled
@@ -118,8 +125,40 @@ interface CardProps {
   onInstall: () => void
   onAccept: () => void
   onRemove: () => void
+  onRequest: (reason: string) => void
   onToggle: (on: boolean) => void
   view: CatalogView
+}
+
+/** Request access, with an optional reason for the admins (slice 26). */
+function RequestForm({ busy, onCancel, onSend, title }: { busy: boolean; onCancel: () => void; onSend: (reason: string) => void; title: string }) {
+  const [reason, setReason] = useState('')
+
+  return (
+    <form
+      className="mt-1 flex flex-wrap items-center gap-2"
+      data-slot="athena-catalog-request-form"
+      onSubmit={event => {
+        event.preventDefault()
+        onSend(reason)
+      }}
+    >
+      <input
+        aria-label={`Why you need ${title} (optional)`}
+        className="min-w-0 flex-1 rounded border border-(--ui-stroke-secondary) bg-transparent px-2 py-1 text-[0.68rem]"
+        maxLength={500}
+        onChange={event => setReason(event.target.value)}
+        placeholder="Why you need it (optional)"
+        value={reason}
+      />
+      <Button disabled={busy} size="xs" type="submit" variant="secondary">
+        Send request
+      </Button>
+      <Button onClick={onCancel} size="xs" type="button" variant="text">
+        Cancel
+      </Button>
+    </form>
+  )
 }
 
 function CardDetails({ card, id }: { card: CatalogCard; id: string }) {
@@ -228,18 +267,48 @@ function UpdateLine({ busy, onAccept, title, update }: { busy: boolean; onAccept
   )
 }
 
-function CatalogCardView({ busy, card, note, onAccept, onInstall, onRemove, onToggle, view }: CardProps) {
-  const { entry, experimental, installed, managed, on, removable, update } = card
+function CatalogCardView({ busy, card, note, onAccept, onInstall, onRemove, onRequest, onToggle, view }: CardProps) {
+  const { access, entry, experimental, installed, managed, on, removable, update } = card
   const banner = statusBanner(entry)
   const worksBestWith = worksBestWithLine(card)
   const [open, setOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
   const Icon = ICONS[entry.icon] ?? Wrench
   const detailsId = `athena-catalog-details-${view}-${entry.id}`
   const classification = classificationOf(entry)
 
   let control: ReactNode
 
-  if (view === 'browse') {
+  const requestButton = (
+    <Button
+      aria-label={`Request access to ${entry.title}`}
+      data-slot="athena-catalog-request-access"
+      disabled={busy || entry.status === 'withdrawn'}
+      onClick={() => setAsking(true)}
+      size="xs"
+      variant="secondary"
+    >
+      Request access
+    </Button>
+  )
+
+  if (access?.blocked && !(view === 'browse' && installed)) {
+    control = access.suspended ? (
+      <span className="shrink-0 text-xs text-(--ui-text-tertiary)" data-slot="athena-catalog-suspended">
+        Suspended
+      </span>
+    ) : access.missing.length === 0 ? (
+      <span
+        className="shrink-0 text-xs text-(--ui-text-tertiary)"
+        data-slot="athena-catalog-requested"
+        title="An administrator has been asked; it turns on once they grant it"
+      >
+        Requested
+      </span>
+    ) : (
+      requestButton
+    )
+  } else if (view === 'browse') {
     control = installed ? (
       <span className="shrink-0 text-xs text-(--ui-text-tertiary)" data-slot="athena-catalog-installed">
         {isBuiltIn(entry) ? 'Built-in' : 'Installed'}
@@ -321,6 +390,32 @@ function CatalogCardView({ busy, card, note, onAccept, onInstall, onRemove, onTo
             {sendsLine(entry)}
           </p>
           {update && <UpdateLine busy={busy} onAccept={onAccept} title={entry.title} update={update} />}
+          {access && !access.blocked && (access.pending.length > 0 || access.missing.length > 0) && (
+            <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-pending">
+              Not granted yet: {[...access.pending.map(t => `${t} (requested)`), ...access.missing].join(', ')}
+              {access.missing.length > 0 && !asking && (
+                <Button className="ml-2 h-auto px-0 text-[0.68rem]" disabled={busy} onClick={() => setAsking(true)} size="xs" variant="text">
+                  Request access
+                </Button>
+              )}
+            </p>
+          )}
+          {access?.suspended && (
+            <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-suspended-note" role="note">
+              Suspended by Athena&apos;s administrators: new chats leave it out.
+            </p>
+          )}
+          {asking && (
+            <RequestForm
+              busy={busy}
+              onCancel={() => setAsking(false)}
+              onSend={reason => {
+                setAsking(false)
+                onRequest(reason)
+              }}
+              title={entry.title}
+            />
+          )}
           {worksBestWith && (
             <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-works-best-with">
               {worksBestWith}
@@ -428,6 +523,7 @@ export function AthenaCatalogPage() {
   const snapshot = useClientConfig()
   const prefs = useStore($toolPrefs)
   const installed = useStore($installedPackages)
+  const access = useStore($packageAccess)
   const [query, setQuery] = useState('')
   const [view, setView] = useState<CatalogView>('installed')
   const [category, setCategory] = useState<CatalogCategory | null>(null)
@@ -441,6 +537,7 @@ export function AthenaCatalogPage() {
   useEffect(() => {
     void loadToolPrefs()
     void loadInstalledPackages()
+    void loadPackageAccess()
   }, [])
 
   // Ask main again on each visit: a remote catalog synced while the app ran shows without a restart.
@@ -454,8 +551,8 @@ export function AthenaCatalogPage() {
   }, [])
 
   const cards = useMemo(
-    () => catalogCards(config, prefs, current.catalog, installed, role),
-    [config, prefs, current, installed, role]
+    () => catalogCards(config, prefs, current.catalog, installed, role, access),
+    [config, prefs, current, installed, role, access]
   )
 
   const groups = useMemo(
@@ -539,6 +636,20 @@ export function AthenaCatalogPage() {
     await reloadIfNeeded(id, true)
   }
 
+  const request = async (id: string, reason: string) => {
+    const result = await withBusy(id, () =>
+      packageAction(id, 'request', undefined, reason.trim() ? { reason: reason.trim() } : {})
+    )
+
+    if (!result.ok) {
+      notifyError(new Error(result.message || 'Access was not requested'), 'Could not request access')
+
+      return
+    }
+
+    note(id, 'Requested. It turns on by itself once an administrator grants it')
+  }
+
   const remove = async (id: string) => {
     const result = await withBusy(id, () => packageAction(id, 'remove'))
 
@@ -591,6 +702,7 @@ export function AthenaCatalogPage() {
                   onAccept={() => void acceptUpdate(card.entry.id)}
                   onInstall={() => void install(card.entry.id)}
                   onRemove={() => void remove(card.entry.id)}
+                  onRequest={reason => void request(card.entry.id, reason)}
                   onToggle={on => void toggle(card.entry.id, on)}
                   view={view}
                 />

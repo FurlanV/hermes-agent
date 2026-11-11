@@ -34,10 +34,29 @@ export interface InstalledPackage {
 
 export type InstalledPackages = Record<string, InstalledPackage>
 
-/** What `athena:tool-prefs:package` does to one package. */
-export type PackageAction = 'accept' | 'install' | 'remove'
+/** What `athena:tool-prefs:package` does to one package (`request`: ask the admins for access, F03 slice 26). */
+export type PackageAction = 'accept' | 'install' | 'remove' | 'request'
+
+/** `request`'s optional fields: why the user needs it (shown to the admins), at most 500 characters. */
+export interface PackageActionOptions {
+  reason?: string
+}
+
+/** One scope of a gateway package for this user, as the platform last said (`GET /me/packages`). */
+export type ScopeAccess = 'granted' | 'none' | 'requested'
+
+/**
+ * `$HERMES_HOME/athena/package-access.json` (F03 slice 26), written by the CLI and the shipper at each sync: what
+ * the user holds of each gateway package. A convenience for the page; the capability gateway decides every call.
+ */
+export interface PackageAccess {
+  fetched_at?: string
+  packages: Record<string, { scopes: Record<string, ScopeAccess>; state?: 'active' | 'suspended' }>
+}
 
 /** What `athena:tool-prefs:package` answers. */
 export interface PackageActionResult extends ToolToggleResult {
   installed: InstalledPackages
+  /** Slice 26: the access file after the call (older mains leave it out). */
+  access?: PackageAccess
 }

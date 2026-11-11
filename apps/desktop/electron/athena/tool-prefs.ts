@@ -6,9 +6,12 @@
 //   re-applies managed scope (`athena config apply`), so the next new chat gets the change. Open chats keep their
 //   tools (hermes builds a session's tool list at `session.create`);
 // - `athena:tool-prefs:installed` (invoke): the installed packages, `tool-prefs.json` `installed` (F03 slice 20);
-// - `athena:tool-prefs:package` (invoke, `{id, action}`): runs `athena config tool <id> install|remove|accept`
-//   (slices 20-22). These need the CLI (it records the version and hash from the verified catalog): without it they
-//   are refused, never written by main.
+// - `athena:tool-prefs:package` (invoke, `{id, action, reason?}`): runs `athena config tool <id>
+//   install|remove|accept|request` (slices 20-22; `request [--reason TEXT]`, slice 26, asks the admins for access).
+//   These need the CLI (it records the version and hash from the verified catalog, and holds the user's token):
+//   without it they are refused, never written by main;
+// - `athena:tool-prefs:access` (invoke): `$HERMES_HOME/athena/package-access.json`, what the user holds of each
+//   gateway package as the platform last said (slice 26; the CLI and the shipper write it at each sync).
 //
 // The CLI is found, in order, at `ATHENA_CLI` (the dev launcher passes the monorepo venv's `athena` by absolute
 // path), else as `athena` on the PATH the app was launched with, captured when main installs this module (before
@@ -24,24 +27,30 @@ import type { IpcMain } from 'electron'
 
 import type {
   InstalledPackages,
+  PackageAccess,
   PackageAction,
   PackageActionResult,
+  ScopeAccess,
   ToolPrefs,
   ToolToggleResult
 } from './tool-prefs-types'
 
-export type { InstalledPackages, PackageAction, PackageActionResult, ToolPrefs, ToolToggleResult }
+export type { InstalledPackages, PackageAccess, PackageAction, PackageActionResult, ToolPrefs, ToolToggleResult }
 
 export const TOOL_PREFS_CHANNELS = Object.freeze({
+  access: 'athena:tool-prefs:access',
   get: 'athena:tool-prefs:get',
   installed: 'athena:tool-prefs:installed',
   package: 'athena:tool-prefs:package',
   set: 'athena:tool-prefs:set'
 } as const)
 
-const PACKAGE_ACTIONS: ReadonlySet<string> = new Set(['accept', 'install', 'remove'])
+const PACKAGE_ACTIONS: ReadonlySet<string> = new Set(['accept', 'install', 'remove', 'request'])
 
 export const TOOL_PREFS_FILE = 'tool-prefs.json'
+export const ACCESS_FILE = 'package-access.json'
+const MAX_REASON = 500
+const SCOPE_ACCESS: ReadonlySet<string> = new Set(['granted', 'none', 'requested'])
 
 /** A catalog id (athena_schemas `ToolId`); anything else never reaches the CLI's argv. */
 const ENTRY_ID = /^[a-z0-9][a-z0-9-]{0,63}$/
@@ -90,6 +99,46 @@ export function readInstalledPackages(file: string): InstalledPackages {
       (pair): pair is [string, InstalledPackages[string]] => isRecord(pair[1]) && typeof pair[1].version === 'string'
     )
   )
+}
+
+/** `package-access.json` (slice 26): only well-formed packages and scopes; anything unreadable is `{packages: {}}`. */
+export function readPackageAccess(file: string): PackageAccess {
+  let data: unknown
+
+  try {
+    data = JSON.parse(readFileSync(file, 'utf8'))
+  } catch {
+    return { packages: {} }
+  }
+
+  const packages = isRecord(data) && isRecord(data.packages) ? data.packages : {}
+  const out: PackageAccess['packages'] = {}
+
+  for (const [id, value] of Object.entries(packages)) {
+    if (!ENTRY_ID.test(id) || !isRecord(value) || !isRecord(value.scopes)) {
+      continue
+    }
+
+    const scopes = Object.fromEntries(
+      Object.entries(value.scopes).filter((pair): pair is [string, ScopeAccess] => SCOPE_ACCESS.has(String(pair[1])))
+    )
+
+    out[id] = { scopes, state: value.state === 'suspended' ? 'suspended' : 'active' }
+  }
+
+  return { fetched_at: isRecord(data) && typeof data.fetched_at === 'string' ? data.fetched_at : undefined, packages: out }
+}
+
+/** A request's reason as one line for the CLI's argv: trimmed, control characters dropped, at most 500 characters. */
+export function requestReason(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  // eslint-disable-next-line no-control-regex
+  const text = value.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, MAX_REASON)
+
+  return text || null
 }
 
 /** Set one toggle, keeping the others and any other keys: the CLI's format (sorted, 2-space JSON, 0600, atomic). */
@@ -215,22 +264,25 @@ export class AthenaToolPrefs {
     return readInstalledPackages(this.file)
   }
 
-  /** Install, remove or accept one package through the CLI, queued with the toggles. */
-  package(id: unknown, action: unknown): Promise<PackageActionResult> {
-    const next = this.queue.then(() => this.packageNow(id, action))
+  access(): PackageAccess {
+    return readPackageAccess(path.join(path.dirname(this.file), ACCESS_FILE))
+  }
+
+  /** Install, remove, accept or request one package through the CLI, queued with the toggles. */
+  package(id: unknown, action: unknown, reason?: unknown): Promise<PackageActionResult> {
+    const next = this.queue.then(() => this.packageNow(id, action, reason))
     this.queue = next.catch(() => undefined)
 
     return next
   }
 
-  private async packageNow(id: unknown, action: unknown): Promise<PackageActionResult> {
-    const refused = (message: string): PackageActionResult => ({
-      applied: false,
-      enabled: this.prefs(),
-      installed: this.installed(),
-      message,
-      ok: false
-    })
+  private async packageNow(id: unknown, action: unknown, reason?: unknown): Promise<PackageActionResult> {
+    // Slice 26: a request also answers with the access file (the other actions' answers are as before).
+    const withAccess = (result: PackageActionResult): PackageActionResult =>
+      action === 'request' ? { ...result, access: this.access() } : result
+
+    const refused = (message: string): PackageActionResult =>
+      withAccess({ applied: false, enabled: this.prefs(), installed: this.installed(), message, ok: false })
 
     if (typeof id !== 'string' || !ENTRY_ID.test(id) || typeof action !== 'string' || !PACKAGE_ACTIONS.has(action)) {
       return refused('Not a catalog package.')
@@ -244,7 +296,9 @@ export class AthenaToolPrefs {
       return refused('Installing needs the Athena command-line tool, which this app cannot find.')
     }
 
-    const result = await (this.options.run ?? runCli)(cli, ['config', 'tool', id, action], this.cliEnv())
+    const why = action === 'request' ? requestReason(reason) : null
+    const args = ['config', 'tool', id, action, ...(why ? ['--reason', why] : [])]
+    const result = await (this.options.run ?? runCli)(cli, args, this.cliEnv())
     const message = firstLine(result.code === 0 ? result.stdout : result.stderr || result.stdout)
     this.options.log(`[athena] ${cli} config tool ${id} ${action}: exit ${result.code}${message ? ` (${message})` : ''}`)
 
@@ -252,7 +306,7 @@ export class AthenaToolPrefs {
       return refused(message || `athena exited ${result.code}`)
     }
 
-    return { applied: true, enabled: this.prefs(), installed: this.installed(), message, ok: true }
+    return withAccess({ applied: true, enabled: this.prefs(), installed: this.installed(), message, ok: true })
   }
 
   private cliEnv(): Record<string, string | undefined> {
@@ -323,10 +377,11 @@ export function installAthenaToolPrefs(options: InstallToolPrefsOptions): Athena
   })
   options.ipcMain.handle(TOOL_PREFS_CHANNELS.installed, () => prefs.installed())
   options.ipcMain.handle(TOOL_PREFS_CHANNELS.package, (_event, request: unknown) => {
-    const { action, id } = isRecord(request) ? request : {}
+    const { action, id, reason } = isRecord(request) ? request : {}
 
-    return prefs.package(id, action)
+    return prefs.package(id, action, reason)
   })
+  options.ipcMain.handle(TOOL_PREFS_CHANNELS.access, () => prefs.access())
   const cli = prefs.cli()
   options.log(`[athena] tool prefs: ${prefs.file}; athena CLI ${cli ?? 'not found (toggles write the file only)'}`)
 
