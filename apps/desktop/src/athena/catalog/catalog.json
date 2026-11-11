@@ -1,7 +1,8 @@
 {
-  "catalog_version": "2026.11.2",
+  "catalog_version": "2026.11.3",
   "entries": {
     "browser": {
+      "category": "built-in",
       "default_on": false,
       "group": "Research",
       "icon": "globe",
@@ -38,7 +39,7 @@
       "roles": [
         "researcher"
       ],
-      "sha256": "c81ba3a426ff9d0a80a4bb6f76e90c362bd1d2254d22a8a48d4aba49eaf7a35c",
+      "sha256": "632f49bff6fc2f3d9cc0275eed546120739e438c58647b700facdef9be781f42",
       "source": {
         "config": {},
         "hermes_toolset": "browser"
@@ -50,6 +51,7 @@
       "version": "1.0.0"
     },
     "clarify": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "message-question",
@@ -82,7 +84,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "521b59a698558bd39b5011dab3527a097d309bc51a60b591801560e45d1b1573",
+      "sha256": "54eb5b9a0e0fc7a3c6611707bfdd44a338d7f8b6470e564de1ce86294fa5e6cb",
       "source": {
         "config": {},
         "hermes_toolset": "clarify"
@@ -94,6 +96,7 @@
       "version": "1.0.0"
     },
     "data-cleaning-pandas": {
+      "category": "built-in",
       "default_on": true,
       "group": "Research",
       "icon": "table",
@@ -122,7 +125,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "11c0b07d9e4e588e803e7ff745785da3e5de9224d66e2993a280fbe730a5bfdd",
+      "sha256": "48264491f298acefc641fe68a7a968d0cedd0c7be08b425ddb6b83a110b199a0",
       "source": {
         "path": "skills/data-cleaning-pandas",
         "sha256": "701b5f0a078d2414d539c96fd4bbe9d4b08d3e131e85cc48a9c4b17e793804aa"
@@ -134,6 +137,7 @@
       "version": "0.1.0"
     },
     "desktop-projects": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "folder-open",
@@ -166,7 +170,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "bfec728a32b69278d3e8745141bca895db1d6b943442c57c17c7c9f7d6567afd",
+      "sha256": "5c8ea24a7f7de415628e1fcef7f8f1332d31167d5947294a9f6eaaddd0ea0bda",
       "source": {
         "config": {},
         "hermes_toolset": "project"
@@ -178,6 +182,7 @@
       "version": "1.0.0"
     },
     "files": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "file-text",
@@ -213,7 +218,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "0487b35082bff33b13f9f4b84cef4678b4f38338e625444f4c9e64f72232a1bd",
+      "sha256": "aecc032440acd0eeccbb19c0ba7a3e53912984d22651a2fb8fe9cef493f607ce",
       "source": {
         "config": {},
         "hermes_toolset": "file"
@@ -225,6 +230,7 @@
       "version": "1.0.0"
     },
     "learned-skills": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "sparkles",
@@ -259,7 +265,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "6ce3fde08fcc3b6fc663b8a168944defe392766c1e46b14288c6601c92436656",
+      "sha256": "f068c733a4855369c474663b22afa7fa582df596da7501308ee3629f338c892f",
       "source": {
         "config": {},
         "hermes_toolset": "skills"
@@ -271,6 +277,7 @@
       "version": "1.0.0"
     },
     "literature-search": {
+      "category": "built-in",
       "default_on": true,
       "group": "Research",
       "icon": "book-search",
@@ -307,7 +314,7 @@
         "clinician",
         "admin"
       ],
-      "sha256": "c8bd1019047a7d0a02bd689260c61e7d62d3041557ac1299a08af5d059204f2c",
+      "sha256": "40f99938e3be2dec8a8bb653bb0383f95a31e920e81e1c4336fbde3a7fc37876",
       "source": {
         "config": {
           "web": {
@@ -323,6 +330,7 @@
       "version": "1.0.0"
     },
     "memory": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "brain",
@@ -355,7 +363,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "f03fff6ca34d69ae83c5693ac9d0fe096b6535a123e9bb56875b8614de16fa32",
+      "sha256": "f771b30480250782e14c4d4dde3bd999bc060532e8763c3a8c4440a9d561b14e",
       "source": {
         "config": {},
         "hermes_toolset": "memory"
@@ -367,6 +375,7 @@
       "version": "1.0.0"
     },
     "python": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "code",
@@ -399,7 +408,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "5eeb1b65690c560347f5d844c2177681e9ad50cec8048b2aa1e0669fd083a4e5",
+      "sha256": "71e5eb21a45f059ca972eabc684d75415b72cc69d54530575114a0a897fc8b32",
       "source": {
         "config": {},
         "hermes_toolset": "code_execution"
@@ -411,6 +420,7 @@
       "version": "1.0.0"
     },
     "subagents": {
+      "category": "built-in",
       "default_on": false,
       "group": "Workspace",
       "icon": "users",
@@ -442,7 +452,7 @@
         "clinician",
         "admin"
       ],
-      "sha256": "44a0d1010c149c541ec22f64ef8f59141ad5d915febc7ead7293c0064a2b1f88",
+      "sha256": "8e37abb7c2f54a765e0fa43c597eea063bddbd523a794a4260ae0112879eab44",
       "source": {
         "config": {},
         "hermes_toolset": "delegation"
@@ -454,6 +464,7 @@
       "version": "1.0.0"
     },
     "summarise-paper": {
+      "category": "built-in",
       "default_on": true,
       "group": "Research",
       "icon": "file-search",
@@ -482,7 +493,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "53279b00d0bc07a382fcef68f8f548ed249c3d6907891a65a27b7083863efb6a",
+      "sha256": "4e08a77b3610e156c4c2e55fdce4d5ea876938c9d3b5ffc9db81a5313f83fea8",
       "source": {
         "path": "skills/summarise-paper",
         "sha256": "dc17000e7b20406facf6133e02765416bed60d7869683deb31187a9a7713e3de"
@@ -494,6 +505,7 @@
       "version": "0.1.0"
     },
     "terminal": {
+      "category": "built-in",
       "default_on": false,
       "group": "Workspace",
       "icon": "terminal",
@@ -527,7 +539,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "292ecef5288884d8b94b742fe72bd8b5130b0d99c37d8f23b6db315b166b7e00",
+      "sha256": "51af2a1250a58450e88d21cb646e78100336e5c41a1294eac4a24a0e90691468",
       "source": {
         "config": {},
         "hermes_toolset": "terminal"
@@ -539,6 +551,7 @@
       "version": "1.0.0"
     },
     "todo": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "list-checks",
@@ -571,7 +584,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "142374235f94df55bd145675f0c7db88307984997e7325456dce972aa020165c",
+      "sha256": "ce299e17092f767cc048cbec4f050b83efb821ee0c49b1abe2ebaa12073c0060",
       "source": {
         "config": {},
         "hermes_toolset": "todo"

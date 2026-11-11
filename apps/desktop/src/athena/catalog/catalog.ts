@@ -10,12 +10,37 @@
 
 import catalogJson from './catalog.json'
 
+/** A remote package's tool group (F03): what an admin grants, with its data classification. */
+export interface CatalogScope {
+  classification: 'confidential' | 'internal' | 'public' | 'restricted'
+  id: string
+  title: string
+  tools: string[]
+}
+
+/** One setting a package declares (F03); the page does not render settings yet. */
+export interface CatalogSetting {
+  choices?: string[]
+  default?: boolean | null | number | string
+  description?: null | string
+  id: string
+  maximum?: null | number
+  minimum?: null | number
+  title: string
+  type: 'choice' | 'number' | 'text' | 'toggle'
+}
+
+/**
+ * One `catalog.json` entry. The F03 package fields are optional: `catalog.json` leaves them out while unset, and a
+ * newer catalog may carry fields this build does not know, which the page ignores.
+ */
 export interface CatalogEntry {
+  category?: 'agent' | 'built-in' | 'database' | 'skill'
   default_on: boolean
   group: string
   icon: string
   id: string
-  kind: 'mcp' | 'plugin' | 'skill' | 'toolset'
+  kind: 'gateway' | 'mcp' | 'plugin' | 'skill' | 'toolset'
   owner: string
   permissions: {
     data: string[]
@@ -24,12 +49,20 @@ export interface CatalogEntry {
     network: string[]
   }
   provides: { tools: string[]; toolsets: string[] }
+  publisher?: { contact: string; name: string; team: string }
+  requires_athena?: string
   requires_hermes: string
+  results?: 'live-only'
   review: { at: string; by: string; notes: string }
   roles: string[]
+  scopes?: CatalogScope[]
+  settings?: CatalogSetting[]
   sha256: string
+  skill?: { path: string; sha256: string }
   source: Record<string, unknown>
-  status: 'experimental' | 'stable'
+  /** `withdrawn`: listed, never on (as the applier and the guard decide). */
+  status: 'deprecated' | 'experimental' | 'stable' | 'withdrawn'
+  status_note?: { by: string; ends?: null | string; reason: string }
   summary: string
   title: string
   user_toggle: boolean
@@ -92,14 +125,21 @@ export interface CatalogCard {
   entry: CatalogEntry
   /** `status: experimental`: the card shows a badge. */
   experimental: boolean
-  /** No switch: `locked_on` in the config, or `user_toggle: false` in the catalog (the admin decides). */
+  /** No switch: `locked_on` in the config, `user_toggle: false` in the catalog (the admin decides), or withdrawn. */
   managed: boolean
   /** On for the next new chat. */
   on: boolean
 }
 
-/** On for new chats: locked → on; managed → whether the admin turned it on; else the user's toggle, else default. */
+/**
+ * On for new chats: withdrawn → off; locked → on; managed → whether the admin turned it on; else the user's toggle,
+ * else default.
+ */
 export function entryIsOn(entry: CatalogEntry, tools: ToolsSection, prefs: Record<string, boolean>): boolean {
+  if (entry.status === 'withdrawn') {
+    return false
+  }
+
   if (tools.locked_on.includes(entry.id)) {
     return true
   }
@@ -129,7 +169,7 @@ export function catalogCards(
       cards.push({
         entry,
         experimental: entry.status === 'experimental',
-        managed: tools.locked_on.includes(id) || !entry.user_toggle,
+        managed: tools.locked_on.includes(id) || !entry.user_toggle || entry.status === 'withdrawn',
         on: entryIsOn(entry, tools, prefs)
       })
     }
