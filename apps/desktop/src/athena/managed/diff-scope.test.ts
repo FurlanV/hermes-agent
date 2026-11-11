@@ -1,8 +1,11 @@
 // @vitest-environment node
-// F02 diff scope: the managed-client branch touches only the upstream files
-// listed in src/athena/README.md › "Upstream files touched (F02)", plus the
-// Athena folders, and never the hermes Python. The base is the D05 branding
-// branch (`feature/athena-demo`); set ATHENA_F02_BASE to compare elsewhere.
+// F02 diff scope: inside apps/desktop the managed-client branch touches only the
+// upstream files listed in src/athena/README.md › "Upstream files touched (F02)",
+// plus the Athena folders. Outside apps/desktop, hermes itself may change under
+// ADR 0009 (athena docs/adr: hermes changes are allowed without regressions, e.g.
+// F03 slice 06's auth_command): what this test enforces there is that no existing
+// hermes test is edited, renamed or removed (new tests are fine). The base is the
+// D05 branding branch (`feature/athena-demo`); set ATHENA_F02_BASE to compare elsewhere.
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -22,6 +25,8 @@ function git(...args: string[]): string | null {
 }
 
 const mergeBase = git('merge-base', base, 'HEAD')?.trim() || null
+const repoRoot = git('rev-parse', '--show-toplevel')?.trim() ?? desktop
+const DESKTOP = 'apps/desktop/'
 
 /** Paths (from the repo root) in the README's F02 table, first column. */
 function listedUpstreamFiles(readme: string): string[] {
@@ -37,8 +42,7 @@ function listedUpstreamFiles(readme: string): string[] {
 function changedPaths(since: string): string[] {
   const lines = [
     git('diff', '--name-only', since) ?? '',
-    git('-C', git('rev-parse', '--show-toplevel')?.trim() ?? desktop, 'ls-files', '--others', '--exclude-standard') ??
-      ''
+    git('-C', repoRoot, 'ls-files', '--others', '--exclude-standard') ?? ''
   ].join('\n')
 
   return [...new Set(lines.split('\n').filter(Boolean))].sort()
@@ -51,15 +55,23 @@ describe.skipIf(!mergeBase)(`F02 diff scope against ${base}`, () => {
     expect(listed.size).toBeGreaterThan(0)
   })
 
-  test('touches only listed upstream files and the Athena folders', () => {
+  test('touches only listed upstream desktop files and the Athena folders', () => {
     const outside = changedPaths(mergeBase!).filter(
-      file => !listed.has(file) && !ATHENA_DIRS.some(dir => file.startsWith(dir))
+      file => file.startsWith(DESKTOP) && !listed.has(file) && !ATHENA_DIRS.some(dir => file.startsWith(dir))
     )
 
     expect(outside).toEqual([])
   })
 
-  test('changes no hermes Python', () => {
-    expect((git('diff', '--name-only', mergeBase!, '--', '*.py') ?? '').trim()).toBe('')
+  test('hermes changes edit, rename or remove no existing hermes test (ADR 0009)', () => {
+    const edited = (
+      git('-C', repoRoot, 'diff', '--name-status', '--diff-filter=MDR', mergeBase!, '--', 'tests/', ':(glob)**/test_*.py') ??
+      ''
+    )
+      .split('\n')
+      .filter(Boolean)
+      .filter(line => !line.split('\t').slice(1).every(file => file.startsWith(DESKTOP)))
+
+    expect(edited).toEqual([])
   })
 })
