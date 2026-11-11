@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.6",
+  "catalog_version": "2026.11.7",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -202,7 +202,9 @@
       "owner": "eagle-team",
       "permissions": {
         "data": [
-          "gene symbols and search terms, to EAGLE through the Athena capability gateway"
+          "gene symbols and search terms, to EAGLE through the Athena capability gateway",
+          "EAGLE case and paper ids, variant notations and query filters, to EAGLE through the Athena capability gateway",
+          "questions about what papers say, to EAGLE's passage search through the Athena capability gateway"
         ],
         "executes_code": false,
         "filesystem": "none",
@@ -222,7 +224,7 @@
       "review": {
         "at": "2026-11-11",
         "by": "claude-code/implement-plan",
-        "notes": "F03 slice 12: EAGLE holds published data only, so the evidence.gene scope is public and granted to every role (plan decision 3). Read-only tools (readOnlyHint). Awaiting human review and the EAGLE team's sign-off (decision 6)."
+        "notes": "F03 slices 12 and 15: EAGLE holds published data only, so every evidence scope (gene, case, query, text) is public and granted to every role (plan decision 3; migration 0006). Read-only tools (readOnlyHint); list tools page with an opaque cursor and EAGLE caps every result. Paper passages are verbatim published text. Awaiting human review and the EAGLE team's sign-off (decision 6)."
       },
       "roles": [
         "researcher",
@@ -243,22 +245,57 @@
             "search_papers",
             "describe"
           ]
+        },
+        {
+          "classification": "public",
+          "id": "evidence.case",
+          "title": "Cases and variants (published case rows, paged)",
+          "tools": [
+            "get_cases_by_gene",
+            "get_cases_by_paper",
+            "get_case_details",
+            "get_variants_by_gene",
+            "find_variant_reports"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "evidence.query",
+          "title": "Queries over EAGLE's records (whitelisted filters, joins and counts)",
+          "tools": [
+            "query"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "evidence.text",
+          "title": "Passages from published papers",
+          "tools": [
+            "search_paper_passages"
+          ]
         }
       ],
-      "sha256": "ff37ea8c5ca70e4ab1a655a09f58fe3cece4fdcb79034faf0e98c228e994f5aa",
+      "sha256": "3d95c955b865d0c88a1ae072fbe4cfa44a8e8fdfad6ce27976ac463ba8709f62",
       "skill": {
         "path": "skills/eagle-asd-evidence",
-        "sha256": "a29ea3958142e84c5c242a6134db07bb342f31fb5d15b3a8b1a62004b5ea5779"
+        "sha256": "9f7b2b1b272f4ac9862d7711bef974d51c5c29326e21ac71b96e8572427d6106"
       },
       "source": {
         "gateway": {
           "capability": "eagle",
           "surface": {
             "describe": "2c75a9b0cf817c6477820509402b081d26fb66f3999372947d79099aabea1e0f",
+            "find_variant_reports": "48948c37143a77644006b5e0565ddcd554f8893887a4841fb940423601996484",
+            "get_case_details": "7a30f7d63885d262bdb42fc06c8e5626af7906c4e14b55dbfab78bc92d8da912",
+            "get_cases_by_gene": "741ec194185c96f62d7e311c981c4e3677db83eca20e9c4a0d1375676b0cd897",
+            "get_cases_by_paper": "9bf284dc53fb8773d0db2d46c7df1a682e9d761eea74337c50ae495008b010de",
             "get_gene_details": "c80334ef930d8e1205719ee0c3251dfbb5d047439f5530e468aa1b4711b27404",
             "get_gene_level_findings": "8d548f9ccf410cc3a7ba57232efc9aa27707b4458f02288caf2bb89d889ec27d",
             "get_gene_score": "9c96718f5ce51619d6466e2dad0e557e085e8c9fd10b194f595682fb58b36850",
+            "get_variants_by_gene": "34ec350aaa79ccdac5b6c407912d3aa5c67cd2f61d37cefd4390c93cec2a1685",
+            "query": "5793ffac88098b4d640416343cd407db59e035cd53c09d71ebcd8793987d8ddc",
             "search_genes": "a840170df8cbebd326baf648ef864e3f2eb1b464b16e287a7bfd59677d6e0141",
+            "search_paper_passages": "9ce6d8986d157d114e2c511bf636d46b70b42fa15aa925ae6ae26273b34db911",
             "search_papers": "e7f04d0efd2c76d402b5150c9358d4886b4e1eeaf440d969ced2672a0c85429d"
           },
           "tools": [
@@ -267,15 +304,22 @@
             "get_gene_score",
             "get_gene_level_findings",
             "search_papers",
-            "describe"
+            "describe",
+            "get_cases_by_gene",
+            "get_cases_by_paper",
+            "get_case_details",
+            "get_variants_by_gene",
+            "find_variant_reports",
+            "query",
+            "search_paper_passages"
           ]
         }
       },
       "status": "experimental",
-      "summary": "Gene-level autism evidence from EAGLE, read live, with the papers behind it.",
+      "summary": "Autism gene evidence from EAGLE, read live, with the papers, cases and variants behind it.",
       "title": "EAGLE ASD evidence",
       "user_toggle": true,
-      "version": "0.1.0"
+      "version": "1.0.0"
     },
     "files": {
       "category": "built-in",
