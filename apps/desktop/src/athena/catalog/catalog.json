@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.7",
+  "catalog_version": "2026.11.8",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -320,6 +320,84 @@
       "title": "EAGLE ASD evidence",
       "user_toggle": true,
       "version": "1.0.0"
+    },
+    "eagle-curator": {
+      "category": "agent",
+      "default_on": false,
+      "examples": [
+        "Which genes in EAGLE have the strongest evidence from de novo variants, and which papers report them?",
+        "Summarise what EAGLE's curated papers say about SHANK3 and autism."
+      ],
+      "group": "Research",
+      "icon": "sparkles",
+      "id": "eagle-curator",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "your question, to EAGLE's research agent through the Athena capability gateway; the agent may search the published literature with it"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "results": "live-only",
+      "review": {
+        "at": "2026-11-11",
+        "by": "claude-code/implement-plan",
+        "notes": "F03 slice 16: ask runs EAGLE's chat agent once over EAGLE's published data and stores no session (plan decisions 2 and 3: public, granted to every role). Read-only (readOnlyHint) and open-world: the agent may search the published literature. Awaiting human review and the EAGLE team's sign-off (decision 6)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "agent.ask",
+          "title": "Ask EAGLE's research agent (one run of its chat agent, nothing stored)",
+          "tools": [
+            "ask"
+          ]
+        }
+      ],
+      "sha256": "df6d12b294acf78680ad6aed08755497b13a771968c143c7dd6b57e4678a8471",
+      "skill": {
+        "path": "skills/eagle-curator",
+        "sha256": "023a5e20c71952605d3f1ad5205841fa47e542a1eaba76b48c7291545cc4eba5"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "ask": "72ecd761f98d31c43c0b4f8f17fcce5e3b0f970535d30435a34eedc9bd5f0dd4"
+          },
+          "timeout_seconds": 300,
+          "tools": [
+            "ask"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Hand open questions about the curated autism corpus to EAGLE's own research agent.",
+      "title": "EAGLE curator",
+      "user_toggle": true,
+      "version": "0.1.0",
+      "works_best_with": [
+        "eagle-asd-evidence"
+      ]
     },
     "files": {
       "category": "built-in",
