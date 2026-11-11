@@ -49,6 +49,7 @@ import {
 } from './catalog'
 import { type CurrentCatalog, currentCatalog } from './catalog-source'
 import { LearnedSkills } from './learned-skills'
+import { needsMcpReload, reloadPackageServers } from './mcp-reload'
 import { $toolPrefs, loadToolPrefs, setToolEnabled } from './tool-prefs'
 
 /** The catalog's `icon` names (lucide-style) mapped onto the app's icon set. */
@@ -212,6 +213,7 @@ export function AthenaCatalogPage() {
   const requestUrl = requestToolsUrl(config)
 
   const toggle = async (id: string, on: boolean) => {
+    const entry = current.catalog.entries[id]
     setBusy(current => new Set(current).add(id))
     const result = await setToolEnabled(id, on)
     setBusy(current => {
@@ -231,6 +233,11 @@ export function AthenaCatalogPage() {
       ...current,
       [id]: result.applied ? 'Applies to new chats' : result.message || 'Applies to new chats after the next sync'
     }))
+
+    // A newly pinned MCP server reaches the running daemon on reload.mcp, not at the next new chat (mcp-reload.ts).
+    if (result.applied && entry && needsMcpReload(entry, on) && !(await reloadPackageServers())) {
+      setNotes(current => ({ ...current, [id]: 'Applies to new chats within a minute' }))
+    }
   }
 
   return (
