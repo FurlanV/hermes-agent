@@ -24,6 +24,58 @@ To run it against the pinned hermes, start it through the Athena launcher
 app would then try the GitHub bootstrap. `build-mac-dev.sh --launch` does
 both steps when `ATHENA_REPO` (or `ATHENA_DESKTOP_LAUNCHER`) is set.
 
+## Windows build
+
+`.github/workflows/athena-desktop-windows.yml` ("Athena Desktop Windows build")
+builds the Athena variant for Windows x64 on a GitHub-hosted `windows-2025`
+runner. It runs on a push to `feature/friends-build` or `release/**` that
+touches `apps/desktop/**` or the workflow, and on dispatch once the file is on
+`main`. It is unsigned and reads no secret. It is not an MSIX, which needs a
+trusted signing certificate (P09).
+
+1. `scripts/athena-copies.mjs --check`: the bundled athena copies equal
+   `athena-copies.json` (below).
+2. `pnpm run build`, then `pnpm run builder --dir --publish never --win --x64`
+   with `HERMES_DESKTOP_VARIANT=athena`.
+3. The folder holds `Athena.exe` (no `Hermes.exe` or `electron.exe`) whose
+   version info says ProductName `Athena` and CompanyName `SickKids`.
+   `scripts/check-packed-app.mjs` then checks that its icon is `assets/icon.ico`
+   image for image (and that file is not the stock Hermes icon), that the
+   install stamp says `brand: athena`, and that the built bundles carry the
+   bundled trusted keys and catalog.
+4. It uploads one file, `Athena-<version>-win-x64.zip`. `<version>` is the
+   dispatch input, else `<desktop package version>-<short commit>`. The zip
+   holds one top folder, `Athena/`, with `Athena/Athena.exe`; the installer
+   extracts it to `%LOCALAPPDATA%\Athena\app\Athena\`. The run summary lists
+   its sha256.
+
+`check-packed-app.mjs` also takes a macOS app (without the exe checks):
+`node apps/desktop/src/athena/scripts/check-packed-app.mjs apps/desktop/release/mac-arm64/Athena.app`.
+
+## Bundled athena copies
+
+The build bundles four athena files: the catalog (`catalog/catalog.json`), the
+trusted keys and the default client config (both in
+`electron/athena/bundled-config-data.ts`), and the feature registry export
+(`electron/athena/features.json`). athena is private and this fork is public,
+so CI here cannot read athena. `athena-copies.json` is athena's side instead:
+for each file, its athena path, the fork copy, and the sha256 of the athena
+file. The two copies embedded in TypeScript also carry `json_sha256`, the
+sha256 of their canonical JSON: keys sorted, no whitespace, UTF-8 (Python:
+`json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)`).
+
+```sh
+node apps/desktop/src/athena/scripts/athena-copies.mjs --check                 # fork copies vs the manifest
+node apps/desktop/src/athena/scripts/athena-copies.mjs --check --athena ../athena  # and athena's files
+node apps/desktop/src/athena/scripts/athena-copies.mjs --write --athena ../athena  # after copying new athena files
+```
+
+After a new catalog, key, default config or feature export lands in athena,
+copy it here, run `--write` and commit both. athena's CI checks its own files
+against the same manifest (read from the fork commit `hermes.lock` pins), so a
+copy that drifts on either side fails a check. `athena-copies.test.ts` runs
+both scripts.
+
 ## Icons
 
 `assets/source/sickkids-logo.svg` is a byte copy of
@@ -49,7 +101,8 @@ with a few lines of Python, and writes over the upstream paths
 byte-for-byte repeatable. The Icon Composer package keeps the upstream
 `icon.json`; electron-builder compiles it only with `actool` from Xcode 26,
 otherwise it packs `icon.icns` alone (which `after-pack.mjs` restores anyway).
-The Windows MSIX tiles in `assets/appx/` stay stock (Windows is out of scope).
+The Windows MSIX tiles in `assets/appx/` stay stock (the Windows build is an
+unpacked zip, not an MSIX).
 
 ## Colours and splash
 

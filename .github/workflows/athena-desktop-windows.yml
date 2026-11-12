@@ -1,0 +1,166 @@
+name: Athena Desktop Windows build
+
+# The Athena (SickKids) variant of the desktop app for Windows x64, as one zip of
+# the unpacked app folder (top folder Athena/, Athena/Athena.exe). Not an MSIX:
+# that needs a trusted signing certificate. Unsigned: no signing secret is read.
+#
+# It fails when a bundled athena copy (catalog, trusted keys, default client
+# config, feature registry) differs from apps/desktop/src/athena/athena-copies.json,
+# or when the packed exe does not carry the Athena name and icon. See
+# apps/desktop/src/athena/README.md › Windows build.
+#
+# Dispatch needs this file on the default branch; until then the push trigger is
+# what runs it on the Athena branches.
+
+on:
+  push:
+    branches: [feature/friends-build, 'release/**']
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/athena-desktop-windows.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Build version in the zip name, e.g. 0.1.0-friends.1 (default <desktop package version>-<short commit>)
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: athena-desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Athena Desktop (Windows x64 zip)
+    # GitHub-hosted: the fork has none of upstream's Blacksmith or large-runner pools.
+    runs-on: windows-2025
+    timeout-minutes: 90
+    env:
+      HERMES_DESKTOP_VARIANT: athena
+      # Unsigned build: no certificate discovery, and no Azure signing
+      # (electron-builder.config.cjs signs only when both of these are set).
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      AZURE_SIGN_ENDPOINT: ''
+      AZURE_CLIENT_ID: ''
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the locked Node, pnpm and Python
+        uses: ./.github/actions/setup-pm
+        with:
+          toolchain: all
+
+      - name: Check the bundled athena copies against the manifest
+        shell: bash
+        run: node apps/desktop/src/athena/scripts/athena-copies.mjs --check
+
+      - name: Name the build version
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${INPUT_VERSION:-}"
+          if [ -z "$version" ]; then
+            version="$(node -p "require('./apps/desktop/package.json').version")-${GITHUB_SHA::7}"
+          fi
+          case "$version" in
+            '' | *[!0-9A-Za-z.+-]*) echo "::error::invalid version '$version'"; exit 1 ;;
+          esac
+          echo "ATHENA_ZIP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "version: $version"
+
+      # Full install (not --ignore-scripts): native addons need their lifecycle scripts.
+      - name: Install the locked workspace
+        uses: ./.github/actions/retry
+        with:
+          command: pnpm install --frozen-lockfile
+
+      - name: Build the desktop app
+        working-directory: apps/desktop
+        shell: bash
+        timeout-minutes: 20
+        run: pnpm run build
+
+      - name: Package the unpacked app (electron-builder --dir, unsigned)
+        working-directory: apps/desktop
+        shell: bash
+        timeout-minutes: 30
+        run: pnpm run builder --dir --publish never --win --x64
+
+      - name: Check the exe is Athena, not Hermes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $brand = Get-Content -Raw -Encoding UTF8 -LiteralPath 'apps/desktop/src/athena/branding.json' | ConvertFrom-Json
+          $exeName = $brand.display + '.exe'
+          $dirs = @(Get-ChildItem -LiteralPath 'apps/desktop/release' -Directory | Where-Object { $_.Name -like 'win*unpacked' })
+          if ($dirs.Count -ne 1) {
+            Get-ChildItem -LiteralPath 'apps/desktop/release' | Select-Object -ExpandProperty Name
+            throw "expected one win*unpacked folder under apps/desktop/release, found $($dirs.Count)"
+          }
+          $app = $dirs[0].FullName
+          $exe = Join-Path $app $exeName
+          Get-ChildItem -LiteralPath $app -Filter '*.exe' | Select-Object -ExpandProperty Name
+          if (-not (Test-Path -LiteralPath $exe)) { throw "$exeName is missing from $app" }
+          $info = (Get-Item -LiteralPath $exe).VersionInfo
+          Write-Output ("{0}: ProductName '{1}', FileDescription '{2}', CompanyName '{3}', FileVersion '{4}'" -f `
+            $exeName, $info.ProductName, $info.FileDescription, $info.CompanyName, $info.FileVersion)
+          if ($info.ProductName -cne $brand.display) { throw "ProductName is '$($info.ProductName)', not '$($brand.display)'" }
+          if ($info.CompanyName -cne $brand.organization) { throw "CompanyName is '$($info.CompanyName)', not '$($brand.organization)'" }
+          # Also: icon resources equal assets/icon.ico (not the stock Hermes icon), the install
+          # stamp says athena, and the built bundles carry the bundled trusted keys and catalog.
+          node apps/desktop/src/athena/scripts/check-packed-app.mjs $app
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "ATHENA_APP_DIR=$app" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Zip the unpacked app
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $brand = Get-Content -Raw -Encoding UTF8 -LiteralPath 'apps/desktop/src/athena/branding.json' | ConvertFrom-Json
+          # Next to the unpacked folder, so the move below is a rename on one volume.
+          $stage = Join-Path (Split-Path -Parent $env:ATHENA_APP_DIR) 'athena-zip'
+          if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          # The zip's one top folder is the app name: an installer extracts it to app\Athena\Athena.exe.
+          $top = Join-Path $stage $brand.display
+          Move-Item -LiteralPath $env:ATHENA_APP_DIR -Destination $top
+          $name = '{0}-{1}-win-x64.zip' -f $brand.display, $env:ATHENA_ZIP_VERSION
+          $zip = Join-Path $env:RUNNER_TEMP $name
+          if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+          [System.IO.Compression.ZipFile]::CreateFromDirectory($top, $zip, [System.IO.Compression.CompressionLevel]::Optimal, $true)
+
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+          try { $entries = @($archive.Entries | ForEach-Object { $_.FullName }) } finally { $archive.Dispose() }
+          $exeEntry = '{0}/{0}.exe' -f $brand.display
+          if ($entries -cnotcontains $exeEntry) { throw "$name has no $exeEntry" }
+          $stray = @($entries | Where-Object { $_.Contains('\') -or -not $_.StartsWith($brand.display + '/') })
+          if ($stray.Count -gt 0) { throw "$name has entries outside $($brand.display)/: $($stray[0])" }
+
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+          $size = (Get-Item -LiteralPath $zip).Length
+          "ATHENA_ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          @(
+            "### $name",
+            '',
+            "- sha256: ``$hash``",
+            "- size: $size bytes, $($entries.Count) entries",
+            "- exe: ``$exeEntry``"
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          Write-Output "$name sha256 $hash ($size bytes)"
+
+      # archive: false uploads the zip itself; the artifact is named after the file.
+      - name: Upload the zip
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ env.ATHENA_ZIP }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
