@@ -20,7 +20,8 @@ export const TRUSTED_KEYS = {
 
 export const BUNDLED_DEFAULT_CONFIG = {
   "catalog": {
-    "min_version": null
+    "min_version": null,
+    "remote": false
   },
   "features": {},
   "managed": {
@@ -65,11 +66,6 @@ export const BUNDLED_DEFAULT_CONFIG = {
       "desktop-projects"
     ],
     "experimental": [],
-    "locked_on": [
-      "files",
-      "memory",
-      "clarify",
-      "desktop-projects"
-    ]
+    "locked_on": []
   }
 }

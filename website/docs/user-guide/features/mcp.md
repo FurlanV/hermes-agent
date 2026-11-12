@@ -479,6 +479,23 @@ mcp_servers:
 
 An explicit entry in the server's `headers` mapping with the same name (any casing) always wins; the identity header never overrides your own header config. Invalid `identity_header` blocks are warned about and ignored — they never block the server from connecting. On stdio servers the key is ignored with a warning (stdio transports have no headers).
 
+## Bearer token from a command
+
+Remote HTTP/SSE MCP servers behind short-lived bearer tokens (an SSO broker, a gateway that mints per-user tokens) can get their token from a command instead of a static `headers` entry, via `auth_command`:
+
+```yaml
+mcp_servers:
+  team_gateway:
+    url: "https://gateway.example.com/mcp"
+    auth_command: ["/usr/local/bin/my-sso", "token", "--audience", "mcp"]
+```
+
+- `auth_command` is an argument list and is run **without a shell**, with stdin closed, in the profile's environment, with a 15-second timeout.
+- The command prints the token alone, or JSON with an `access_token` field and optionally `expires_in` (seconds) or an ISO 8601 `expiry` — the same output contract as a provider's `key_cmd`.
+- Hermes sends `Authorization: Bearer <token>` on every request, reuses the token until 60 seconds before its expiry (15 minutes when the command states none), and runs the command again once when the server answers 401.
+- The token is registered with Hermes' secret redaction, so log lines never carry it. It is not part of the connection's identity, so a refresh never rebuilds the connection; a connection with an `auth_command` is never shared with another profile.
+- A command that fails, prints nothing usable or times out turns the tool call into an error naming the server; the call is not sent. `auth_command` cannot be combined with `auth: oauth`, and stdio servers ignore it with a warning.
+
 ## Basic configuration reference
 
 Hermes reads MCP config from `~/.hermes/config.yaml` under `mcp_servers`.
@@ -496,6 +513,7 @@ Hermes reads MCP config from `~/.hermes/config.yaml` under `mcp_servers`.
 | `client_cert` | string \| list | Client certificate for mTLS — a combined PEM path, or `[cert, key]` / `[cert, key, password]` |
 | `client_key` | string | Client private-key PEM path (when separate from `client_cert`) |
 | `identity_header` | mapping | Optional per-user identity header for HTTP/SSE servers — `{name, value_from: static\|profile, value}` |
+| `auth_command` | list | Command (argv, no shell) that prints a bearer token for an HTTP/SSE server — see [Bearer token from a command](#bearer-token-from-a-command) |
 | `timeout` | number | Tool call timeout |
 | `connect_timeout` | number | Initial connection timeout (also bounds the MCP `initialize` handshake) |
 | `lazy` | bool | If `true`, register the server's tools from the schema cache at startup and only start/connect it on the first tool call (default `false`). Needs one prior live connect to fill the cache. |

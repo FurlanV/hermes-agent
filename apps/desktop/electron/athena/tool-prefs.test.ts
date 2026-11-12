@@ -193,15 +193,54 @@ describe('the IPC channels', () => {
     const run = vi.fn<RunCli>(async () => ({ code: 0, stderr: '', stdout: 'Python: off. Applies to new chats.' }))
     installAthenaToolPrefs({ env: { ATHENA_CLI: fakeCli(path.join(home, 'bin')) }, hermesHome: home, ipcMain: ipcMain as never, log: () => {}, run })
 
-    expect([...handlers.keys()].sort()).toEqual([TOOL_PREFS_CHANNELS.get, TOOL_PREFS_CHANNELS.set].sort())
+    expect([...handlers.keys()].sort()).toEqual(Object.values(TOOL_PREFS_CHANNELS).sort())
     expect(await handlers.get(TOOL_PREFS_CHANNELS.get)!({})).toEqual({})
     await expect(handlers.get(TOOL_PREFS_CHANNELS.set)!({}, { id: 'python', on: false })).resolves.toMatchObject({ ok: true })
     expect(run.mock.calls[0][1]).toEqual(['config', 'tool', 'python', 'off'])
     await expect(handlers.get(TOOL_PREFS_CHANNELS.set)!({}, 'junk')).resolves.toMatchObject({ ok: false })
 
     const bridge = readFileSync(path.join(import.meta.dirname, 'preload-bridge.ts'), 'utf8')
-    expect(bridge).toContain(`'${TOOL_PREFS_CHANNELS.get}'`)
-    expect(bridge).toContain(`'${TOOL_PREFS_CHANNELS.set}'`)
+
+    for (const channel of Object.values(TOOL_PREFS_CHANNELS)) {
+      expect(bridge).toContain(`'${channel}'`)
+    }
+  })
+})
+
+describe('package actions (F03 slices 20-22)', () => {
+  test('install, remove and accept run `athena config tool <id> <action>` and read the installed records back', async () => {
+    const run = vi.fn<RunCli>(async (_file, args) => {
+      mkdirSync(path.dirname(prefsFile), { recursive: true })
+      writeFileSync(prefsFile, JSON.stringify({ enabled: { [args[2]]: true }, installed: { [args[2]]: { sha256: 'a'.repeat(64), version: '1.0.0' }, junk: 3 } }))
+
+      return { code: 0, stderr: '', stdout: 'Remote echo 1.0.0 installed. Applies to new chats.\n' }
+    })
+
+    const prefs = new AthenaToolPrefs({ env: { ATHENA_CLI: fakeCli(path.join(home, 'bin')) }, hermesHome: home, log: () => {}, run })
+    const result = await prefs.package('remote-echo', 'install')
+    expect(run.mock.calls[0][1]).toEqual(['config', 'tool', 'remote-echo', 'install'])
+    expect(run.mock.calls[0][2].HERMES_HOME).toBe(home)
+    expect(result).toEqual({
+      applied: true,
+      enabled: { 'remote-echo': true },
+      installed: { 'remote-echo': { sha256: 'a'.repeat(64), version: '1.0.0' } },
+      message: 'Remote echo 1.0.0 installed. Applies to new chats.',
+      ok: true
+    })
+    await prefs.package('remote-echo', 'remove')
+    await prefs.package('remote-echo', 'accept')
+    expect(run.mock.calls.map(call => call[1][3])).toEqual(['install', 'remove', 'accept'])
+  })
+
+  test('anything else, or no CLI, is refused and nothing is written', async () => {
+    const run = vi.fn<RunCli>()
+    const prefs = new AthenaToolPrefs({ env: { ATHENA_CLI: fakeCli(path.join(home, 'bin')) }, hermesHome: home, log: () => {}, run })
+    await expect(prefs.package('remote-echo', 'download')).resolves.toMatchObject({ ok: false })
+    await expect(prefs.package('../etc', 'install')).resolves.toMatchObject({ ok: false })
+    const noCli = new AthenaToolPrefs({ env: {}, hermesHome: home, launchPath: '', log: () => {}, run })
+    await expect(noCli.package('remote-echo', 'install')).resolves.toMatchObject({ ok: false, message: /command-line tool/ })
+    expect(run).not.toHaveBeenCalled()
+    expect(existsSync(prefsFile)).toBe(false)
   })
 })
 

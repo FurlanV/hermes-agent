@@ -314,6 +314,7 @@ class MCPServerTask(MCPServerRunMixin, MCPServerTransportMixin, MCPServerHealthM
     keepalive/liveness live in the three mixins."""
 
     __slots__ = (
+        "_auth_command_source",
         "_auth_park",
         "_auth_type",
         "_config",
@@ -398,6 +399,8 @@ class MCPServerTask(MCPServerRunMixin, MCPServerTransportMixin, MCPServerHealthM
         self._last_park_line: Optional[str] = None  # last park WARNING text; identical re-parks log at DEBUG
         # (token storage, credential stamp) while parked on an OAuth failure; see _arm_auth_park.
         self._auth_park: Optional[tuple] = None
+        # ``auth_command`` token source (tools/mcp_tool_auth_command.py); None without the key.
+        self._auth_command_source: Optional[Any] = None
         # Digest of the resolved inputs the transport last connected with; a cross-profile adopter
         # must resolve the same digest in its own scope. None until the transport publishes it.
         self._resolved_identity: Optional[str] = None

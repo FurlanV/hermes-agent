@@ -1,8 +1,9 @@
 {
-  "catalog_version": "2026.11.2",
+  "catalog_version": "2026.11.10",
   "entries": {
     "browser": {
-      "default_on": false,
+      "category": "built-in",
+      "default_on": true,
       "group": "Research",
       "icon": "globe",
       "id": "browser",
@@ -33,12 +34,15 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Local browser only; any site, so experimental and researcher-only."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Local browser only; any site, so experimental and researcher-only. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
-        "researcher"
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
       ],
-      "sha256": "c81ba3a426ff9d0a80a4bb6f76e90c362bd1d2254d22a8a48d4aba49eaf7a35c",
+      "sha256": "a0ee91a946c2419ac9289fd985568c6e1bdb42b7aff3dc49d66eb5d430a6efd7",
       "source": {
         "config": {},
         "hermes_toolset": "browser"
@@ -47,9 +51,10 @@
       "summary": "Opens pages in a local browser the agent controls.",
       "title": "Browser",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "clarify": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "message-question",
@@ -74,7 +79,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Added in F02 slice 28: without it hermes cannot ask the user a question, so it is locked on for every role (slice 26 found the toolset disabled). The question and the answer stay in the chat. Awaiting human review (Q4)."
+        "notes": "Added in F02 slice 28: without it hermes cannot ask the user a question, so it is locked on for every role (slice 26 found the toolset disabled). The question and the answer stay in the chat. Awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -82,7 +87,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "521b59a698558bd39b5011dab3527a097d309bc51a60b591801560e45d1b1573",
+      "sha256": "63906e194619b0fa5bd959be5d30b8af5f43c5e7554dbad1563483ddefa7cc45",
       "source": {
         "config": {},
         "hermes_toolset": "clarify"
@@ -90,10 +95,11 @@
       "status": "stable",
       "summary": "Lets the agent ask you a question, multiple-choice or open-ended, before it carries on.",
       "title": "Ask clarifying questions",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "data-cleaning-pandas": {
+      "category": "built-in",
       "default_on": true,
       "group": "Research",
       "icon": "table",
@@ -107,14 +113,19 @@
         "network": []
       },
       "provides": {
-        "tools": [],
-        "toolsets": []
+        "tools": [
+          "skills_list",
+          "skill_view"
+        ],
+        "toolsets": [
+          "skills"
+        ]
       },
       "requires_hermes": ">=1a48bf2b",
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Placeholder content (Q4: skills not named yet); experimental."
+        "notes": "Placeholder content (Q4: skills not named yet); experimental. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role. It brings skills_list and skill_view (reading skills), so it loads with Learned skills off; skill_manage stays with Learned skills."
       },
       "roles": [
         "researcher",
@@ -122,7 +133,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "11c0b07d9e4e588e803e7ff745785da3e5de9224d66e2993a280fbe730a5bfdd",
+      "sha256": "3ca35f78d23f81ae85bc06f74970eafbc0d1e8dcaa962e349367cb667f3c043c",
       "source": {
         "path": "skills/data-cleaning-pandas",
         "sha256": "701b5f0a078d2414d539c96fd4bbe9d4b08d3e131e85cc48a9c4b17e793804aa"
@@ -131,9 +142,13 @@
       "summary": "Cleans a tabular dataset with pandas and reports every change.",
       "title": "Data cleaning in pandas",
       "user_toggle": true,
-      "version": "0.1.0"
+      "version": "0.2.0",
+      "works_best_with": [
+        "files"
+      ]
     },
     "desktop-projects": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "folder-open",
@@ -158,7 +173,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Added in F02 slice 28: the Desktop's Projects need it (the GUI gateway adds the toolset to every Desktop session; slice 26 found it disabled), so it is locked on for every role. It records projects in the Profile's projects.db and points the session at a folder; file access itself stays with Files. Awaiting human review (Q4)."
+        "notes": "Added in F02 slice 28: the Desktop's Projects need it (the GUI gateway adds the toolset to every Desktop session; slice 26 found it disabled), so it is locked on for every role. It records projects in the Profile's projects.db and points the session at a folder; file access itself stays with Files. Awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -166,7 +181,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "bfec728a32b69278d3e8745141bca895db1d6b943442c57c17c7c9f7d6567afd",
+      "sha256": "9e1f710e62e9d41c2f5520dd6c819c874f583f77aafaee2cfdaac24e73788f04",
       "source": {
         "config": {},
         "hermes_toolset": "project"
@@ -174,10 +189,219 @@
       "status": "stable",
       "summary": "Lets the agent create and switch the named project workspaces in the sidebar.",
       "title": "Desktop projects",
-      "user_toggle": false,
+      "user_toggle": true,
+      "version": "1.1.0"
+    },
+    "eagle-asd-evidence": {
+      "category": "database",
+      "default_on": false,
+      "group": "Research",
+      "icon": "book-search",
+      "id": "eagle-asd-evidence",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols and search terms, to EAGLE through the Athena capability gateway",
+          "EAGLE case and paper ids, variant notations and query filters, to EAGLE through the Athena capability gateway",
+          "questions about what papers say, to EAGLE's passage search through the Athena capability gateway"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "results": "live-only",
+      "review": {
+        "at": "2026-11-11",
+        "by": "claude-code/implement-plan",
+        "notes": "F03 slices 12 and 15: EAGLE holds published data only, so every evidence scope (gene, case, query, text) is public and granted to every role (plan decision 3; migration 0006). Read-only tools (readOnlyHint); list tools page with an opaque cursor and EAGLE caps every result. Paper passages are verbatim published text. Awaiting human review and the EAGLE team's sign-off (decision 6)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "evidence.gene",
+          "title": "Gene evidence (scores, counts, findings, paper metadata)",
+          "tools": [
+            "search_genes",
+            "get_gene_details",
+            "get_gene_score",
+            "get_gene_level_findings",
+            "search_papers",
+            "describe"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "evidence.case",
+          "title": "Cases and variants (published case rows, paged)",
+          "tools": [
+            "get_cases_by_gene",
+            "get_cases_by_paper",
+            "get_case_details",
+            "get_variants_by_gene",
+            "find_variant_reports"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "evidence.query",
+          "title": "Queries over EAGLE's records (whitelisted filters, joins and counts)",
+          "tools": [
+            "query"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "evidence.text",
+          "title": "Passages from published papers",
+          "tools": [
+            "search_paper_passages"
+          ]
+        }
+      ],
+      "sha256": "3d95c955b865d0c88a1ae072fbe4cfa44a8e8fdfad6ce27976ac463ba8709f62",
+      "skill": {
+        "path": "skills/eagle-asd-evidence",
+        "sha256": "9f7b2b1b272f4ac9862d7711bef974d51c5c29326e21ac71b96e8572427d6106"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "describe": "2c75a9b0cf817c6477820509402b081d26fb66f3999372947d79099aabea1e0f",
+            "find_variant_reports": "48948c37143a77644006b5e0565ddcd554f8893887a4841fb940423601996484",
+            "get_case_details": "7a30f7d63885d262bdb42fc06c8e5626af7906c4e14b55dbfab78bc92d8da912",
+            "get_cases_by_gene": "741ec194185c96f62d7e311c981c4e3677db83eca20e9c4a0d1375676b0cd897",
+            "get_cases_by_paper": "9bf284dc53fb8773d0db2d46c7df1a682e9d761eea74337c50ae495008b010de",
+            "get_gene_details": "c80334ef930d8e1205719ee0c3251dfbb5d047439f5530e468aa1b4711b27404",
+            "get_gene_level_findings": "8d548f9ccf410cc3a7ba57232efc9aa27707b4458f02288caf2bb89d889ec27d",
+            "get_gene_score": "9c96718f5ce51619d6466e2dad0e557e085e8c9fd10b194f595682fb58b36850",
+            "get_variants_by_gene": "34ec350aaa79ccdac5b6c407912d3aa5c67cd2f61d37cefd4390c93cec2a1685",
+            "query": "5793ffac88098b4d640416343cd407db59e035cd53c09d71ebcd8793987d8ddc",
+            "search_genes": "a840170df8cbebd326baf648ef864e3f2eb1b464b16e287a7bfd59677d6e0141",
+            "search_paper_passages": "9ce6d8986d157d114e2c511bf636d46b70b42fa15aa925ae6ae26273b34db911",
+            "search_papers": "e7f04d0efd2c76d402b5150c9358d4886b4e1eeaf440d969ced2672a0c85429d"
+          },
+          "tools": [
+            "search_genes",
+            "get_gene_details",
+            "get_gene_score",
+            "get_gene_level_findings",
+            "search_papers",
+            "describe",
+            "get_cases_by_gene",
+            "get_cases_by_paper",
+            "get_case_details",
+            "get_variants_by_gene",
+            "find_variant_reports",
+            "query",
+            "search_paper_passages"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Autism gene evidence from EAGLE, read live, with the papers, cases and variants behind it.",
+      "title": "EAGLE ASD evidence",
+      "user_toggle": true,
       "version": "1.0.0"
     },
+    "eagle-curator": {
+      "category": "agent",
+      "default_on": false,
+      "examples": [
+        "Which genes in EAGLE have the strongest evidence from de novo variants, and which papers report them?",
+        "Summarise what EAGLE's curated papers say about SHANK3 and autism.",
+        "Why is SHANK3 classified the way it is in EAGLE? Ask EAGLE's agent to explain the evidence."
+      ],
+      "group": "Research",
+      "icon": "sparkles",
+      "id": "eagle-curator",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "your question, to EAGLE's research agent through the Athena capability gateway; the agent may search the published literature with it"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "results": "live-only",
+      "review": {
+        "at": "2026-11-11",
+        "by": "claude-code/implement-plan",
+        "notes": "F03 slice 16: ask runs EAGLE's chat agent once over EAGLE's published data and stores no session; read-only (readOnlyHint) and open-world (it may search the published literature). F04 slice 07: the extraction task tools (F03 slice 17) and their agent.extract scope are removed. Public, granted to every role (decision 3). Awaiting human review and the EAGLE team's sign-off (decision 6)."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "agent.ask",
+          "title": "Ask EAGLE's research agent (one run of its chat agent, nothing stored)",
+          "tools": [
+            "ask"
+          ]
+        }
+      ],
+      "sha256": "d529df5529e2f55303d648f8adcece3486af585ebc163b117d824c2ad90fed83",
+      "skill": {
+        "path": "skills/eagle-curator",
+        "sha256": "abecf9bed0261e650b03ddda84dfda0b25b77880ee0e2756ac66ad77802e16c6"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "ask": "72ecd761f98d31c43c0b4f8f17fcce5e3b0f970535d30435a34eedc9bd5f0dd4"
+          },
+          "timeout_seconds": 300,
+          "tools": [
+            "ask"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Ask EAGLE's research agent open questions.",
+      "title": "EAGLE curator",
+      "user_toggle": true,
+      "version": "2.0.0",
+      "works_best_with": [
+        "eagle-asd-evidence"
+      ]
+    },
     "files": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "file-text",
@@ -205,7 +429,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -213,7 +437,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "0487b35082bff33b13f9f4b84cef4678b4f38338e625444f4c9e64f72232a1bd",
+      "sha256": "39751e04a6ed59cc4e79c25b8fc70233a244adedb774ea713294e8d1a18ad6c8",
       "source": {
         "config": {},
         "hermes_toolset": "file"
@@ -221,10 +445,11 @@
       "status": "stable",
       "summary": "Read, write and search files in your project.",
       "title": "Files",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "learned-skills": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "sparkles",
@@ -251,7 +476,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). skill_manage limited to the user's own skill folder (athena_guard, slice 27)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). skill_manage limited to the user's own skill folder (athena_guard, slice 27). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -259,7 +484,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "6ce3fde08fcc3b6fc663b8a168944defe392766c1e46b14288c6601c92436656",
+      "sha256": "06243c52a6c21ca019b3ed444523d4a5870da16be92a06033e008957e8d139f5",
       "source": {
         "config": {},
         "hermes_toolset": "skills"
@@ -268,9 +493,10 @@
       "summary": "Skills the agent writes for you, kept in your own skill folder.",
       "title": "Learned skills",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.0.1"
     },
     "literature-search": {
+      "category": "built-in",
       "default_on": true,
       "group": "Research",
       "icon": "book-search",
@@ -300,14 +526,15 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
         "clinician",
+        "trainee",
         "admin"
       ],
-      "sha256": "c8bd1019047a7d0a02bd689260c61e7d62d3041557ac1299a08af5d059204f2c",
+      "sha256": "9b26d1c36522120654388ef05396a23d1782a1049145d5e12db14610404d4579",
       "source": {
         "config": {
           "web": {
@@ -320,9 +547,10 @@
       "summary": "Search PubMed and the hospital library index.",
       "title": "Literature search",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "memory": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "brain",
@@ -347,7 +575,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Managed: users cannot turn it off (S55)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Managed: users cannot turn it off (S55). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -355,7 +583,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "f03fff6ca34d69ae83c5693ac9d0fe096b6535a123e9bb56875b8614de16fa32",
+      "sha256": "fd508e9b5bbebdeb5f0d9a8caf26ff81261b1cf4bc07e4bbd81eafeefda19263",
       "source": {
         "config": {},
         "hermes_toolset": "memory"
@@ -363,10 +591,11 @@
       "status": "stable",
       "summary": "Remembers notes about you and your work across chats.",
       "title": "Memory",
-      "user_toggle": false,
-      "version": "1.0.0"
+      "user_toggle": true,
+      "version": "1.1.0"
     },
     "python": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "code",
@@ -391,7 +620,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -399,7 +628,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "5eeb1b65690c560347f5d844c2177681e9ad50cec8048b2aa1e0669fd083a4e5",
+      "sha256": "8f2bce9ecdfc87756a67415504731a1f17fadd37a2d2242d57662911f26134f3",
       "source": {
         "config": {},
         "hermes_toolset": "code_execution"
@@ -408,10 +637,90 @@
       "summary": "Run Python scripts on this laptop to analyse data and call tools.",
       "title": "Python",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0",
+      "works_best_with": [
+        "files"
+      ]
+    },
+    "stub-echo": {
+      "category": "agent",
+      "default_on": false,
+      "group": "Development",
+      "icon": "radio-tower",
+      "id": "stub-echo",
+      "kind": "gateway",
+      "owner": "athena-team",
+      "permissions": {
+        "data": [
+          "the text to echo, to the Athena capability gateway"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "athena-team@example.org",
+        "name": "Athena",
+        "team": "athena-team"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "results": "live-only",
+      "review": {
+        "at": "2026-11-11",
+        "by": "claude-code/implement-plan",
+        "notes": "F03 slice 07: a stub package for the capability gateway tracer bullet; no data beyond the echoed text. Awaiting human review."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "echo.basic",
+          "title": "Echo",
+          "tools": [
+            "echo"
+          ]
+        },
+        {
+          "classification": "public",
+          "id": "echo.reverse",
+          "title": "Reverse",
+          "tools": [
+            "reverse"
+          ]
+        }
+      ],
+      "sha256": "b97508e4c2c937cb00f2bac43ef178c7d0cac2b7b0e25184267f12fbf559a90f",
+      "source": {
+        "gateway": {
+          "capability": "stub-echo",
+          "surface": {
+            "echo": "05bcb827febf9ff4b7fd6ad2300b6b411b003e2c85fab761701071749c796d8a",
+            "reverse": "a4f54a8e0946658a8c1268b0f29f13f54a7963ae559a322f49681d78e6f9ee03"
+          },
+          "tools": [
+            "echo",
+            "reverse"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Echoes text back through the capability gateway, to test remote packages.",
+      "title": "Stub echo (dev)",
+      "user_toggle": true,
+      "version": "0.2.0"
     },
     "subagents": {
-      "default_on": false,
+      "category": "built-in",
+      "default_on": true,
       "group": "Workspace",
       "icon": "users",
       "id": "subagents",
@@ -435,14 +744,15 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Not for trainee."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Not for trainee. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
         "clinician",
+        "trainee",
         "admin"
       ],
-      "sha256": "44a0d1010c149c541ec22f64ef8f59141ad5d915febc7ead7293c0064a2b1f88",
+      "sha256": "e55ebfa8d93bb604835e0f213219bdeaf6d0d8da31c66a40abb7708a79f6812b",
       "source": {
         "config": {},
         "hermes_toolset": "delegation"
@@ -451,9 +761,10 @@
       "summary": "Hands parts of a task to helper agents with their own context.",
       "title": "Subagents",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "summarise-paper": {
+      "category": "built-in",
       "default_on": true,
       "group": "Research",
       "icon": "file-search",
@@ -467,14 +778,19 @@
         "network": []
       },
       "provides": {
-        "tools": [],
-        "toolsets": []
+        "tools": [
+          "skills_list",
+          "skill_view"
+        ],
+        "toolsets": [
+          "skills"
+        ]
       },
       "requires_hermes": ">=1a48bf2b",
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Placeholder content (Q4: skills not named yet); experimental."
+        "notes": "Placeholder content (Q4: skills not named yet); experimental. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role. It brings skills_list and skill_view (reading skills), so it loads with Learned skills off; skill_manage stays with Learned skills."
       },
       "roles": [
         "researcher",
@@ -482,7 +798,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "53279b00d0bc07a382fcef68f8f548ed249c3d6907891a65a27b7083863efb6a",
+      "sha256": "95945e28f5a988b854caebb54639761a120dc39e900dbfed8c9d72c45335dfa0",
       "source": {
         "path": "skills/summarise-paper",
         "sha256": "dc17000e7b20406facf6133e02765416bed60d7869683deb31187a9a7713e3de"
@@ -491,10 +807,14 @@
       "summary": "Summarises a paper's question, methods, findings and limits.",
       "title": "Summarise a paper",
       "user_toggle": true,
-      "version": "0.1.0"
+      "version": "0.2.0",
+      "works_best_with": [
+        "files"
+      ]
     },
     "terminal": {
-      "default_on": false,
+      "category": "built-in",
+      "default_on": true,
       "group": "Workspace",
       "icon": "terminal",
       "id": "terminal",
@@ -519,7 +839,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). On by default for researcher and admin only (role configs)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). On by default for researcher and admin only (role configs). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -527,7 +847,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "292ecef5288884d8b94b742fe72bd8b5130b0d99c37d8f23b6db315b166b7e00",
+      "sha256": "524010db327dc4229435ed1b5498cc5eef3d492f05c40920f52baf3a1510cb45",
       "source": {
         "config": {},
         "hermes_toolset": "terminal"
@@ -536,9 +856,10 @@
       "summary": "Run shell commands and manage processes on this laptop.",
       "title": "Terminal",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "todo": {
+      "category": "built-in",
       "default_on": true,
       "group": "Workspace",
       "icon": "list-checks",
@@ -563,7 +884,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4)."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
       },
       "roles": [
         "researcher",
@@ -571,7 +892,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "142374235f94df55bd145675f0c7db88307984997e7325456dce972aa020165c",
+      "sha256": "254072d69eb26b46a2a86a4cf4f9af398300d8ed38ec94e50eede85bf67c4703",
       "source": {
         "config": {},
         "hermes_toolset": "todo"
@@ -580,8 +901,8 @@
       "summary": "Plans and tracks multi-step work in the chat.",
       "title": "To-do list",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   },
-  "hermes_commit": "1a48bf2bf38bd881e0837e3192d2291de6184dc7"
+  "hermes_commit": "d667bd0da0579737c443307381923d1ccd2634ae"
 }

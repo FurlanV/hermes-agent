@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional
 from tools.mcp_tool_common import _parse_boolish, _core, _resolve_tool_timeout, mcp_field, mcp_server_enabled
+from tools import mcp_tool_auth_command as _auth_command
 from tools import mcp_tool_config as _config
 from tools import mcp_tool_events as _events
 from tools import mcp_tool_handlers as _handlers
@@ -518,11 +519,14 @@ def _same_server_route(server: Any, config: dict, *, cross_profile: bool = False
     default cwd resolves in the connection task's own context, never per session."""
     if _connection_identity(getattr(server, "_config", {}) or {}) != _connection_identity(config):
         return False
+    if not _auth_command.same_command(getattr(server, "_config", {}) or {}, config):
+        return False
     if not cross_profile:
         return True
-    # Identities match, so both sides carry the same normalised auth type.
+    # Identities match, so both sides carry the same normalised auth type. An ``auth_command`` token is
+    # minted per profile and kept out of the resolved identity, so it is never borrowed (like OAuth).
     recorded = getattr(server, "_resolved_identity", None)
-    return (_auth_type(config) != "oauth" and recorded is not None
+    return (_auth_type(config) != "oauth" and not _auth_command.uses_command(config) and recorded is not None
             and resolved_identity is not None and recorded == resolved_identity)
 
 

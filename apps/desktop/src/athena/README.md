@@ -329,6 +329,12 @@ a real filter.
     `client/catalog/catalog.json`; `catalog-bundle.test.ts` compares them when
     a checkout is present (`ATHENA_REPO`). Re-copy it after
     `athena-build-catalog`.
+  - The page gets the catalog only through `catalog/catalog-source.ts`
+    `currentCatalog()` (F03 slice 02), which asks main's
+    `electron/athena/catalog-source.ts` `currentCatalogSource()` over
+    `athena:catalog:snapshot|get` (installed with the client config). Both
+    answer `source: bundled` today; the signed remote catalog (F03 slice 19)
+    fills them in. The page's footer shows the catalog version and source.
   - Cards are the config's `tools.available` (in that order, grouped by the
     entry's `group`): title, version, summary, the "Sends:" line from
     `permissions.data`, and a switch. `locked_on` entries and entries with
