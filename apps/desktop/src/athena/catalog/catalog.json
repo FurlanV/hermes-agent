@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.9",
+  "catalog_version": "2026.11.10",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -327,7 +327,7 @@
       "examples": [
         "Which genes in EAGLE have the strongest evidence from de novo variants, and which papers report them?",
         "Summarise what EAGLE's curated papers say about SHANK3 and autism.",
-        "Extract and score the cases in EAGLE paper 3, without saving anything."
+        "Why is SHANK3 classified the way it is in EAGLE? Ask EAGLE's agent to explain the evidence."
       ],
       "group": "Research",
       "icon": "sparkles",
@@ -336,8 +336,7 @@
       "owner": "eagle-team",
       "permissions": {
         "data": [
-          "your question, to EAGLE's research agent through the Athena capability gateway; the agent may search the published literature with it",
-          "the EAGLE paper id of a paper to extract, to EAGLE through the Athena capability gateway"
+          "your question, to EAGLE's research agent through the Athena capability gateway; the agent may search the published literature with it"
         ],
         "executes_code": false,
         "filesystem": "none",
@@ -357,7 +356,7 @@
       "review": {
         "at": "2026-11-11",
         "by": "claude-code/implement-plan",
-        "notes": "F03 slices 16 and 17: ask runs EAGLE's chat agent once over EAGLE's published data and stores no session; read-only (readOnlyHint) and open-world (it may search the published literature). The task tools run a non-persisting extraction of a paper already in EAGLE (decisions 2 and 4): no run record, case or wiki write; task_start and task_cancel are not read-only, so each asks the user first. Public, granted to every role (decision 3). Awaiting human review and the EAGLE team's sign-off (decision 6)."
+        "notes": "F03 slice 16: ask runs EAGLE's chat agent once over EAGLE's published data and stores no session; read-only (readOnlyHint) and open-world (it may search the published literature). F04 slice 07: the extraction task tools (F03 slice 17) and their agent.extract scope are removed. Public, granted to every role (decision 3). Awaiting human review and the EAGLE team's sign-off (decision 6)."
       },
       "roles": [
         "researcher",
@@ -373,49 +372,30 @@
           "tools": [
             "ask"
           ]
-        },
-        {
-          "classification": "public",
-          "id": "agent.extract",
-          "title": "Extract and score a paper's cases (a task; nothing is saved to EAGLE)",
-          "tools": [
-            "task_start",
-            "task_status",
-            "task_result",
-            "task_cancel"
-          ]
         }
       ],
-      "sha256": "da3da77d98c0be7eaaeae4f7d62c4078a7b006e2987d77e8a4aebb2b1301dd0d",
+      "sha256": "d529df5529e2f55303d648f8adcece3486af585ebc163b117d824c2ad90fed83",
       "skill": {
         "path": "skills/eagle-curator",
-        "sha256": "cba6de0bffd72a04fa3509fa22f629f15c82e76ecda4af8ec40b30a6af074681"
+        "sha256": "abecf9bed0261e650b03ddda84dfda0b25b77880ee0e2756ac66ad77802e16c6"
       },
       "source": {
         "gateway": {
           "capability": "eagle",
           "surface": {
-            "ask": "72ecd761f98d31c43c0b4f8f17fcce5e3b0f970535d30435a34eedc9bd5f0dd4",
-            "task_cancel": "a9a30e1e6b29abd288a8ebd7e46fbc86cc29c956fcef7c9ff950d2a71624dedf",
-            "task_result": "acac91324ad73277cbc1e75e20f157bc627fcae0fd38103f065add661e025c13",
-            "task_start": "a3bea1d04f4efc46116442753aefdbdf54aa8fd9432d55d528354d05215753e1",
-            "task_status": "1bdd8a718d9fb6bb519557303c690849b34c3a2b3813fa50252f28459b3d819b"
+            "ask": "72ecd761f98d31c43c0b4f8f17fcce5e3b0f970535d30435a34eedc9bd5f0dd4"
           },
           "timeout_seconds": 300,
           "tools": [
-            "ask",
-            "task_start",
-            "task_status",
-            "task_result",
-            "task_cancel"
+            "ask"
           ]
         }
       },
       "status": "experimental",
-      "summary": "Ask EAGLE's research agent open questions, and have it extract and score a paper's cases.",
+      "summary": "Ask EAGLE's research agent open questions.",
       "title": "EAGLE curator",
       "user_toggle": true,
-      "version": "1.0.0",
+      "version": "2.0.0",
       "works_best_with": [
         "eagle-asd-evidence"
       ]
