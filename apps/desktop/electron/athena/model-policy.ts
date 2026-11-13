@@ -8,8 +8,11 @@
 //
 // - `models.allowed` is in picker order; `hidden` entries (the dev `mock`
 //   alias) may be called but are never listed.
-// - Every id is a model gateway alias, served by the `athena-gateway` provider.
-//   An `athena-vllm` row only stays when it serves an allowed id.
+// - Every entry names what serves it (`provider`, F05 slice 02): `gateway`,
+//   the Model gateway, unless the config says otherwise. `MODEL_PROVIDERS`
+//   maps that name to the hermes provider; an entry whose provider this build
+//   does not know is not on the list. An `athena-vllm` row only stays when it
+//   serves an allowed id.
 // - `managed.models` (master switch): `enforce` lists and accepts only the
 //   allowed models; `report` lists and accepts everything and records each pick
 //   outside the list; `off` is stock. The model gateway enforces in every mode.
@@ -19,6 +22,21 @@
 import { managedMode } from './feature-registry'
 
 export const ATHENA_GATEWAY_PROVIDER = 'custom:athena-gateway'
+
+/** A hermes provider that serves allowed models, and the name its picker row gets when the catalog has none. */
+export interface ModelProviderInfo {
+  name: string
+  /** The hermes provider (`custom:<key>`). */
+  slug: string
+}
+
+/** The client config's name for the provider of a model that names none: the Model gateway. */
+export const DEFAULT_MODEL_PROVIDER = 'gateway'
+
+/** The hermes provider behind each `models.allowed[].provider` name of the client config. */
+export const MODEL_PROVIDERS: Readonly<Record<string, ModelProviderInfo>> = Object.freeze({
+  [DEFAULT_MODEL_PROVIDER]: { name: 'Athena gateway', slug: ATHENA_GATEWAY_PROVIDER }
+})
 
 /** Hermes's reasoning ladder (`hermes_constants.VALID_REASONING_EFFORTS` plus `none`), weakest first. */
 export const REASONING_LADDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'] as const
@@ -37,6 +55,8 @@ export interface ManagedModelEntry {
   /** The efforts users may pick for this model, in ladder order as the config lists them. */
   levels: readonly string[]
   note: null | string
+  /** The hermes provider that serves the model (`custom:athena-gateway` unless the config names another). */
+  provider: string
 }
 
 export interface ManagedModels {
@@ -64,6 +84,13 @@ function parseEntry(raw: unknown): ManagedModelEntry | null {
   }
 
   const id = text(raw.id)
+  const provider = MODEL_PROVIDERS[text(raw.provider) || DEFAULT_MODEL_PROVIDER]
+
+  // A provider this build has no route for (a newer server's): the model is not on the list.
+  if (!provider) {
+    return null
+  }
+
   const reasoning = isRecord(raw.reasoning) ? raw.reasoning : {}
 
   const levels = Array.isArray(reasoning.levels)
@@ -79,7 +106,8 @@ function parseEntry(raw: unknown): ManagedModelEntry | null {
     id,
     label: text(raw.label) || id,
     levels: safeLevels,
-    note: text(raw.note) || null
+    note: text(raw.note) || null,
+    provider: provider.slug
   }
 }
 
@@ -117,11 +145,15 @@ const providerKey = (provider: string): string =>
     .toLowerCase()
     .replace(/^custom:/, '')
 
-export const isGatewayProvider = (provider: string): boolean => providerKey(provider) === 'athena-gateway'
+/** Whether two hermes provider names are the same provider (`custom:` and case aside). */
+export const sameProvider = (a: string, b: string): boolean => providerKey(a) === providerKey(b)
 
-/** The Athena providers a Profile configures: the model gateway and the on-prem vLLM. */
+export const isGatewayProvider = (provider: string): boolean => sameProvider(provider, ATHENA_GATEWAY_PROVIDER)
+
+/** The Athena providers a Profile configures: the ones that serve allowed models, and the on-prem vLLM. */
 export const isAthenaProvider = (provider: string): boolean =>
-  isGatewayProvider(provider) || providerKey(provider) === 'athena-vllm'
+  Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug)) ||
+  providerKey(provider) === 'athena-vllm'
 
 export const isModelSubcommand = (model: string): boolean => MODEL_SUBCOMMANDS.has(model.trim().toLowerCase())
 
@@ -283,7 +315,6 @@ export function restModelChoice(method: string, pathname: string, body: unknown)
   return provider ? { model, provider } : { model }
 }
 
-/** The catalog row for the model gateway, matched by slug or alias. */
 /** The fields of a `model.options` provider row (`ModelOptionProvider`) the managed rows read and write. */
 export interface PickerRow {
   aliases?: null | string[]
@@ -293,40 +324,54 @@ export interface PickerRow {
   total_models?: null | number
 }
 
-const gatewayRow = <T extends PickerRow>(catalog: readonly T[]): T | undefined =>
-  catalog.find(row => isGatewayProvider(row.slug) || (row.aliases ?? []).some(isGatewayProvider))
+/** The catalog row of a hermes provider, matched by slug or alias. */
+const providerRow = <T extends PickerRow>(catalog: readonly T[], provider: string): T | undefined =>
+  catalog.find(
+    row => sameProvider(row.slug, provider) || (row.aliases ?? []).some(alias => sameProvider(alias, provider))
+  )
+
+const madeRow = (provider: string): PickerRow & Record<string, unknown> => ({
+  authenticated: true,
+  name: Object.values(MODEL_PROVIDERS).find(known => sameProvider(known.slug, provider))?.name ?? provider,
+  slug: provider
+})
 
 /**
- * The picker rows under the managed list: the model gateway's row carrying
- * exactly the visible allowed ids, in config order (from the config, not the
+ * The picker rows under the managed list: one row per provider that serves a
+ * visible allowed model (today the model gateway's alone), carrying exactly
+ * that provider's visible ids in config order (from the config, not the
  * backend's cached discovery, so an admin change shows within one poll), plus
  * an `athena-vllm` row only when it serves an allowed id. Every other
- * provider is dropped. Without a gateway row in the catalog (not loaded yet,
- * or a Profile without it) one is made up, so the list still shows.
+ * provider is dropped. Without a provider's row in the catalog (not loaded
+ * yet, or a Profile without it) one is made up, so the list still shows.
  */
 export function managedPickerRows<T extends PickerRow>(models: ManagedModels, catalog: readonly T[]): T[] {
-  const ids = models.visible.map(entry => entry.id)
-
-  if (ids.length === 0) {
+  if (models.visible.length === 0) {
     return []
   }
 
-  const gateway = gatewayRow(catalog)
-  const allowed = new Set(ids)
+  const allowed = new Set(models.visible.map(entry => entry.id))
+  const used = new Set<T>()
+  const rows: T[] = []
 
-  const made = { authenticated: true, name: 'Athena gateway', slug: ATHENA_GATEWAY_PROVIDER } as PickerRow as T
+  for (const provider of new Set(models.visible.map(entry => entry.provider))) {
+    const ids = models.visible.filter(entry => entry.provider === provider).map(entry => entry.id)
+    const found = providerRow(catalog, provider)
 
-  const rows: T[] = [
-    {
-      ...(gateway ?? made),
+    if (found) {
+      used.add(found)
+    }
+
+    rows.push({
+      ...(found ?? (madeRow(provider) as PickerRow as T)),
       featured_models: ids,
       models: ids,
       total_models: ids.length
-    }
-  ]
+    })
+  }
 
   for (const row of catalog) {
-    if (row === gateway || !isAthenaProvider(row.slug)) {
+    if (used.has(row) || !isAthenaProvider(row.slug)) {
       continue
     }
 

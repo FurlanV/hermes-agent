@@ -5,7 +5,7 @@
  * session whose model is no longer on the role's list switches to the role
  * default between turns, through the app's own model pick (`selectModel` in
  * `use-model-controls.ts`: `config.set key=model … --provider
- * custom:athena-gateway`, which the canonical protocol sends as the fenced
+ * <the target's provider>`, which the canonical protocol sends as the fenced
  * `session.mutate operation=model` slice 08 recorded, retried once on a fence
  * refusal). A busy session waits for its turn to end; that turn keeps the D07
  * behaviour (the gateway refuses, hermes falls back within the turn). One
@@ -28,7 +28,7 @@ import { notify } from '@/store/notifications'
 import { $activeSessionId, $currentModel, $currentProvider } from '@/store/session'
 import { $sessionStates } from '@/store/session-states'
 
-import { ATHENA_GATEWAY_PROVIDER, findModelEntry, type ManagedModels } from '../../../electron/athena/model-policy'
+import { findModelEntry, type ManagedModels } from '../../../electron/athena/model-policy'
 
 import { $managedModels, enforcedModels } from './model-policy'
 
@@ -139,6 +139,8 @@ export function reconcileModelSessions(select: SelectModel): void {
   }
 
   const target = switchTarget(models)
+  // The provider that serves the target, read from its entry (never a constant: F05 slice 02).
+  const targetProvider = target ? findModelEntry(models, target)?.provider : undefined
 
   for (const session of openSessions()) {
     const model = session.model.trim()
@@ -150,7 +152,7 @@ export function reconcileModelSessions(select: SelectModel): void {
       continue
     }
 
-    if (!target) {
+    if (!target || !targetProvider) {
       continue
     }
 
@@ -165,7 +167,7 @@ export function reconcileModelSessions(select: SelectModel): void {
 
     const selection: ModelSelection = {
       model: target,
-      provider: ATHENA_GATEWAY_PROVIDER,
+      provider: targetProvider,
       ...(session.sessionId ? { sessionId: session.sessionId } : {})
     }
 

@@ -240,11 +240,15 @@ a real filter.
 - The role's models (slice 20): `managed/model-policy.ts` follows
   `$clientConfig` (`models` section, read by `electron/athena/model-policy.ts`,
   shared with main). Under `managed.models: enforce` the selector's `rows` are
-  the gateway row with exactly the visible `models.allowed` ids in config
-  order (built from the config, not hermes's cached discovery; `hidden`
-  entries such as `mock` stay callable but are never listed; an
-  `athena-vllm` row only when it serves an allowed id; every other provider
-  dropped), custom ids are off, and `/model <id>` outside the list answers
+  one row per provider that serves a visible `models.allowed` id, with exactly
+  that provider's ids in config order (built from the config, not hermes's
+  cached discovery; `hidden` entries such as `mock` stay callable but are
+  never listed; an `athena-vllm` row only when it serves an allowed id; every
+  other provider dropped). Each entry carries the provider that serves it
+  (F05 slice 02): `models.allowed[].provider`, default `gateway`, mapped to
+  the hermes provider by `MODEL_PROVIDERS` (today the Model gateway's row
+  alone); an entry whose provider the build does not know is not on the list.
+  Custom ids are off, and `/model <id>` outside the list answers
   "Not available for your role" (`/model reset` passes). Labels go through
   `managed/model-labels.ts` into `modelDisplayParts`; notes are a
   `modelMenu.row` badge. A pick outside the list is also refused at the
@@ -258,7 +262,7 @@ a real filter.
   included, and every tile in `$sessionStates`) whose model id left the list
   is switched once to the role default (first listed model if the default is
   hidden) through the controller's own `selectModel` (`config.set key=model
-  … --provider custom:athena-gateway`, sent as slice 08's fenced
+  … --provider <the target entry's provider>`, sent as slice 08's fenced
   `session.mutate`). A busy session waits for its turn to end. One toast per
   session ("GPT-6 Sol is no longer available. Switched to GPT-6 Luna.").
   With no listed model left, or a failed switch for the active session, a
