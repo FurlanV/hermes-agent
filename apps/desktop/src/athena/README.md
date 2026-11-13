@@ -412,15 +412,19 @@ a real filter.
     takes the value out of every document the moment it is verified
     (`withoutModelServerKeys`: only `key.type` stays), so no snapshot, window,
     log line, status file, policy decision or bridge status can carry it. The
-    Desktop does not need it: `athena config apply` reads the signed file
-    itself and writes the key as the provider's `api_key` in hermes managed
-    scope (mode 0600). The bridge only forwards bytes. **Open:** hermes's own
-    `GET /api/config` answers the merged configuration, managed scope
-    included, with a provider's `api_key` unmasked, so a window that asks for
-    the configuration record (Settings) receives the key from hermes. Nothing
-    of Athena's writes or shows it; athena's
-    `tests/hook_sequence/test_local_model_live.py` pins which hermes endpoints
-    carry it. Giving hermes the key through `key_cmd` would close it.
+    Desktop does not need it, and neither does hermes's configuration:
+    `athena config apply` writes a command, not the key, as the provider's
+    credential in hermes managed scope
+    (`key_cmd: <athena> local-model-key <server id>`, `api_key: ''`). Hermes
+    runs it when it calls the server, and `athena local-model-key` prints the
+    key from the verified signed file. The bridge only forwards bytes.
+    Hermes's own `GET /api/config` answers the merged configuration, managed
+    scope included, with a provider's `api_key` unmasked; the provider has
+    none, so a window that asks for the configuration record (Settings)
+    receives the command, never the key. athena's
+    `tests/hook_sequence/test_local_model_live.py` checks that against a
+    running hermes: the keyed server gets the key as its bearer, and no
+    hermes endpoint and no file under the Profile carries it.
   - Tests: `electron/athena/hpc-bridge-servers.test.ts` (two stand-in model
     servers behind the stand-in login node, one of them refusing requests
     without a marker key: both up, either one down, one coming back, one
