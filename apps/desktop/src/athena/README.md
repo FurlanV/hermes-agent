@@ -361,6 +361,73 @@ a real filter.
   - Tests: `electron/athena/hpc-bridge.test.ts` (a stand-in SSH login node and
     model server in-process, loopback only: `hpc-bridge.test-helper.ts`) and
     `hpc-bridge-bundle.test.ts`.
+- More than one model server, with a key (F05 slice 12). The config may name
+  several model servers behind the login host: the default one
+  (`local_models.target_host`/`target_port`, id `default`, no key) and each
+  entry of `local_models.servers` (`{host, port, key?}` by id);
+  `local_models.models.<id>.server` says which one a bridge model is on. A
+  config for the one default server reads and behaves as before.
+  - **One connection, one forward per server** (`bridgePlan` in
+    `hpc-bridge.ts`), each on its own kept loopback port.
+    `hpc-bridge-port.json` is `{"port": <default>, "servers": {"<id>": N}}`
+    (`{"port": N}` with the default server alone, as before).
+  - **Each server has its own state.** After signing in, the bridge asks the
+    login host for each server once: a channel opened and closed, nothing sent
+    to the model server. A server that does not answer within 5 s
+    (`probeTimeoutMs`), or whose loopback port cannot be opened, is `down` on
+    its own and is asked for again on the retry backoff (0.5 s … 15 s); the
+    others work meanwhile. A request that fails on a server that was up marks
+    it down the same way. `connected` is announced once a first server
+    answers, or once all have been asked.
+  - **Status**: slice 06's fields, plus `servers: {"<id>": {state, port?,
+    reason?}}` while `connected`, with `state` one of `checking`, `up`,
+    `down` (`target_unreachable`, `local_port_unavailable`). The top-level
+    `port` is the default server's forward, absent while that server is down.
+    A change in `servers` alone does not move `since`.
+  - **The bridge record is version 2**: `{version: 2, address, pid,
+    connected_at, port?, servers: {"<id>": {port}}}`, listing the servers
+    whose forward is up; `port` repeats the default server's while it is up
+    (what version 1 had). It is rewritten when one server comes or goes and
+    removed when none is up. Readers (`readBridgeRecord`, athena's
+    `read_record`) take a version 1 record as the default server alone, drop
+    an entry whose id or port is not one, and treat a record with no usable
+    server as stale. The snapshot's `hpcBridge` gains `servers` (`{"<id>":
+    port}`) and its `port` is optional; `bridgePorts()` reads either form.
+  - **One hermes provider per server** (`bridgeProviderFor` in
+    `model-policy.ts`, athena's `bridge_provider`): `custom:athena-vllm` for
+    the default server, `custom:athena-local-<id>` for another. A bridge
+    model is on the list only while its own server's forward is up
+    (`bridgeState(snapshot.hpcBridge)` → `ManagedModelsState.serversUp`), on
+    its own server's row, and a pick of it is accepted only on that provider.
+    `ManagedModelEntry.server` is the server's id.
+    `ManagedModels.localModels` gains `serversUp` and `leftOut`: bridge models
+    this build can never offer, with the reason (`server_unknown`: the config
+    does not list the server; `key_type_unknown`: its key source is not
+    `shared`). Sessions on a model whose server went away move through the
+    same auto-switch as any removed model.
+  - **The key never reaches the Desktop's state.** A server's API key rides
+    the signed config (`key: {type: shared, value}`). `client-config.ts`
+    takes the value out of every document the moment it is verified
+    (`withoutModelServerKeys`: only `key.type` stays), so no snapshot, window,
+    log line, status file, policy decision or bridge status can carry it. The
+    Desktop does not need it: `athena config apply` reads the signed file
+    itself and writes the key as the provider's `api_key` in hermes managed
+    scope (mode 0600). The bridge only forwards bytes. **Open:** hermes's own
+    `GET /api/config` answers the merged configuration, managed scope
+    included, with a provider's `api_key` unmasked, so a window that asks for
+    the configuration record (Settings) receives the key from hermes. Nothing
+    of Athena's writes or shows it; athena's
+    `tests/hook_sequence/test_local_model_live.py` pins which hermes endpoints
+    carry it. Giving hermes the key through `key_cmd` would close it.
+  - Tests: `electron/athena/hpc-bridge-servers.test.ts` (two stand-in model
+    servers behind the stand-in login node, one of them refusing requests
+    without a marker key: both up, either one down, one coming back, one
+    going away, the model gate per server, and the marker absent from the
+    log, the statuses, the record, the port file, the snapshot and the
+    decisions file), `hpc-bridge-record.test.ts` and
+    `managed/model-servers.test.tsx` (the pickers, the JSON-RPC seam and the
+    auto-switch per server). Athena's `tests/hook_sequence/test_local_model_live.py`
+    runs real hermes turns against two stand-in model servers.
 - A removed model (slice 21): `managed/model-switch.tsx`. On every config or
   session change, each idle open session (the primary composer, draft
   included, and every tile in `$sessionStates`) whose model id left the list

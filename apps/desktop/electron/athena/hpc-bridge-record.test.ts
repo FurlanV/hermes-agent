@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import { AthenaClientConfig, type ClientConfigSnapshot } from './client-config'
 import {
+  bridgePorts,
   bridgeRecordFile,
   pidAlive,
   readBridgeRecord,
@@ -92,7 +93,8 @@ describe('writing the bridge record', () => {
       connected_at: expect.stringMatching(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/),
       pid: process.pid,
       port: 49731,
-      version: 1
+      servers: { default: { port: 49731 } },
+      version: 2
     })
     expect(readBridgeRecord(athenaDir)).toMatchObject({ pid: process.pid, port: 49731 })
     // No temporary file is left beside it.
@@ -125,7 +127,8 @@ describe('the client-config snapshot follows the bridge', () => {
     expect(new AthenaClientConfig({ athenaDir }).snapshot().hpcBridge).toEqual({
       address: '127.0.0.1',
       connectedAt: '2026-11-13T20:00:00Z',
-      port: 49731
+      port: 49731,
+      servers: { default: 49731 }
     })
   })
 
@@ -156,5 +159,70 @@ describe('the client-config snapshot follows the bridge', () => {
     } finally {
       source.stop()
     }
+  })
+})
+
+// F05 slice 12: the record lists every model server whose forward is up.
+describe('a record with several model servers', () => {
+  test('main writes the port of each server that is up, and the default one again as `port`', () => {
+    const file = writeBridgeRecord(athenaDir, { port: 49731, servers: { 'hpc-llm': 49732 } })
+
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({
+      port: 49731,
+      servers: { default: { port: 49731 }, 'hpc-llm': { port: 49732 } },
+      version: 2
+    })
+    expect(readBridgeRecord(athenaDir)).toMatchObject({ port: 49731, servers: { default: 49731, 'hpc-llm': 49732 } })
+    expect(bridgePorts(readBridgeRecord(athenaDir))).toEqual({ default: 49731, 'hpc-llm': 49732 })
+  })
+
+  test('with the default server down there is no top-level port, and an older reader sees no bridge', () => {
+    const file = writeBridgeRecord(athenaDir, { servers: { 'hpc-llm': 49732 } })
+    const written = JSON.parse(readFileSync(file, 'utf8'))
+
+    expect('port' in written).toBe(false)
+    expect(written.servers).toEqual({ 'hpc-llm': { port: 49732 } })
+
+    const record = readBridgeRecord(athenaDir)
+    expect(record).toMatchObject({ servers: { 'hpc-llm': 49732 } })
+    expect(record && 'port' in record).toBe(false)
+    expect(new AthenaClientConfig({ athenaDir }).snapshot().hpcBridge).toEqual({
+      address: '127.0.0.1',
+      connectedAt: expect.any(String),
+      servers: { 'hpc-llm': 49732 }
+    })
+  })
+
+  test('a version 1 record is the default server alone', () => {
+    put({ address: '127.0.0.1', pid: process.pid, port: 49731, version: 1 })
+
+    const record = readBridgeRecord(athenaDir)
+    expect(record && 'servers' in record).toBe(false)
+    expect(bridgePorts(record)).toEqual({ default: 49731 })
+    expect(bridgePorts(null)).toEqual({})
+  })
+
+  test.each([
+    ['a port that is not one', { default: { port: 49731 }, 'hpc-llm': { port: 0 } }, { default: 49731 }],
+    ['an id that is not one', { default: { port: 49731 }, '../x': { port: 49732 } }, { default: 49731 }],
+    ['an id with capitals', { default: { port: 49731 }, HPC: { port: 49732 } }, { default: 49731 }],
+    ['an entry that is a bare number', { default: 49731, 'hpc-llm': { port: 49732 } }, { 'hpc-llm': 49732 }]
+  ])('%s is dropped on its own', (_name, servers, expected) => {
+    put({ address: '127.0.0.1', pid: process.pid, port: 49731, servers, version: 2 })
+
+    expect(bridgePorts(readBridgeRecord(athenaDir))).toEqual(expected)
+  })
+
+  test('a record that lists no usable server is stale, whatever its top-level port says', () => {
+    for (const servers of [{}, { 'hpc-llm': { port: 70_000 } }]) {
+      put({ address: '127.0.0.1', pid: process.pid, port: 49731, servers, version: 2 })
+      expect(readBridgeRecord(athenaDir)).toBeNull()
+    }
+  })
+
+  test('the writer refuses a record with no server, or with an id that is not one', () => {
+    expect(() => writeBridgeRecord(athenaDir, {})).toThrow(/at least one model server/)
+    expect(() => writeBridgeRecord(athenaDir, { port: 1, servers: { '../x': 2 } })).toThrow(/server id/)
+    expect(existsSync(bridgeRecordFile(athenaDir))).toBe(false)
   })
 })

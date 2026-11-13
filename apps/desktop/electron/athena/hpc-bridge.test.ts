@@ -239,7 +239,12 @@ describe('the forward', () => {
     expect(new Set(login.auth.map(attempt => `${attempt.method}:${attempt.username}`))).toEqual(
       new Set([`publickey:${USER}`])
     )
-    expect(login.forwards).toEqual([{ host: TARGET_HOST, port: TARGET_PORT }])
+    // Two forwards to the config's model server, and to nothing else: the check after signing in (F05 slice 12:
+    // each server is asked for once before its models are offered) and the request.
+    expect(login.forwards).toEqual([
+      { host: TARGET_HOST, port: TARGET_PORT },
+      { host: TARGET_HOST, port: TARGET_PORT }
+    ])
 
     // The record's change is told to main (which re-reads it) and to hermes (`athena config apply`), once.
     await vi.waitFor(() => expect(h.apply).toHaveBeenCalledTimes(1))
@@ -297,7 +302,11 @@ describe('the forward', () => {
 
     await expect(chat(h.bridge.localPort!, QWEN_NAME)).rejects.toThrow()
     expect(h.bridge.status().state).toBe('connected')
-    expect(login.forwards).toEqual([{ host: TARGET_HOST, port: 9932 }])
+    // Asked for after signing in (and again later, while it is down): only ever the config's model server.
+    expect(login.forwards.length).toBeGreaterThan(0)
+    expect(new Set(login.forwards.map(forward => `${forward.host}:${forward.port}`))).toEqual(
+      new Set([`${TARGET_HOST}:9932`])
+    )
   })
 })
 
@@ -621,6 +630,8 @@ describe('following the client config', () => {
     h.bridge.reconcile()
     await connected(h)
     const port = h.bridge.localPort!
+    // The apply for the record being written has run (it is debounced; a removal right behind it would share it).
+    await vi.waitFor(() => expect(h.apply).toHaveBeenCalledTimes(1))
 
     h.config.current = document({ switchOn: false })
     h.bridge.reconcile()

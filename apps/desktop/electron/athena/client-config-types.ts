@@ -25,7 +25,13 @@ export interface HpcBridgeAddress {
   address: string
   /** When the forward came up (ISO 8601), if the record says. */
   connectedAt: null | string
-  port: number
+  /** The default model server's forward; absent while that server is down and another is up. */
+  port?: number
+  /**
+   * The port of every model server whose forward is up, by server id (`default` included), when the record lists
+   * them (version 2, F05 slice 12). Absent for a version 1 record: the default server alone, on `port`.
+   */
+  servers?: Record<string, number>
 }
 
 /** What main hands the renderer. `config` is the effective document (bundled < chosen < dev override). */

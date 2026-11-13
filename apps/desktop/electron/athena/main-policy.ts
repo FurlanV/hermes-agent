@@ -26,7 +26,7 @@ import {
 } from './backend-policy'
 import type { ClientConfigSnapshot } from './client-config-types'
 import { FEATURE_ROW_BY_ID, featureEntryFilter, featureMode } from './feature-registry'
-import { managedModels, type ManagedModelsState, modelUseDecision, restModelChoice } from './model-policy'
+import { bridgeState, managedModels, type ManagedModelsState, modelUseDecision, restModelChoice } from './model-policy'
 import type { PolicyDecisionLog } from './policy-decisions'
 import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
 import { backendDecider } from './tool-install-policy'
@@ -149,9 +149,7 @@ export function ignoredRemoveRows(config: unknown): string[] {
 /** Install main's seams for a snapshot. The stock variant gets allow-all seams (variant.ts). */
 export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config' | 'hpcBridge' | 'variant'>): void {
   setMainPolicySeams(
-    snapshot.variant === 'stock'
-      ? null
-      : mainPolicySeams(snapshot.config, undefined, { bridgeUp: Boolean(snapshot.hpcBridge) })
+    snapshot.variant === 'stock' ? null : mainPolicySeams(snapshot.config, undefined, bridgeState(snapshot.hpcBridge))
   )
 
   for (const listener of listeners) {

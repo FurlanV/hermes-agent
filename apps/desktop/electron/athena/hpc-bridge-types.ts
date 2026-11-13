@@ -8,18 +8,40 @@
  *   used). Nothing connects until there is one.
  * - `host_key_unknown`: the build pins no host key for the login host, so it is never contacted.
  * - `connecting`: the first attempt after a start, a wake or a request to connect.
- * - `connected`: the forward is up on `port`, and the Profile's bridge record says so.
+ * - `connected`: the connection to the login host is up. `servers` says which model servers answer through it; the
+ *   Profile's bridge record lists those, and `port` is the default server's forward while that one is up.
  * - `down`: not connected; retried by itself except after `auth_failed`. `reason`: `host_key_mismatch` (the host
  *   answered with a key that is not pinned; nothing was sent to it), `auth_failed` (the login host refused the key),
  *   `unreachable`, `timeout`, `connection_lost`, `local_port_unavailable`, `ssh_unavailable` (a broken build: not retried).
  */
 export type HpcBridgeState = 'connected' | 'connecting' | 'down' | 'host_key_unknown' | 'no_key' | 'off'
 
+/**
+ * One model server behind the bridge (F05 slice 12):
+ * - `checking`: just connected, the login host has not said yet whether it reaches the server;
+ * - `up`: its forward works, on `port`; its models are offered;
+ * - `down`: its models are not offered. `reason`: `target_unreachable` (the login host does not reach it; asked
+ *   again by itself) or `local_port_unavailable` (no loopback port could be opened for it).
+ */
+export type HpcBridgeServerState = 'checking' | 'down' | 'up'
+
+export interface HpcBridgeServerStatus {
+  /** The forward's loopback port, while the server is up. */
+  port?: number
+  reason?: string
+  state: HpcBridgeServerState
+}
+
 export interface HpcBridgeStatus {
-  /** The forward's loopback port, while connected. */
+  /** The default model server's forward (its loopback port), while connected and that server is up. */
   port?: number
   /** A stable word for why (see `HpcBridgeState`); absent when the state says it all. */
   reason?: string
+  /**
+   * Each model server of the config by id (`default`: the one `local_models.target_host` names), while connected.
+   * One server being down leaves the others up.
+   */
+  servers?: Record<string, HpcBridgeServerStatus>
   /** When the state (or its reason) last changed, ISO 8601. */
   since: string
   state: HpcBridgeState

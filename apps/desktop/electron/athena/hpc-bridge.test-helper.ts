@@ -49,14 +49,24 @@ function parsed(publicKey: string) {
 // ── The model server ────────────────────────────────────────────────────────
 
 export interface ModelServer {
+  /** The `Authorization` header of every request that arrived, accepted or not, in order. */
+  authorizations: string[]
   close: () => Promise<void>
   port: number
-  /** Each request it got: method, path and the parsed JSON body. */
+  /** Each request it answered: method, path and the parsed JSON body. */
   requests: { body: unknown; method: string; path: string }[]
 }
 
-export async function startModelServer(answer = 'from the model node'): Promise<ModelServer> {
+/**
+ * A stand-in model server. With `key` it takes an API key, as a keyed model server does (F05 slice 12): a request
+ * without `Authorization: Bearer <key>` gets 401 and is not counted in `requests`.
+ */
+export async function startModelServer(
+  answer = 'from the model node',
+  options: { key?: string } = {}
+): Promise<ModelServer> {
   const requests: ModelServer['requests'] = []
+  const authorizations: string[] = []
 
   const server = createHttpServer((request, response) => {
     const chunks: Buffer[] = []
@@ -71,8 +81,17 @@ export async function startModelServer(answer = 'from the model node'): Promise<
         body = text
       }
 
-      requests.push({ body, method: request.method ?? '', path: request.url ?? '' })
+      authorizations.push(request.headers.authorization ?? '')
       response.setHeader('content-type', 'application/json')
+
+      if (options.key !== undefined && request.headers.authorization !== `Bearer ${options.key}`) {
+        response.statusCode = 401
+        response.end(JSON.stringify({ error: { message: 'Unauthorized', type: 'invalid_api_key' } }))
+
+        return
+      }
+
+      requests.push({ body, method: request.method ?? '', path: request.url ?? '' })
       response.end(
         JSON.stringify({
           choices: [{ finish_reason: 'stop', index: 0, message: { content: answer, role: 'assistant' } }],
@@ -86,6 +105,7 @@ export async function startModelServer(answer = 'from the model node'): Promise<
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
 
   return {
+    authorizations,
     close: () =>
       new Promise(resolve => {
         server.closeAllConnections()
@@ -242,15 +262,23 @@ export async function startLoginNode(options: LoginNodeOptions): Promise<LoginNo
 
 // ── Calling through the forward ─────────────────────────────────────────────
 
-/** One chat completion against `http://<host>:<port>/v1`, as hermes sends one. */
-export function chat(port: number, model: string, host = '127.0.0.1'): Promise<{ body: any; status: number }> {
+/**
+ * One chat completion against `http://<host>:<port>/v1`, as hermes sends one. `bearer` is the provider's key:
+ * hermes's placeholder for a provider without one, unless given.
+ */
+export function chat(
+  port: number,
+  model: string,
+  host = '127.0.0.1',
+  bearer = 'no-key-required'
+): Promise<{ body: any; status: number }> {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify({ messages: [{ content: 'Say hello.', role: 'user' }], model })
 
     const request = httpRequest(
       {
         agent: false,
-        headers: { authorization: 'Bearer no-key-required', 'content-type': 'application/json' },
+        headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' },
         host,
         method: 'POST',
         path: '/v1/chat/completions',

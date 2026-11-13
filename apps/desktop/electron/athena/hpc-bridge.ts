@@ -1,24 +1,31 @@
-// Athena: the HPC bridge (F05 slice 06).
+// Athena: the HPC bridge (F05 slices 06 and 12).
 //
-// The local model server is on a node only the user's laptop can reach, through the HPC login host. While local
+// The local model servers are on nodes only the user's laptop can reach, through the HPC login host. While local
 // models are on, Electron main keeps one SSH connection to the login host of the client config
-// (`local_models.login_host:login_port`) and forwards a loopback port to the model server
-// (`target_host:target_port`):
+// (`local_models.login_host:login_port`) and forwards one loopback port per model server the config names: the
+// default one (`target_host:target_port`) and each entry of `local_models.servers`:
 //
-//   hermes ──▶ 127.0.0.1:<port> ──(SSH, as the user)──▶ login host ──▶ model server
+//   hermes ──▶ 127.0.0.1:<port A> ──┐
+//                                   ├─(one SSH connection, as the user)──▶ login host ──▶ model server A
+//   hermes ──▶ 127.0.0.1:<port B> ──┘                                               └──▶ model server B
 //
+// - Each server has its own forward and its own state. After signing in, the bridge asks the login host for each
+//   server once (a channel opened and closed; nothing is sent to the model server). A server that does not answer,
+//   or whose loopback port cannot be opened, is `down` on its own and is asked for again on the retry backoff; the
+//   others work meanwhile. A request that fails on a server that was up marks that server down the same way.
+// - The bridge never sees a model server's API key: hermes sends it, from managed scope.
 // - It runs only while feature row F05 is on, `local_models.enabled` is true, the config names the hosts, the build
 //   pins a host key for the login host and this laptop has a key (hpc-bridge-keys.ts). Otherwise nothing is
 //   contacted and the status says why.
 // - The login host's key is checked against the pinned ones before any authentication is sent. Another key ends
 //   the connection there (`host_key_mismatch`). Nothing is ever trusted on first use.
 // - Only public-key authentication is offered. There is no password here.
-// - The forward listens on 127.0.0.1 only. Its port is chosen once and kept in
+// - Every forward listens on 127.0.0.1 only. Each server's port is chosen once and kept in
 //   `$HERMES_HOME/athena/hpc-bridge-port.json`, so the address hermes is pinned to is the same after every launch;
 //   another port is taken only when that one is in use.
-// - While the forward is up the Profile's bridge record says where (hpc-bridge-record.ts). The record is removed
-//   the moment the connection is lost and written again when it is back, and `athena config apply` runs after each
-//   change so hermes's second provider follows at once.
+// - While a forward is up the Profile's bridge record lists it with its port (hpc-bridge-record.ts). The record is
+//   removed the moment the connection is lost and written again when it is back, and rewritten when one server
+//   comes or goes; `athena config apply` runs after each change so hermes's providers follow at once.
 // - A lost connection is retried with a capped backoff (the cap keeps recovery within 30 s of the network
 //   returning); keepalives notice a dead link; a wake from sleep reconnects at once.
 // - Status over guarded IPC (`athena:hpc-bridge:status|connect|disconnect`, pushed on `athena:hpc-bridge:changed`).
@@ -47,14 +54,20 @@ import {
   hostKeyTable,
   pinnedHostKeys
 } from './hpc-bridge-keys'
-import { removeBridgeRecord, writeBridgeRecord } from './hpc-bridge-record'
-import { HPC_BRIDGE_CHANNELS, type HpcBridgeState, type HpcBridgeStatus } from './hpc-bridge-types'
+import { DEFAULT_MODEL_SERVER, MODEL_SERVER_ID, removeBridgeRecord, writeBridgeRecord } from './hpc-bridge-record'
+import {
+  HPC_BRIDGE_CHANNELS,
+  type HpcBridgeServerState,
+  type HpcBridgeServerStatus,
+  type HpcBridgeState,
+  type HpcBridgeStatus
+} from './hpc-bridge-types'
 import { onMainPoliciesChanged } from './main-policy'
 import { LOCAL_MODELS_FEATURE } from './model-policy'
 import { policyRefusalMessage } from './policy-seams'
 
 export { HPC_BRIDGE_CHANNELS }
-export type { HpcBridgeState, HpcBridgeStatus }
+export type { HpcBridgeServerState, HpcBridgeServerStatus, HpcBridgeState, HpcBridgeStatus }
 
 export const BRIDGE_PORT_FILE = 'hpc-bridge-port.json'
 export const BRIDGE_ADDRESS = '127.0.0.1'
@@ -105,6 +118,21 @@ export interface BridgeTarget {
   targetPort: number
 }
 
+/** One model server behind the login host: its id in the config, and where the login host reaches it. */
+export interface BridgeServer {
+  host: string
+  /** `default` for the server `target_host`/`target_port` name, else its key in `local_models.servers`. */
+  id: string
+  port: number
+}
+
+/** Everything the bridge opens: one connection to the login host, one forward per model server. */
+export interface BridgePlan {
+  loginHost: string
+  loginPort: number
+  servers: readonly BridgeServer[]
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
@@ -113,20 +141,53 @@ const hostName = (value: unknown): string => (typeof value === 'string' ? value.
 const portNumber = (value: unknown): null | number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 1 && value <= 65535 ? value : null
 
-/** The hosts of the config's `local_models` section, or null when it does not name them all. */
+const localModelsSection = (config: unknown): Record<string, unknown> =>
+  isRecord(config) && isRecord(config.local_models) ? config.local_models : {}
+
+const loginPortOf = (section: Record<string, unknown>): null | number =>
+  section.login_port === undefined || section.login_port === null ? 22 : portNumber(section.login_port)
+
+/** The login host and the default model server of the config's `local_models` section, or null without them all. */
 export function bridgeTarget(config: unknown): BridgeTarget | null {
-  const section = isRecord(config) && isRecord(config.local_models) ? config.local_models : {}
+  const section = localModelsSection(config)
   const loginHost = hostName(section.login_host)
   const targetHost = hostName(section.target_host)
-
-  const loginPort =
-    section.login_port === undefined || section.login_port === null ? 22 : portNumber(section.login_port)
-
+  const loginPort = loginPortOf(section)
   const targetPort = portNumber(section.target_port)
 
   return loginHost && targetHost && loginPort !== null && targetPort !== null
     ? { loginHost, loginPort, targetHost, targetPort }
     : null
+}
+
+/**
+ * The login host and every model server the config names (F05 slice 12): the default one
+ * (`target_host`/`target_port`) and each usable entry of `local_models.servers`. Null without a login host or
+ * without any server. A server's API key is not read here: the bridge never sees one.
+ */
+export function bridgePlan(config: unknown): BridgePlan | null {
+  const section = localModelsSection(config)
+  const loginHost = hostName(section.login_host)
+  const loginPort = loginPortOf(section)
+  const servers: BridgeServer[] = []
+  const targetHost = hostName(section.target_host)
+  const targetPort = portNumber(section.target_port)
+
+  if (targetHost && targetPort !== null) {
+    servers.push({ host: targetHost, id: DEFAULT_MODEL_SERVER, port: targetPort })
+  }
+
+  for (const [id, spec] of Object.entries(isRecord(section.servers) ? section.servers : {})) {
+    const host = isRecord(spec) ? hostName(spec.host) : ''
+    const port = isRecord(spec) ? portNumber(spec.port) : null
+
+    // An id that is not one never reaches a file name or the record; `default` is the server above.
+    if (MODEL_SERVER_ID.test(id) && id !== DEFAULT_MODEL_SERVER && host && port !== null) {
+      servers.push({ host, id, port })
+    }
+  }
+
+  return loginHost && loginPort !== null && servers.length > 0 ? { loginHost, loginPort, servers } : null
 }
 
 /** Why the bridge is not wanted under a snapshot, or null when it is. */
@@ -141,27 +202,63 @@ export function bridgeOffReason(snapshot: Pick<ClientConfigSnapshot, 'config' | 
     return 'switch_off'
   }
 
-  return bridgeTarget(snapshot.config) ? null : 'not_configured'
+  return bridgePlan(snapshot.config) ? null : 'not_configured'
 }
 
-// ── The local port ──────────────────────────────────────────────────────────
+// ── The local ports ─────────────────────────────────────────────────────────
 
-/** The port this Profile's bridge used last (null before the first, or when the file is not readable). */
-export function readStoredPort(athenaDir: string): null | number {
+/**
+ * The port each model server's forward used last on this Profile, by server id (empty before the first, or when
+ * the file is not readable). The file is `{"port": <the default server's>, "servers": {"<id>": <port>}}`; with the
+ * default server alone it is `{"port": <n>}`, as before there were several.
+ */
+export function readStoredPorts(athenaDir: string): Record<string, number> {
+  const ports: Record<string, number> = {}
+
   try {
     const data: unknown = JSON.parse(readFileSync(path.join(athenaDir, BRIDGE_PORT_FILE), 'utf8'))
 
-    return isRecord(data) ? portNumber(data.port) : null
+    if (!isRecord(data)) {
+      return ports
+    }
+
+    for (const [id, value] of Object.entries(isRecord(data.servers) ? data.servers : {})) {
+      const port = portNumber(value)
+
+      if (MODEL_SERVER_ID.test(id) && id !== DEFAULT_MODEL_SERVER && port !== null) {
+        ports[id] = port
+      }
+    }
+
+    const port = portNumber(data.port)
+
+    if (port !== null) {
+      ports[DEFAULT_MODEL_SERVER] = port
+    }
   } catch {
-    return null
+    // no file yet
   }
+
+  return ports
 }
 
-function writeStoredPort(athenaDir: string, port: number): void {
+/** The port the default model server's forward used last (null before the first). */
+export function readStoredPort(athenaDir: string): null | number {
+  return readStoredPorts(athenaDir)[DEFAULT_MODEL_SERVER] ?? null
+}
+
+function writeStoredPorts(athenaDir: string, ports: Readonly<Record<string, number>>): void {
   const file = path.join(athenaDir, BRIDGE_PORT_FILE)
   const tmp = `${file}.${process.pid}.tmp`
+  const { [DEFAULT_MODEL_SERVER]: port, ...servers } = ports
+
+  const body = {
+    ...(port === undefined ? {} : { port }),
+    ...(Object.keys(servers).length > 0 ? { servers } : {})
+  }
+
   mkdirSync(athenaDir, { recursive: true })
-  writeFileSync(tmp, `${JSON.stringify({ port }, null, 2)}\n`)
+  writeFileSync(tmp, `${JSON.stringify(body, null, 2)}\n`)
   renameSync(tmp, file)
 }
 
@@ -183,12 +280,14 @@ function listen(server: NetServer, port: number): Promise<number> {
 export interface BridgeTimings {
   /** Wait this long after the record changed before running `athena config apply` (changes within it run once). */
   applyDebounceMs: number
-  /** The wait before each retry after a failure; the last one repeats. */
+  /** The wait before each retry after a failure; the last one repeats. Also paces the checks of a server that is down. */
   backoffMs: readonly number[]
   /** The wait before asking a host again after it answered with a key that is not pinned. */
   hostKeyRetryMs: number
   keepaliveCountMax: number
   keepaliveIntervalMs: number
+  /** How long the login host may take to say whether it reaches a model server. */
+  probeTimeoutMs: number
   /** How long the TCP connect, the handshake and the sign-in may take together. */
   readyTimeoutMs: number
 }
@@ -196,6 +295,7 @@ export interface BridgeTimings {
 /**
  * A dead link is noticed after `keepaliveIntervalMs` × `keepaliveCountMax` (10 s). After a failure the next attempt
  * is at most 15 s away and gives up after 10 s, so the bridge is back within 30 s of the login host being reachable.
+ * A model server that is down is asked for again on the same backoff, so it is back within 15 s + 5 s of answering.
  */
 export const BRIDGE_TIMINGS: BridgeTimings = Object.freeze({
   applyDebounceMs: 250,
@@ -203,13 +303,14 @@ export const BRIDGE_TIMINGS: BridgeTimings = Object.freeze({
   hostKeyRetryMs: 60_000,
   keepaliveCountMax: 2,
   keepaliveIntervalMs: 5000,
+  probeTimeoutMs: 5000,
   readyTimeoutMs: 10_000
 })
 
 export interface HpcBridgeOptions {
   /** Run `athena config apply` (after the record was written or removed). */
   applyConfig?: () => Promise<unknown> | void
-  /** `$HERMES_HOME/athena`: the bridge record and the remembered port live here. */
+  /** `$HERMES_HOME/athena`: the bridge record and the remembered ports live here. */
   athenaDir: string
   /** The pinned host keys (hpc-bridge-keys.ts `hostKeyTable`). */
   hostKeys: HostKeyPins
@@ -225,13 +326,8 @@ export interface HpcBridgeOptions {
   timings?: Partial<BridgeTimings>
 }
 
-const sameTarget = (a: BridgeTarget | null, b: BridgeTarget | null): boolean =>
-  a !== null &&
-  b !== null &&
-  a.loginHost === b.loginHost &&
-  a.loginPort === b.loginPort &&
-  a.targetHost === b.targetHost &&
-  a.targetPort === b.targetPort
+const samePlan = (a: BridgePlan | null, b: BridgePlan | null): boolean =>
+  a !== null && b !== null && JSON.stringify(a) === JSON.stringify(b)
 
 /** A stable word for why a connection ended, from ssh2's error. */
 function failureReason(error: unknown): string {
@@ -252,14 +348,26 @@ function failureReason(error: unknown): string {
   return 'connection_lost'
 }
 
+/** One model server's forward: its loopback listener (kept across reconnects) and whether the server answers. */
+interface Forward {
+  /** How many checks in a row found the server down (paces the next one). */
+  checks: number
+  checkTimer: NodeJS.Timeout | null
+  listener: NetServer | null
+  port: null | number
+  reason?: string
+  server: BridgeServer
+  state: HpcBridgeServerState
+}
+
 export class HpcBridge {
   private readonly log: (line: string) => void
   private readonly now: () => number
   private readonly timings: BridgeTimings
 
   private current: HpcBridgeStatus
-  /** The target the bridge is running for (null while it is off). */
-  private target: BridgeTarget | null = null
+  /** What the bridge is running for (null while it is off). */
+  private plan: BridgePlan | null = null
   /** The user disconnected: stay off until asked to connect. */
   private paused = false
   /** Bumped by every start and stop: what an older attempt started is then dropped where it lands. */
@@ -267,14 +375,18 @@ export class HpcBridge {
   private attempts = 0
   private client: Client | null = null
   private ready = false
-  private listener: NetServer | null = null
-  private port: null | number = null
+  /** Whether `connected` was announced for the current connection (after the first server answered, or all failed). */
+  private announced = false
+  /** One forward per model server of the plan, by server id. A listener outlives the connection it served. */
+  private readonly forwards = new Map<string, Forward>()
+  /** The ports the bridge record on disk lists, as JSON ('' while there is no record). */
+  private recorded = ''
   private readonly sockets = new Set<Socket>()
   private retryTimer: NodeJS.Timeout | null = null
   private applyTimer: NodeJS.Timeout | null = null
-  /** Inside `reconcile` (it is not re-entered: a record change it causes comes back as a snapshot change). */
   /** The first attempt of the current start, up to the point where it dials (or finds it cannot). */
   private starting: Promise<void> = Promise.resolve()
+  /** Inside `reconcile` (it is not re-entered: a record change it causes comes back as a snapshot change). */
   private reconciling = false
   private reconcileAgain = false
   private stopped = false
@@ -290,9 +402,16 @@ export class HpcBridge {
     return this.current
   }
 
-  /** The loopback port the forward listens on (null while there is no listener). */
+  /** The loopback port the default model server's forward listens on (null while there is no listener). */
   get localPort(): null | number {
-    return this.listener ? this.port : null
+    return this.localPortOf(DEFAULT_MODEL_SERVER)
+  }
+
+  /** The loopback port a model server's forward listens on (null while there is no listener for it). */
+  localPortOf(server: string): null | number {
+    const forward = this.forwards.get(server)
+
+    return forward?.listener ? forward.port : null
   }
 
   /** Follow the client config: start, restart for other hosts, or stop. Called on every snapshot. */
@@ -330,15 +449,15 @@ export class HpcBridge {
       return
     }
 
-    const target = bridgeTarget(snapshot!.config)
+    const plan = bridgePlan(snapshot!.config)
 
-    if (sameTarget(target, this.target)) {
+    if (samePlan(plan, this.plan)) {
       return
     }
 
-    // Other hosts, or a fresh start: the listener and its port stay, the connection is made anew.
-    this.teardown({ keepListener: true })
-    this.target = target
+    // Other hosts or servers, or a fresh start: the listeners and their ports stay, the connection is made anew.
+    this.teardown({ keepListeners: true })
+    this.plan = plan
     this.begin()
   }
 
@@ -354,7 +473,7 @@ export class HpcBridge {
     return this.current
   }
 
-  /** The user disconnects: the forward closes and stays closed until `connect`. */
+  /** The user disconnects: the forwards close and stay closed until `connect`. */
   disconnect(): HpcBridgeStatus {
     this.paused = true
     this.reconcile()
@@ -367,7 +486,7 @@ export class HpcBridge {
    * connection is dead more often than not, and waiting for the keepalives to say so wastes 10 s).
    */
   kick(options: { force?: boolean } = {}): void {
-    if (!this.target || (this.ready && !options.force) || this.current.reason === 'auth_failed') {
+    if (!this.plan || (this.ready && !options.force) || this.current.reason === 'auth_failed') {
       return
     }
 
@@ -397,7 +516,7 @@ export class HpcBridge {
     this.reconciling = true
 
     try {
-      this.teardown({ keepListener: true })
+      this.teardown({ keepListeners: true })
     } finally {
       this.reconciling = false
     }
@@ -405,22 +524,44 @@ export class HpcBridge {
     this.reconcile()
   }
 
-  private setStatus(state: HpcBridgeState, reason?: string): void {
-    const port = state === 'connected' && this.port !== null ? this.port : undefined
+  /** Each model server's state, while connected: what the status carries beside the overall state. */
+  private serverStatuses(): Record<string, HpcBridgeServerStatus> {
+    const servers: Record<string, HpcBridgeServerStatus> = {}
 
-    if (this.current.state === state && this.current.reason === reason && this.current.port === port) {
+    for (const [id, forward] of this.forwards) {
+      servers[id] = {
+        ...(forward.state === 'up' && forward.port !== null ? { port: forward.port } : {}),
+        ...(forward.reason === undefined ? {} : { reason: forward.reason }),
+        state: forward.state
+      }
+    }
+
+    return servers
+  }
+
+  private setStatus(state: HpcBridgeState, reason?: string): void {
+    const servers = state === 'connected' ? this.serverStatuses() : undefined
+    const port = servers?.[DEFAULT_MODEL_SERVER]?.port
+    const sameState = this.current.state === state && this.current.reason === reason
+
+    if (sameState && this.current.port === port && JSON.stringify(this.current.servers) === JSON.stringify(servers)) {
       return
     }
 
     this.current = {
       ...(port === undefined ? {} : { port }),
       ...(reason === undefined ? {} : { reason }),
-      since: new Date(this.now()).toISOString(),
+      ...(servers === undefined ? {} : { servers }),
+      // `since` is when the state or its reason changed, not when a model server came or went.
+      since: sameState ? this.current.since : new Date(this.now()).toISOString(),
       state
     }
-    this.log(
-      `[athena] hpc bridge: ${state}${reason ? ` (${reason})` : ''}${port ? ` on ${BRIDGE_ADDRESS}:${port}` : ''}`
-    )
+
+    const listed = Object.entries(servers ?? {})
+      .map(([id, server]) => `${id} ${server.state}${server.port ? ` on ${BRIDGE_ADDRESS}:${server.port}` : ''}`)
+      .join(', ')
+
+    this.log(`[athena] hpc bridge: ${state}${reason ? ` (${reason})` : ''}${listed ? `: ${listed}` : ''}`)
 
     try {
       this.options.onStatus?.(this.current)
@@ -431,10 +572,10 @@ export class HpcBridge {
 
   // ── Stopping ──────────────────────────────────────────────────────────────
 
-  /** Close the connection, the forwarded sockets and the listener, and remove the record. Leaves the status alone. */
-  private teardown(options: { keepListener?: boolean } = {}): void {
+  /** Close the connection, the forwarded sockets and the listeners, and remove the record. Leaves the status alone. */
+  private teardown(options: { keepListeners?: boolean } = {}): void {
     this.generation += 1
-    this.target = null
+    this.plan = null
     this.attempts = 0
 
     if (this.retryTimer) {
@@ -443,13 +584,14 @@ export class HpcBridge {
     }
 
     const client = this.client
-    const wasReady = this.ready
     this.client = null
     this.ready = false
+    this.announced = false
     this.closeSockets()
+    this.resetForwards()
 
-    if (!options.keepListener) {
-      this.closeListener()
+    if (!options.keepListeners) {
+      this.closeListeners()
     }
 
     if (client) {
@@ -460,9 +602,7 @@ export class HpcBridge {
       }
     }
 
-    if (wasReady) {
-      this.recordChanged(false)
-    }
+    this.syncRecord()
   }
 
   private closeSockets(): void {
@@ -473,26 +613,72 @@ export class HpcBridge {
     this.sockets.clear()
   }
 
-  private closeListener(): void {
-    const listener = this.listener
-    this.listener = null
+  /** No connection: no server is known to answer, and nothing is waiting to ask one. */
+  private resetForwards(): void {
+    for (const forward of this.forwards.values()) {
+      if (forward.checkTimer) {
+        clearTimeout(forward.checkTimer)
+        forward.checkTimer = null
+      }
 
-    if (listener) {
-      listener.close()
+      forward.checks = 0
+      forward.state = 'down'
+
+      // A forward without a listener keeps saying why (`local_port_unavailable`) until one opens.
+      if (forward.listener) {
+        delete forward.reason
+      }
     }
+  }
+
+  private closeListeners(): void {
+    for (const forward of this.forwards.values()) {
+      forward.listener?.close()
+    }
+
+    this.forwards.clear()
   }
 
   // ── The record, and hermes's copy of it ───────────────────────────────────
 
-  private recordChanged(up: boolean): void {
+  /** The port of every model server whose forward is up now. */
+  private upPorts(): Record<string, number> {
+    const ports: Record<string, number> = {}
+
+    if (this.ready) {
+      for (const [id, forward] of this.forwards) {
+        if (forward.state === 'up' && forward.listener && forward.port !== null) {
+          ports[id] = forward.port
+        }
+      }
+    }
+
+    return ports
+  }
+
+  /**
+   * Make the bridge record say which forwards are up: written with their ports, or removed when none is. When that
+   * changed the file, main re-reads it and `athena config apply` runs, so each server's provider follows at once.
+   */
+  private syncRecord(): void {
+    const ports = this.upPorts()
+    const wanted = Object.keys(ports).length > 0 ? JSON.stringify(ports) : ''
+
+    if (wanted === this.recorded) {
+      return
+    }
+
+    this.recorded = wanted
+
     try {
-      if (up && this.port !== null) {
-        writeBridgeRecord(this.options.athenaDir, { address: BRIDGE_ADDRESS, port: this.port })
+      if (wanted) {
+        const { [DEFAULT_MODEL_SERVER]: port, ...servers } = ports
+        writeBridgeRecord(this.options.athenaDir, { address: BRIDGE_ADDRESS, port, servers })
       } else {
         removeBridgeRecord(this.options.athenaDir)
       }
     } catch (error) {
-      this.log(`[athena] hpc bridge: could not ${up ? 'write' : 'remove'} the bridge record: ${String(error)}`)
+      this.log(`[athena] hpc bridge: could not ${wanted ? 'write' : 'remove'} the bridge record: ${String(error)}`)
     }
 
     if (this.applyTimer) {
@@ -543,17 +729,16 @@ export class HpcBridge {
     this.retryTimer.unref?.()
   }
 
-  private async ensureListener(generation: number): Promise<boolean> {
-    if (this.listener) {
-      return true
-    }
-
-    const stored = readStoredPort(this.options.athenaDir)
-    let server = createServer(socket => this.forward(socket))
+  /** A loopback listener for one model server, on the port it had before when that is still free. */
+  private async openListener(
+    server: BridgeServer,
+    stored: null | number
+  ): Promise<{ listener: NetServer; port: number }> {
+    let listener = createServer(socket => this.forward(server.id, socket))
     let port: number
 
     try {
-      port = await listen(server, stored ?? 0)
+      port = await listen(listener, stored ?? 0)
     } catch (error) {
       if (stored === null) {
         throw error
@@ -563,43 +748,109 @@ export class HpcBridge {
       this.log(
         `[athena] hpc bridge: port ${stored} is not free (${(error as NodeJS.ErrnoException).code ?? error}); taking another`
       )
-      server = createServer(socket => this.forward(socket))
-      port = await listen(server, 0)
+      listener = createServer(socket => this.forward(server.id, socket))
+      port = await listen(listener, 0)
     }
 
-    if (generation !== this.generation) {
-      server.close()
+    return { listener, port }
+  }
 
-      return false
-    }
+  /**
+   * One listener per model server of the plan, each on its own kept port. A server whose port cannot be opened is
+   * left without one (`local_port_unavailable`) and the others go ahead. Answers how many listeners there are, or
+   * null when the attempt was overtaken meanwhile.
+   */
+  private async ensureListeners(generation: number, plan: BridgePlan): Promise<null | number> {
+    const wanted = new Set(plan.servers.map(server => server.id))
 
-    server.on('error', error => this.log(`[athena] hpc bridge: listener error: ${String(error)}`))
-    this.listener = server
-    this.port = port
-
-    if (port !== stored) {
-      try {
-        writeStoredPort(this.options.athenaDir, port)
-      } catch (error) {
-        this.log(`[athena] hpc bridge: could not remember port ${port}: ${String(error)}`)
+    // A server the config no longer names: its listener goes.
+    for (const [id, forward] of this.forwards) {
+      if (!wanted.has(id)) {
+        forward.listener?.close()
+        this.forwards.delete(id)
       }
     }
 
-    return true
+    const stored = readStoredPorts(this.options.athenaDir)
+    const ports = { ...stored }
+    let open = 0
+
+    for (const server of plan.servers) {
+      const existing = this.forwards.get(server.id)
+
+      if (existing?.listener) {
+        existing.server = server
+        open += 1
+
+        continue
+      }
+
+      let made: { listener: NetServer; port: number } | null = null
+
+      try {
+        made = await this.openListener(server, stored[server.id] ?? null)
+      } catch (error) {
+        this.log(`[athena] hpc bridge: no loopback port for model server ${server.id}: ${String(error)}`)
+      }
+
+      if (generation !== this.generation) {
+        made?.listener.close()
+
+        return null
+      }
+
+      if (!made) {
+        this.forwards.set(server.id, {
+          checks: 0,
+          checkTimer: null,
+          listener: null,
+          port: null,
+          reason: 'local_port_unavailable',
+          server,
+          state: 'down'
+        })
+
+        continue
+      }
+
+      made.listener.on('error', error =>
+        this.log(`[athena] hpc bridge: listener error (model server ${server.id}): ${String(error)}`)
+      )
+      this.forwards.set(server.id, {
+        checks: 0,
+        checkTimer: null,
+        listener: made.listener,
+        port: made.port,
+        server,
+        state: 'down'
+      })
+      ports[server.id] = made.port
+      open += 1
+    }
+
+    if (JSON.stringify(ports) !== JSON.stringify(stored)) {
+      try {
+        writeStoredPorts(this.options.athenaDir, ports)
+      } catch (error) {
+        this.log(`[athena] hpc bridge: could not remember the forward ports: ${String(error)}`)
+      }
+    }
+
+    return open
   }
 
   private async attempt(generation: number, announce: boolean): Promise<void> {
-    const target = this.target
+    const plan = this.plan
 
-    if (!target || generation !== this.generation) {
+    if (!plan || generation !== this.generation) {
       return
     }
 
     // The pins first: a host this build does not pin is never contacted, whatever key the laptop has.
-    const pins = pinnedHostKeys(this.options.hostKeys, target.loginHost, target.loginPort)
+    const pins = pinnedHostKeys(this.options.hostKeys, plan.loginHost, plan.loginPort)
 
     if (pins.fingerprints.size === 0) {
-      this.closeListener()
+      this.closeListeners()
       this.setStatus('host_key_unknown')
 
       return
@@ -620,22 +871,22 @@ export class HpcBridge {
     }
 
     if (!key) {
-      this.closeListener()
+      this.closeListeners()
       this.setStatus('no_key')
 
       return
     }
 
-    try {
-      if (!(await this.ensureListener(generation))) {
-        return
-      }
-    } catch (error) {
-      if (generation === this.generation) {
-        this.log(`[athena] hpc bridge: no loopback port: ${String(error)}`)
-        this.setStatus('down', 'local_port_unavailable')
-        this.retryLater(generation)
-      }
+    const open = await this.ensureListeners(generation, plan)
+
+    if (open === null) {
+      return
+    }
+
+    if (open === 0) {
+      // Not one forward can listen: there is nothing to connect for. Tried again like a failed connection.
+      this.setStatus('down', 'local_port_unavailable')
+      this.retryLater(generation)
 
       return
     }
@@ -693,12 +944,23 @@ export class HpcBridge {
 
       this.ready = true
       this.attempts = 0
-      this.recordChanged(true)
-      this.setStatus('connected')
+      this.announced = false
+
+      // One connection, one forward per model server. Each server is asked for once before its models are
+      // offered: a server that is down (or a port that could not be opened) does not hold the others back.
+      for (const forward of this.forwards.values()) {
+        if (forward.listener) {
+          forward.state = 'checking'
+          delete forward.reason
+          this.check(generation, client, forward)
+        }
+      }
+
+      this.serversChanged()
     })
     client.on('error', error => {
       reason ??= failureReason(error)
-      this.log(`[athena] hpc bridge: ${target.loginHost}:${target.loginPort}: ${error.message}`)
+      this.log(`[athena] hpc bridge: ${plan.loginHost}:${plan.loginPort}: ${error.message}`)
       lost('connection_lost')
     })
     client.on('close', () => lost('connection_lost'))
@@ -707,7 +969,7 @@ export class HpcBridge {
     const config: ConnectConfig = {
       // Public key only: no `none` probe, no password, no agent, no keyboard prompts.
       authHandler: ['publickey'],
-      host: target.loginHost,
+      host: plan.loginHost,
       hostVerifier: (hostKey: Buffer) => {
         const trusted = pins.fingerprints.has(hostKeyFingerprint(hostKey))
 
@@ -715,7 +977,7 @@ export class HpcBridge {
           // Returning false ends the handshake here: the user's name and key have not been sent.
           reason = 'host_key_mismatch'
           this.log(
-            `[athena] hpc bridge: ${target.loginHost} answered with host key ${hostKeyFingerprint(hostKey)}, ` +
+            `[athena] hpc bridge: ${plan.loginHost} answered with host key ${hostKeyFingerprint(hostKey)}, ` +
               'which is not pinned in this build; refused'
           )
         }
@@ -725,7 +987,7 @@ export class HpcBridge {
       keepaliveCountMax: this.timings.keepaliveCountMax,
       keepaliveInterval: this.timings.keepaliveIntervalMs,
       passphrase: key.passphrase,
-      port: target.loginPort,
+      port: plan.loginPort,
       privateKey: key.privateKey,
       readyTimeout: this.timings.readyTimeoutMs,
       username: key.username,
@@ -750,11 +1012,10 @@ export class HpcBridge {
     const wasReady = this.ready
     this.client = null
     this.ready = false
+    this.announced = false
     this.closeSockets()
-
-    if (wasReady) {
-      this.recordChanged(false)
-    }
+    this.resetForwards()
+    this.syncRecord()
 
     if (generation !== this.generation) {
       return
@@ -766,7 +1027,7 @@ export class HpcBridge {
     }
 
     if (reason === 'key_unreadable') {
-      this.closeListener()
+      this.closeListeners()
       this.setStatus('no_key', reason)
 
       return
@@ -783,19 +1044,116 @@ export class HpcBridge {
     this.retryLater(generation, reason === 'host_key_mismatch' ? this.timings.hostKeyRetryMs : undefined)
   }
 
+  // ── The model servers ─────────────────────────────────────────────────────
+
+  /**
+   * Ask the login host whether it reaches one model server: open a channel to it and close it again. Nothing is
+   * sent to the model server. The answer (or none within `probeTimeoutMs`) sets the server `up` or `down`.
+   */
+  private check(generation: number, client: Client, forward: Forward): void {
+    const { server } = forward
+    let settled = false
+
+    const done = (up: boolean, why?: string) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      clearTimeout(timer)
+
+      if (generation !== this.generation || client !== this.client || !this.ready) {
+        return
+      }
+
+      if (!up) {
+        this.log(`[athena] hpc bridge: model server ${server.id} (${server.host}:${server.port}) not reached: ${why}`)
+      }
+
+      this.setForward(generation, client, forward, up)
+    }
+
+    const timer = setTimeout(() => done(false, 'no answer'), this.timings.probeTimeoutMs)
+    timer.unref?.()
+
+    try {
+      client.forwardOut(BRIDGE_ADDRESS, 0, server.host, server.port, (error, stream) => {
+        if (stream) {
+          stream.on('error', () => {})
+          stream.destroy()
+        }
+
+        done(!error, error?.message)
+      })
+    } catch (error) {
+      done(false, error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  /** One model server answered, or did not: record it, tell the status, and ask a server that is down again later. */
+  private setForward(generation: number, client: Client, forward: Forward, up: boolean): void {
+    if (forward.checkTimer) {
+      clearTimeout(forward.checkTimer)
+      forward.checkTimer = null
+    }
+
+    if (up) {
+      forward.state = 'up'
+      forward.checks = 0
+      delete forward.reason
+    } else {
+      forward.state = 'down'
+      forward.reason = 'target_unreachable'
+      const backoff = this.timings.backoffMs
+      const delay = backoff[Math.min(forward.checks, backoff.length - 1)] ?? 15_000
+      forward.checks += 1
+
+      forward.checkTimer = setTimeout(() => {
+        forward.checkTimer = null
+
+        if (generation === this.generation && client === this.client && this.ready) {
+          this.check(generation, client, forward)
+        }
+      }, delay)
+      forward.checkTimer.unref?.()
+    }
+
+    this.serversChanged()
+  }
+
+  /** A server's state changed: the record lists the forwards that are up, and the status says each one's state. */
+  private serversChanged(): void {
+    this.syncRecord()
+
+    const states = [...this.forwards.values()].map(forward => forward.state)
+
+    // `connected` is announced once a first server answers, or once every one has been asked: one slow or dead
+    // server does not keep the others waiting, and with a single server the record is there when `connected` is.
+    if (!this.announced && (states.includes('up') || !states.includes('checking'))) {
+      this.announced = true
+    }
+
+    if (this.announced && this.ready) {
+      this.setStatus('connected')
+    }
+  }
+
   // ── Forwarding ────────────────────────────────────────────────────────────
 
-  private forward(socket: Socket): void {
+  private forward(id: string, socket: Socket): void {
     const client = this.client
-    const target = this.target
+    const forward = this.forwards.get(id)
+    const generation = this.generation
     socket.on('error', () => {})
 
-    if (!client || !this.ready || !target) {
+    // A server that is not up is not offered (its models are off the list); it is asked for again on its own.
+    if (!client || !this.ready || !forward || forward.state !== 'up') {
       socket.destroy()
 
       return
     }
 
+    const { server } = forward
     this.sockets.add(socket)
     socket.once('close', () => this.sockets.delete(socket))
 
@@ -803,12 +1161,17 @@ export class HpcBridge {
       client.forwardOut(
         socket.remoteAddress ?? BRIDGE_ADDRESS,
         socket.remotePort ?? 0,
-        target.targetHost,
-        target.targetPort,
+        server.host,
+        server.port,
         (error, stream) => {
           if (error) {
-            this.log(`[athena] hpc bridge: ${target.targetHost}:${target.targetPort} not reached: ${error.message}`)
+            this.log(`[athena] hpc bridge: ${server.host}:${server.port} not reached: ${error.message}`)
             socket.destroy()
+
+            // This server went away: its models leave the list, the other servers are not touched.
+            if (generation === this.generation && client === this.client && this.ready && forward.state === 'up') {
+              this.setForward(generation, client, forward, false)
+            }
 
             return
           }

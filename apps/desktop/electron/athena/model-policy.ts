@@ -13,14 +13,22 @@
 //   maps that name to the hermes provider; an entry whose provider this build
 //   does not know is not on the list.
 // - A bridge model (`provider: bridge`, F05 slice 05) is a local model reached
-//   through the HPC bridge, on hermes's second provider (`custom:athena-vllm`).
-//   It is on the list only while local models are on (the config's
-//   `local_models.enabled` AND feature row F05) and this laptop's bridge is up
-//   (main reads the Profile's bridge record, hpc-bridge-record.ts). Hermes knows
-//   it by the model server's name (`local_models.models.<id>.name`), not by the
-//   config's id, so that name is the entry's `id` here: what pickers list, what
-//   a pick sends and what a session reports. A bridge model is never the
-//   default; a hidden or unnamed one is never offered (managed scope pins none).
+//   through the HPC bridge. The config may name several model servers (F05
+//   slice 12): the default one (`local_models.target_host`) and each entry of
+//   `local_models.servers`; `local_models.models.<id>.server` says which one a
+//   model is on. Each server has its own hermes provider: `custom:athena-vllm`
+//   for the default server, `custom:athena-local-<id>` for another.
+//   A bridge model is on the list only while local models are on (the config's
+//   `local_models.enabled` AND feature row F05) and the forward to its own
+//   server is up (main reads the Profile's bridge record, hpc-bridge-record.ts).
+//   Hermes knows it by the model server's name (`local_models.models.<id>.name`),
+//   not by the config's id, so that name is the entry's `id` here: what pickers
+//   list, what a pick sends and what a session reports. A bridge model is never
+//   the default; a hidden or unnamed one, one on a server the config does not
+//   list, and one whose server has a key source this build does not know are
+//   never offered (managed scope pins none of them).
+// - A model server's API key is not here: main strips it from every snapshot
+//   (client-config.ts `withoutModelServerKeys`). Only its `type` remains.
 // - `managed.models` (master switch): `enforce` lists and accepts only the
 //   allowed models; `report` lists and accepts everything and records each pick
 //   outside the list; `off` is stock. The model gateway enforces in every mode.
@@ -30,8 +38,20 @@
 import { featureStates, managedMode } from './feature-registry'
 
 export const ATHENA_GATEWAY_PROVIDER = 'custom:athena-gateway'
-/** The hermes provider bridge models are called on (athena's `local_models.BRIDGE_PROVIDER`). */
+/** The hermes provider of the default model server's bridge models (athena's `local_models.BRIDGE_PROVIDER`). */
 export const ATHENA_BRIDGE_PROVIDER = 'custom:athena-vllm'
+/** The hermes provider of any other model server is this plus the server's id (athena's `bridge_provider`). */
+export const ATHENA_SERVER_PROVIDER_PREFIX = 'custom:athena-local-'
+/** The id of the model server `local_models.target_host`/`target_port` name. */
+export const DEFAULT_MODEL_SERVER = 'default'
+/** The key sources this build understands (athena's `MODEL_SERVER_KEY_TYPES`). */
+export const MODEL_SERVER_KEY_TYPES: readonly string[] = Object.freeze(['shared'])
+
+const MODEL_SERVER_ID = /^[a-z][a-z0-9-]{0,31}$/
+
+/** The hermes provider a model server's bridge models are called on. */
+export const bridgeProviderFor = (server: string): string =>
+  server === DEFAULT_MODEL_SERVER ? ATHENA_BRIDGE_PROVIDER : `${ATHENA_SERVER_PROVIDER_PREFIX}${server}`
 
 /** A hermes provider that serves allowed models, and the name its picker row gets when the catalog has none. */
 export interface ModelProviderInfo {
@@ -78,7 +98,12 @@ export interface ManagedModelEntry {
   note: null | string
   /** The hermes provider that serves the model (`custom:athena-gateway` unless the config names another). */
   provider: string
+  /** For a bridge model: the id of the model server it is on (`default` when the config names none). */
+  server?: string
 }
+
+/** Why a bridge model of the config can never be offered by this build, whatever the bridge does. */
+export type LocalModelProblem = 'key_type_unknown' | 'server_unknown'
 
 /** Local models (F05): the bridge models of the config, and whether they are offered now. */
 export interface LocalModels {
@@ -86,14 +111,37 @@ export interface LocalModels {
   bridgeUp: boolean
   /** The bridge models the config offers (named, not hidden), whether or not they are on the list now. */
   configured: readonly ManagedModelEntry[]
+  /** Bridge models left out because of their model server (not in `configured`), with the reason. */
+  leftOut: readonly { configId: string; reason: LocalModelProblem; server: string }[]
   /** The config's `local_models.enabled` and feature row F05 are both on. */
   on: boolean
+  /** The model servers whose forward is up now, by id. */
+  serversUp: readonly string[]
 }
 
 /** What `managedModels` needs to know beside the config. */
 export interface ManagedModelsState {
   /** True while main holds a live bridge record for this Profile (default false). */
   bridgeUp?: boolean
+  /**
+   * The ids of the model servers whose forward is up (F05 slice 12). Absent with `bridgeUp`: the default server
+   * alone, which is what a bridge record without a server list means.
+   */
+  serversUp?: readonly string[]
+}
+
+/** The bridge state of a snapshot's `hpcBridge` (client-config-types.ts), for `managedModels`. */
+export function bridgeState(
+  bridge: { port?: number; servers?: Readonly<Record<string, number>> } | null | undefined
+): ManagedModelsState {
+  if (!bridge) {
+    return { bridgeUp: false, serversUp: [] }
+  }
+
+  return {
+    bridgeUp: true,
+    serversUp: bridge.servers ? Object.keys(bridge.servers) : bridge.port === undefined ? [] : [DEFAULT_MODEL_SERVER]
+  }
 }
 
 export interface ManagedModels {
@@ -116,30 +164,66 @@ const text = (value: unknown): string => (typeof value === 'string' ? value.trim
 
 const LADDER = new Set<string>(REASONING_LADDER)
 
-function parseEntry(raw: unknown, serverNames: Record<string, unknown>): ManagedModelEntry | null {
-  if (!isRecord(raw) || !text(raw.id)) {
+/** Why this build cannot use a model server of the config (null: it can). The default server takes no key. */
+function serverProblem(local: Record<string, unknown>, server: string): LocalModelProblem | null {
+  if (server === DEFAULT_MODEL_SERVER) {
     return null
+  }
+
+  const spec = isRecord(local.servers) && MODEL_SERVER_ID.test(server) ? local.servers[server] : undefined
+
+  if (!isRecord(spec) || !text(spec.host) || typeof spec.port !== 'number') {
+    return 'server_unknown'
+  }
+
+  if (spec.key === undefined || spec.key === null) {
+    return null
+  }
+
+  return isRecord(spec.key) && MODEL_SERVER_KEY_TYPES.includes(text(spec.key.type)) ? null : 'key_type_unknown'
+}
+
+interface Parsed {
+  entry: ManagedModelEntry | null
+  leftOut?: LocalModels['leftOut'][number]
+}
+
+function parseEntry(raw: unknown, local: Record<string, unknown>): Parsed {
+  if (!isRecord(raw) || !text(raw.id)) {
+    return { entry: null }
   }
 
   const configId = text(raw.id)
   const providerName = text(raw.provider) || DEFAULT_MODEL_PROVIDER
-  const provider = MODEL_PROVIDERS[providerName]
+  const known = MODEL_PROVIDERS[providerName]
 
   // A provider this build has no route for (a newer server's): the model is not on the list.
-  if (!provider) {
-    return null
+  if (!known) {
+    return { entry: null }
   }
 
   let id = configId
+  let provider = known.slug
+  let server: string | undefined
 
   if (providerName === BRIDGE_MODEL_PROVIDER) {
-    const named = serverNames[configId]
+    const named = isRecord(local.models) ? local.models[configId] : undefined
     id = isRecord(named) ? text(named.name) : ''
 
     // Managed scope pins no hidden bridge model and none the config does not name: hermes could not call it.
     if (!id || raw.hidden === true) {
-      return null
+      return { entry: null }
     }
+
+    server = (isRecord(named) && text(named.server)) || DEFAULT_MODEL_SERVER
+    const reason = serverProblem(local, server)
+
+    // Nor one on a server the config does not list, or whose key this build cannot supply.
+    if (reason) {
+      return { entry: null, leftOut: { configId, reason, server } }
+    }
+
+    provider = bridgeProviderFor(server)
   }
 
   const reasoning = isRecord(raw.reasoning) ? raw.reasoning : {}
@@ -152,19 +236,28 @@ function parseEntry(raw: unknown, serverNames: Record<string, unknown>): Managed
   const wanted = text(reasoning.default)
 
   return {
-    configId,
-    defaultLevel: safeLevels.includes(wanted) ? wanted : safeLevels[0],
-    hidden: raw.hidden === true,
-    id,
-    label: text(raw.label) || configId,
-    levels: safeLevels,
-    note: text(raw.note) || null,
-    provider: provider.slug
+    entry: {
+      configId,
+      defaultLevel: safeLevels.includes(wanted) ? wanted : safeLevels[0],
+      hidden: raw.hidden === true,
+      id,
+      label: text(raw.label) || configId,
+      levels: safeLevels,
+      note: text(raw.note) || null,
+      provider,
+      ...(server === undefined ? {} : { server })
+    }
   }
 }
 
-export const isBridgeModel = (entry: Pick<ManagedModelEntry, 'provider'>): boolean =>
-  entry.provider === ATHENA_BRIDGE_PROVIDER
+/** Whether a hermes provider is a model server's (the default server's `athena-vllm`, or `athena-local-<id>`). */
+export function isBridgeProvider(provider: string): boolean {
+  const key = providerKey(provider)
+
+  return key === providerKey(ATHENA_BRIDGE_PROVIDER) || key.startsWith(providerKey(ATHENA_SERVER_PROVIDER_PREFIX))
+}
+
+export const isBridgeModel = (entry: Pick<ManagedModelEntry, 'provider'>): boolean => isBridgeProvider(entry.provider)
 
 /** Whether a config turns local models on: its own switch (`local_models.enabled`) and feature row F05. */
 export function localModelsOn(config: unknown): boolean {
@@ -174,22 +267,28 @@ export function localModelsOn(config: unknown): boolean {
 }
 
 /**
- * The `models` section of an effective client config, read tolerantly (main already verified it). Bridge models
- * are on the list only while local models are on and `state.bridgeUp` says this laptop's bridge is open.
+ * The `models` section of an effective client config, read tolerantly (main already verified it). A bridge model
+ * is on the list only while local models are on and `state` says the forward to its own model server is up.
  */
 export function managedModels(config: unknown, state: ManagedModelsState = {}): ManagedModels {
   const models = isRecord(config) && isRecord(config.models) ? config.models : {}
   const local = isRecord(config) && isRecord(config.local_models) ? config.local_models : {}
-  const serverNames = isRecord(local.models) ? local.models : {}
   const on = localModelsOn(config)
   const bridgeUp = state.bridgeUp === true
+  const serversUp = bridgeUp ? [...(state.serversUp ?? [DEFAULT_MODEL_SERVER])] : []
+  const leftOut: LocalModels['leftOut'][number][] = []
   const seen = new Set<string>()
   const seenConfigIds = new Set<string>()
   const entries: ManagedModelEntry[] = []
   const configured: ManagedModelEntry[] = []
 
   for (const raw of Array.isArray(models.allowed) ? models.allowed : []) {
-    const entry = parseEntry(raw, serverNames)
+    const parsed = parseEntry(raw, local)
+    const entry = parsed.entry
+
+    if (parsed.leftOut) {
+      leftOut.push(parsed.leftOut)
+    }
 
     if (!entry || seen.has(entry.id) || seenConfigIds.has(entry.configId)) {
       continue
@@ -198,7 +297,8 @@ export function managedModels(config: unknown, state: ManagedModelsState = {}): 
     if (isBridgeModel(entry)) {
       configured.push(entry)
 
-      if (!on || !bridgeUp) {
+      // Its own server's forward, not just any: one server down leaves the others' models listed.
+      if (!on || !serversUp.includes(entry.server ?? DEFAULT_MODEL_SERVER)) {
         continue
       }
     }
@@ -216,7 +316,7 @@ export function managedModels(config: unknown, state: ManagedModelsState = {}): 
   return {
     default: defaultEntry?.id ?? (visible.find(entry => !isBridgeModel(entry)) ?? visible[0])?.id ?? null,
     entries,
-    localModels: { bridgeUp, configured, on },
+    localModels: { bridgeUp, configured, leftOut, on, serversUp },
     mode: managedMode(config, 'models'),
     reasoningControl: models.reasoning_control !== 'off',
     visible
@@ -235,9 +335,9 @@ export const sameProvider = (a: string, b: string): boolean => providerKey(a) ==
 
 export const isGatewayProvider = (provider: string): boolean => sameProvider(provider, ATHENA_GATEWAY_PROVIDER)
 
-/** The Athena providers a Profile configures: the Model gateway and the bridge's (`athena-vllm`). */
+/** The Athena providers a Profile configures: the Model gateway's and the model servers' (`athena-vllm`, `athena-local-<id>`). */
 export const isAthenaProvider = (provider: string): boolean =>
-  Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug))
+  Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug)) || isBridgeProvider(provider)
 
 export const isModelSubcommand = (model: string): boolean => MODEL_SUBCOMMANDS.has(model.trim().toLowerCase())
 
@@ -417,16 +517,31 @@ const providerRow = <T extends PickerRow>(catalog: readonly T[], provider: strin
     row => sameProvider(row.slug, provider) || (row.aliases ?? []).some(alias => sameProvider(alias, provider))
   )
 
+/** The name of a provider's row when the catalog has none: `Local models (<server id>)` for another model server. */
+function providerName(provider: string): string {
+  const known = Object.values(MODEL_PROVIDERS).find(entry => sameProvider(entry.slug, provider))
+
+  if (known) {
+    return known.name
+  }
+
+  const prefix = providerKey(ATHENA_SERVER_PROVIDER_PREFIX)
+
+  return isBridgeProvider(provider)
+    ? `${MODEL_PROVIDERS[BRIDGE_MODEL_PROVIDER].name} (${providerKey(provider).slice(prefix.length)})`
+    : provider
+}
+
 const madeRow = (provider: string): PickerRow & Record<string, unknown> => ({
   authenticated: true,
-  name: Object.values(MODEL_PROVIDERS).find(known => sameProvider(known.slug, provider))?.name ?? provider,
+  name: providerName(provider),
   slug: provider
 })
 
 /**
  * The picker rows under the managed list: one row per provider that serves a
- * visible allowed model (the Model gateway's, and the bridge's `athena-vllm`
- * while a local model is on the list), carrying exactly that provider's
+ * visible allowed model (the Model gateway's, and one per model server while
+ * a local model of it is on the list), carrying exactly that provider's
  * visible ids in config order (from the config, not the backend's cached
  * discovery, so an admin change shows within one poll). Every other provider,
  * and every other model of those two, is dropped. Without a provider's row in

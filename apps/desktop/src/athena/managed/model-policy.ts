@@ -15,8 +15,9 @@
  *
  * A local model (a bridge model, F05 slice 05) is on the list only while local
  * models are on and main reports this laptop's HPC bridge up
- * (`snapshot.hpcBridge`); it is listed on the second provider's row, under the
- * name hermes knows it by, with the admin's label.
+ * (`snapshot.hpcBridge`) with the forward to the model's own server; it is
+ * listed on that server's provider row, under the name hermes knows it by, with
+ * the admin's label (F05 slice 12: one provider per model server).
  *
  * A new `config_version`, or the bridge coming or going, also drops the cached
  * model options, so no picker keeps an hour-old catalog.
@@ -31,6 +32,7 @@ import { registry } from '@/contrib/registry'
 import { queryClient } from '@/lib/query-client'
 
 import {
+  bridgeState,
   findModelEntry,
   isAllowedModel,
   isAthenaProvider,
@@ -51,9 +53,7 @@ import { recordModelDecision } from './policy-decisions'
 
 /** The `models` section for a snapshot, or null: no snapshot yet (no Electron bridge), or the stock variant. */
 export const managedModelsForSnapshot = (snapshot: ClientConfigSnapshot | null): ManagedModels | null =>
-  snapshot && snapshot.variant !== 'stock'
-    ? managedModels(snapshot.config, { bridgeUp: Boolean(snapshot.hpcBridge) })
-    : null
+  snapshot && snapshot.variant !== 'stock' ? managedModels(snapshot.config, bridgeState(snapshot.hpcBridge)) : null
 
 export const $managedModels = computed($clientConfig, managedModelsForSnapshot)
 
@@ -155,7 +155,9 @@ export function installModelPolicy(): () => void {
 
   const offVersion = $clientConfig.subscribe(snapshot => {
     // The bridge coming or going changes what hermes offers too (managed scope pins its provider only while up).
-    const version = snapshot ? `${snapshot.configVersion}:${snapshot.hpcBridge ? 'bridge' : ''}` : undefined
+    const version = snapshot
+      ? `${snapshot.configVersion}:${bridgeState(snapshot.hpcBridge).serversUp?.join(',') ?? ''}`
+      : undefined
 
     if (lastVersion !== undefined && version !== lastVersion) {
       dropCachedModelOptions()
