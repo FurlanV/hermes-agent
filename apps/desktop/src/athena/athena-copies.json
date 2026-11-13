@@ -2,7 +2,7 @@
   "about": "sha256 of each athena file the Desktop bundles, and of its canonical JSON where the copy is embedded in TypeScript. Written by `node apps/desktop/src/athena/scripts/athena-copies.mjs --write`; `--check` (and the Windows build workflow) fail when a fork copy differs, athena CI when an athena file does.",
   "schema_version": 1,
   "athena_repo": "FurlanV/athena",
-  "athena_commit": "7e5f94313f1b30dbb55bea365c602e5b197cec1d",
+  "athena_commit": "94c3c4755b822ed6a407488987f091d3e025115a",
   "canonical_json": "json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False), UTF-8",
   "files": [
     {
@@ -31,7 +31,7 @@
       "athena": "shared/athena_schemas/src/athena_schemas/data/features.json",
       "copy": "apps/desktop/electron/athena/features.json",
       "compare": "bytes",
-      "sha256": "6f1e061e64241b511226e383c486867dc4214e60285fe0bb90eb4c7acd809bb5"
+      "sha256": "5e6485461048964c7ccaf48546192dcaebeadc5d8b34683cac3b0a6affab4a1d"
     }
   ]
 }

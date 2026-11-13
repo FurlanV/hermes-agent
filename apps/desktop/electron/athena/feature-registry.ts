@@ -1,6 +1,7 @@
 // Athena feature registry (F02 slice 15): one row per line of the plan's
 // feature audit (overview.md, section A, S01–S124 with the a/b splits), each
-// with its mark, its build default and every entry id that reaches it.
+// with its mark, its build default and every entry id that reaches it. Rows
+// added by later plans follow the audit rows, named after their plan (F05).
 //
 // Pure data plus pure functions, no imports: Electron main (deep links, IPC)
 // and the renderer (Settings, palette, shortcuts…) read the same table.
@@ -616,7 +617,13 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     'statusbar:terminal',
     'palette:view.showTerminal',
     ...ipc('hermes:terminal:*')
-  ])
+  ]),
+
+  // ── Added after the audit (not in the F02 table) ──
+  // F05: local models on a server the Athena server cannot reach, through an SSH forward the Desktop opens from the
+  // user's own HPC account. Off by default; an admin turns it on per role, together with the client config's
+  // `local_models.enabled`. While it is off the bridge's IPC channels are not registered.
+  row('F05', 'disable', 'Local models', 'Local models over the HPC bridge', [...ipc('athena:hpc-bridge:*')])
 ])
 
 export const FEATURE_ROW_BY_ID: ReadonlyMap<string, FeatureRow> = new Map(FEATURE_ROWS.map(r => [r.id, r]))

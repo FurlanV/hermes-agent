@@ -319,7 +319,9 @@ a real filter.
 
 - The feature registry (slice 15): `electron/athena/feature-registry.ts`,
   shared by main and the renderer (no imports). One row per line of the
-  plan's audit (S01–S124 with the a/b splits): its mark (`keep`, `disable`,
+  plan's audit (S01–S124 with the a/b splits), then the rows later plans
+  added (`F05`, local models over the HPC bridge, off by default; its entries
+  are the `athena:hpc-bridge:*` IPC channels): its mark (`keep`, `disable`,
   `remove`), its build default (keep → on, disable → off, remove → no flag,
   always off) and the entry ids that reach it: `settings:<view>[/<page>]`,
   `config-field:<key>`, `setting:<view>.<kebab>`, `credential:<KEY>`,

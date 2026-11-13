@@ -76,3 +76,45 @@ describe('the provider of an allowed model', () => {
     ])
   })
 })
+
+// F05 slice 03: the client config can carry a bridge model (`provider: bridge`) and a `local_models` section. Until
+// the Desktop can reach one (slice 05), a bridge model is on no list: no picker shows it and a pick is refused,
+// whatever the section's switch says. The gateway models are what they were.
+describe('a config that offers a bridge model', () => {
+  const QWEN = {
+    id: 'qwen-3.8-27B-GGUF',
+    label: 'Qwen 3.8 27B (local)',
+    provider: 'bridge',
+    reasoning: { default: 'low', levels: ['none', 'low', 'medium', 'high', 'xhigh'] }
+  }
+
+  const localModels = (enabled: boolean) => ({
+    enabled,
+    login_host: 'login5.ccm.sickkids.ca',
+    models: { [QWEN.id]: { name: 'DevQuasar/Qwen.Qwen3.8-27B-GGUF' } },
+    target_host: 'cn3825.ccm.sickkids.ca',
+    target_port: 9931
+  })
+
+  test.each([false, true])('local models switched %s: the Desktop shows no local model and refuses a pick', enabled => {
+    const models = managedModels({ ...config([SOL, LUNA, QWEN]), local_models: localModels(enabled) })
+
+    expect(models.visible.map(entry => entry.id)).toEqual(['gpt-6-sol', 'gpt-6-luna'])
+    expect(models.default).toBe('gpt-6-sol')
+    expect(managedPickerRows(models, []).map(row => [row.slug, row.models])).toEqual([
+      [ATHENA_GATEWAY_PROVIDER, ['gpt-6-sol', 'gpt-6-luna']]
+    ])
+
+    for (const provider of [undefined, 'custom:athena-vllm', ATHENA_GATEWAY_PROVIDER]) {
+      expect(modelUseDecision(models, { model: QWEN.id, provider }, 'rpc', 'config.set').allowed).toBe(false)
+    }
+  })
+
+  test('a pre-slice reader, which knows no provider, sees the seeded entry as hidden: not in its pickers', () => {
+    // What build 0.1.0-friends.1 reads of the friends seed: the entry without the field it does not know.
+    const { provider: _unknown, ...seen } = { ...QWEN, hidden: true }
+    const models = managedModels(config([SOL, LUNA, seen]))
+
+    expect(models.visible.map(entry => entry.id)).toEqual(['gpt-6-sol', 'gpt-6-luna'])
+  })
+})
