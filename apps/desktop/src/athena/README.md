@@ -317,9 +317,11 @@ a real filter.
     `resume`) and when `net.isOnline()` turns true again.
   - The login host's key: `electron/athena/hpc-bridge-host-keys.ts` is the
     pin table bundled in the build, `{"<host>[:<port>]": [<key line or
-    SHA256:… fingerprint>, …]}`. **It is a placeholder: the list for
-    `login5.ccm.sickkids.ca` is empty until slice 01 records the real key**,
-    and an empty list means the host is never contacted (`host_key_unknown`).
+    SHA256:… fingerprint>, …]}`. It pins one key for
+    `login5.ccm.sickkids.ca`, recorded on 2026-11-13 from the owner's
+    known_hosts (`SHA256:FJ3J1rGZ1+eFtI8vkGwfITtOQ1sBZ1zCh1Bd90p4yU8`) and
+    still to be compared with what HPC support publishes. A host with no
+    entry, or an empty list, is never contacted (`host_key_unknown`).
     The key the host presents is checked before any authentication is sent;
     another key ends the connection (`host_key_mismatch`). Nothing is trusted
     on first use. Only public-key authentication is offered.

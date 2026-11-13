@@ -359,9 +359,21 @@ describe('the pinned host key', () => {
     }
   })
 
-  test('the build pins no key for the real login host yet: the placeholder is an empty list', () => {
-    expect(HPC_BRIDGE_HOST_KEYS).toEqual({ 'login5.ccm.sickkids.ca': [] })
-    expect(pinnedHostKeys(HPC_BRIDGE_HOST_KEYS, 'login5.ccm.sickkids.ca', 22).fingerprints.size).toBe(0)
+  test('the build pins one key for the real login host, as a public key line', () => {
+    // Read from the table only: no test contacts that host (every bridge here is given its own pins).
+    expect(Object.keys(HPC_BRIDGE_HOST_KEYS)).toEqual(['login5.ccm.sickkids.ca'])
+
+    const pinned = pinnedHostKeys(HPC_BRIDGE_HOST_KEYS, 'Login5.CCM.sickkids.ca', 22)
+
+    expect([...pinned.fingerprints]).toEqual(['SHA256:FJ3J1rGZ1+eFtI8vkGwfITtOQ1sBZ1zCh1Bd90p4yU8'])
+    // A key line, not a bare fingerprint: the bridge asks the host for that key type.
+    expect(pinned.algorithms).toEqual(['ssh-ed25519'])
+    expect(HPC_BRIDGE_HOST_KEYS['login5.ccm.sickkids.ca'].every(pin => parseHostKeyPin(pin)?.type)).toBe(true)
+    // The pin is the host's alone, and the table cannot be changed at run time.
+    expect(pinnedHostKeys(HPC_BRIDGE_HOST_KEYS, 'login6.ccm.sickkids.ca', 22).fingerprints.size).toBe(0)
+    expect(
+      Object.isFrozen(HPC_BRIDGE_HOST_KEYS) && Object.isFrozen(HPC_BRIDGE_HOST_KEYS['login5.ccm.sickkids.ca'])
+    ).toBe(true)
   })
 
   test('pins: key lines and fingerprints, per host and per host:port', () => {
