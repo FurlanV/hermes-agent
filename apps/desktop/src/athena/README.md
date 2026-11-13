@@ -770,3 +770,23 @@ for an app named Athena is the install root.
   bundle or a stock build is in no install root and starts as before.
 - Checked on macOS with the built bundle in a throwaway install root: exit 0, the launcher started with a clean
   environment, and nothing written to the default user data folder. Not run on Windows.
+
+## A package that did not connect (R01 slice 27)
+
+A package switched on while its upstream is down is parked by hermes, which tries it again by itself every five
+minutes (`tools/mcp_tool.py` `_PARKED_RETRY_INTERVAL`) and registers its tools when the upstream answers; new chats
+then have them. Nothing in hermes needed fixing. What was missing was the page saying so: the card promised "Applies
+to new chats within a minute".
+
+- `src/athena/catalog/mcp-reload.ts`: `reloadPackageServers` returns which catalog packages `reload.mcp` named as not
+  connected, from its `unavailable` list or from a `mcp_servers_unavailable` refusal (`data.detail`,
+  `gateway/session_ancillary.py`). Package servers are left out of the stock "Did not connect" notice, which would
+  show a server name (`eagle_asd_evidence`) the user never chose.
+- `src/athena/catalog/catalog-page.tsx`: such a card shows "Not connected: … Athena tries again every few minutes,
+  and new chats get its tools once it connects", with **Check again**, which sends `reload.mcp` once more.
+- Limits, both from hermes as it is:
+  - `reload.mcp` does not wake a parked server; Check again only reads the state.
+  - A revived server counts as connected only once it has stayed healthy for a keepalive interval (a few minutes), so
+    Check again can say "Still not connected" for that long after new chats already have the tools.
+  - The page learns the state only from a `reload.mcp` it sent. A package that failed at app start shows nothing until
+    it is switched or checked.
