@@ -13,8 +13,13 @@
  * (`athena:policy_decision`, kind `model`); under `off` the app is stock. The
  * model gateway enforces in every mode.
  *
- * A new `config_version` also drops the cached model options, so no picker
- * keeps an hour-old catalog.
+ * A local model (a bridge model, F05 slice 05) is on the list only while local
+ * models are on and main reports this laptop's HPC bridge up
+ * (`snapshot.hpcBridge`); it is listed on the second provider's row, under the
+ * name hermes knows it by, with the admin's label.
+ *
+ * A new `config_version`, or the bridge coming or going, also drops the cached
+ * model options, so no picker keeps an hour-old catalog.
  */
 
 import type { ModelOptionProvider } from '@hermes/shared'
@@ -46,7 +51,9 @@ import { recordModelDecision } from './policy-decisions'
 
 /** The `models` section for a snapshot, or null: no snapshot yet (no Electron bridge), or the stock variant. */
 export const managedModelsForSnapshot = (snapshot: ClientConfigSnapshot | null): ManagedModels | null =>
-  snapshot && snapshot.variant !== 'stock' ? managedModels(snapshot.config) : null
+  snapshot && snapshot.variant !== 'stock'
+    ? managedModels(snapshot.config, { bridgeUp: Boolean(snapshot.hpcBridge) })
+    : null
 
 export const $managedModels = computed($clientConfig, managedModelsForSnapshot)
 
@@ -107,8 +114,11 @@ export function modelRpcAllowed(
   return decision.allowed
 }
 
+// A local model keeps its label while the bridge is down (it is off the list then): old sessions still name it.
 const labelsFor = (models: ManagedModels | null): null | ReadonlyMap<string, string> =>
-  models && models.mode !== 'off' ? new Map(models.entries.map(entry => [entry.id, entry.label])) : null
+  models && models.mode !== 'off'
+    ? new Map([...models.localModels.configured, ...models.entries].map(entry => [entry.id, entry.label]))
+    : null
 
 const NOTES_CONTRIBUTION_ID = 'athena-model-notes'
 
@@ -136,7 +146,7 @@ export function installModelPolicy(): () => void {
     source: 'athena'
   })
 
-  let lastVersion: null | number | undefined
+  let lastVersion: string | undefined
 
   const offModels = $managedModels.subscribe(models => {
     setModelPolicy(modelPolicyFor(models))
@@ -144,7 +154,8 @@ export function installModelPolicy(): () => void {
   })
 
   const offVersion = $clientConfig.subscribe(snapshot => {
-    const version = snapshot?.configVersion
+    // The bridge coming or going changes what hermes offers too (managed scope pins its provider only while up).
+    const version = snapshot ? `${snapshot.configVersion}:${snapshot.hpcBridge ? 'bridge' : ''}` : undefined
 
     if (lastVersion !== undefined && version !== lastVersion) {
       dropCachedModelOptions()

@@ -26,7 +26,7 @@ import {
 } from './backend-policy'
 import type { ClientConfigSnapshot } from './client-config-types'
 import { FEATURE_ROW_BY_ID, featureEntryFilter, featureMode } from './feature-registry'
-import { managedModels, modelUseDecision, restModelChoice } from './model-policy'
+import { managedModels, type ManagedModelsState, modelUseDecision, restModelChoice } from './model-policy'
 import type { PolicyDecisionLog } from './policy-decisions'
 import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
 import { backendDecider } from './tool-install-policy'
@@ -63,10 +63,17 @@ export function recordFeatureDecision(record: FeatureDecisionRecord | null): voi
   }
 }
 
-/** The main seams for one effective client config. The decider also refuses install paths under `managed.tools` (slice 29). */
-export function mainPolicySeams(config: unknown, decide: FeatureDecider = backendDecider(config)): MainPolicySeams {
+/**
+ * The main seams for one effective client config. The decider also refuses install paths under `managed.tools`
+ * (slice 29). `state` says whether the HPC bridge is up: a local model is on the role's list only then (F05).
+ */
+export function mainPolicySeams(
+  config: unknown,
+  decide: FeatureDecider = backendDecider(config),
+  state: ManagedModelsState = {}
+): MainPolicySeams {
   const mode = featureMode(config)
-  const models = managedModels(config)
+  const models = managedModels(config, state)
 
   const decided = (entries: readonly string[], surface: string, target: string) => {
     const decision = decide(entries, surface, target)
@@ -140,8 +147,12 @@ export function ignoredRemoveRows(config: unknown): string[] {
 }
 
 /** Install main's seams for a snapshot. The stock variant gets allow-all seams (variant.ts). */
-export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config' | 'variant'>): void {
-  setMainPolicySeams(snapshot.variant === 'stock' ? null : mainPolicySeams(snapshot.config))
+export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config' | 'hpcBridge' | 'variant'>): void {
+  setMainPolicySeams(
+    snapshot.variant === 'stock'
+      ? null
+      : mainPolicySeams(snapshot.config, undefined, { bridgeUp: Boolean(snapshot.hpcBridge) })
+  )
 
   for (const listener of listeners) {
     try {

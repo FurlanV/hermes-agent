@@ -23,6 +23,10 @@
 // Main writes `$HERMES_HOME/athena/desktop-status.json` for the Shipper's
 // heartbeat: `{dev_overrides_active, config_version_seen, updated_at}`. Its
 // `config_version_seen` is also the replay floor across restarts.
+//
+// Every snapshot also says whether this laptop's HPC bridge is up (`hpcBridge`, F05 slice 05): the Profile's
+// bridge record (hpc-bridge-record.ts), polled with the other inputs, so a bridge that comes or goes reaches
+// the model pickers and the model gate like a config change does.
 
 import { type JsonWebKey, type KeyObject } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
@@ -36,6 +40,7 @@ import type {
   ClientConfigSnapshot,
   ClientConfigSource
 } from './client-config-types'
+import { bridgeAddress, readBridgeRecord } from './hpc-bridge-record'
 import { JwsError, trustedKeys, verifyCompactJws } from './jws'
 import type { DesktopVariant } from './variant'
 
@@ -387,7 +392,9 @@ export class AthenaClientConfig {
     return [
       fileSignature(this.configFile),
       fileSignature(path.join(this.athenaDir, TOKEN_FILE)),
-      this.devOverrides.allowed ? fileSignature(this.devOverrides.file) : ''
+      this.devOverrides.allowed ? fileSignature(this.devOverrides.file) : '',
+      // The record itself, not the file's stat: it also goes stale when the process that wrote it dies.
+      JSON.stringify(readBridgeRecord(this.athenaDir))
     ].join('|')
   }
 
@@ -447,11 +454,14 @@ export class AthenaClientConfig {
       config = deepMerge(config, override)
     }
 
+    const hpcBridge = bridgeAddress(readBridgeRecord(this.athenaDir))
+
     return {
       config,
       configVersion: chosen ? (chosen.config.config_version as number) : null,
       devOverridesActive: override !== null,
       error,
+      ...(hpcBridge ? { hpcBridge } : {}),
       role: chosen && typeof chosen.config.role === 'string' ? chosen.config.role : null,
       source,
       variant: this.variant,

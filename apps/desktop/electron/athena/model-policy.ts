@@ -11,17 +11,27 @@
 // - Every entry names what serves it (`provider`, F05 slice 02): `gateway`,
 //   the Model gateway, unless the config says otherwise. `MODEL_PROVIDERS`
 //   maps that name to the hermes provider; an entry whose provider this build
-//   does not know is not on the list. An `athena-vllm` row only stays when it
-//   serves an allowed id.
+//   does not know is not on the list.
+// - A bridge model (`provider: bridge`, F05 slice 05) is a local model reached
+//   through the HPC bridge, on hermes's second provider (`custom:athena-vllm`).
+//   It is on the list only while local models are on (the config's
+//   `local_models.enabled` AND feature row F05) and this laptop's bridge is up
+//   (main reads the Profile's bridge record, hpc-bridge-record.ts). Hermes knows
+//   it by the model server's name (`local_models.models.<id>.name`), not by the
+//   config's id, so that name is the entry's `id` here: what pickers list, what
+//   a pick sends and what a session reports. A bridge model is never the
+//   default; a hidden or unnamed one is never offered (managed scope pins none).
 // - `managed.models` (master switch): `enforce` lists and accepts only the
 //   allowed models; `report` lists and accepts everything and records each pick
 //   outside the list; `off` is stock. The model gateway enforces in every mode.
 // - `models.reasoning_control` (`on` | `off`, default on): `off` turns the
 //   reasoning-effort control off (under `enforce`).
 
-import { managedMode } from './feature-registry'
+import { featureStates, managedMode } from './feature-registry'
 
 export const ATHENA_GATEWAY_PROVIDER = 'custom:athena-gateway'
+/** The hermes provider bridge models are called on (athena's `local_models.BRIDGE_PROVIDER`). */
+export const ATHENA_BRIDGE_PROVIDER = 'custom:athena-vllm'
 
 /** A hermes provider that serves allowed models, and the name its picker row gets when the catalog has none. */
 export interface ModelProviderInfo {
@@ -32,10 +42,15 @@ export interface ModelProviderInfo {
 
 /** The client config's name for the provider of a model that names none: the Model gateway. */
 export const DEFAULT_MODEL_PROVIDER = 'gateway'
+/** The client config's name for the provider of a bridge model. */
+export const BRIDGE_MODEL_PROVIDER = 'bridge'
+/** The feature row that, with the config's `local_models.enabled`, turns local models on. */
+export const LOCAL_MODELS_FEATURE = 'F05'
 
 /** The hermes provider behind each `models.allowed[].provider` name of the client config. */
 export const MODEL_PROVIDERS: Readonly<Record<string, ModelProviderInfo>> = Object.freeze({
-  [DEFAULT_MODEL_PROVIDER]: { name: 'Athena gateway', slug: ATHENA_GATEWAY_PROVIDER }
+  [DEFAULT_MODEL_PROVIDER]: { name: 'Athena gateway', slug: ATHENA_GATEWAY_PROVIDER },
+  [BRIDGE_MODEL_PROVIDER]: { name: 'Local models', slug: ATHENA_BRIDGE_PROVIDER }
 })
 
 /** Hermes's reasoning ladder (`hermes_constants.VALID_REASONING_EFFORTS` plus `none`), weakest first. */
@@ -47,9 +62,15 @@ const MODEL_SUBCOMMANDS = new Set(['reset'])
 export type ManagedModelsMode = 'enforce' | 'off' | 'report'
 
 export interface ManagedModelEntry {
+  /** The model's id in the client config (`models.allowed[].id`). Differs from `id` for a bridge model only. */
+  configId: string
   /** The reasoning level selected when the model is picked (one of `levels`). */
   defaultLevel: string
   hidden: boolean
+  /**
+   * The name hermes knows the model by: what pickers list, a pick sends and a session reports. The config's id
+   * for a Model gateway model; the model server's own name for a bridge model.
+   */
   id: string
   label: string
   /** The efforts users may pick for this model, in ladder order as the config lists them. */
@@ -59,11 +80,28 @@ export interface ManagedModelEntry {
   provider: string
 }
 
+/** Local models (F05): the bridge models of the config, and whether they are offered now. */
+export interface LocalModels {
+  /** This laptop's HPC bridge is up (a live bridge record). */
+  bridgeUp: boolean
+  /** The bridge models the config offers (named, not hidden), whether or not they are on the list now. */
+  configured: readonly ManagedModelEntry[]
+  /** The config's `local_models.enabled` and feature row F05 are both on. */
+  on: boolean
+}
+
+/** What `managedModels` needs to know beside the config. */
+export interface ManagedModelsState {
+  /** True while main holds a live bridge record for this Profile (default false). */
+  bridgeUp?: boolean
+}
+
 export interface ManagedModels {
-  /** The role default (null when the config names none that is allowed). */
+  /** The role default (null when the config names none that is allowed). Never a bridge model while another is listed. */
   default: null | string
-  /** Every allowed entry, hidden ones included, in config order. */
+  /** Every allowed entry, hidden ones included, in config order. Bridge models only while they can be called. */
   entries: readonly ManagedModelEntry[]
+  localModels: LocalModels
   mode: ManagedModelsMode
   /** `models.reasoning_control` (default on). */
   reasoningControl: boolean
@@ -78,17 +116,30 @@ const text = (value: unknown): string => (typeof value === 'string' ? value.trim
 
 const LADDER = new Set<string>(REASONING_LADDER)
 
-function parseEntry(raw: unknown): ManagedModelEntry | null {
+function parseEntry(raw: unknown, serverNames: Record<string, unknown>): ManagedModelEntry | null {
   if (!isRecord(raw) || !text(raw.id)) {
     return null
   }
 
-  const id = text(raw.id)
-  const provider = MODEL_PROVIDERS[text(raw.provider) || DEFAULT_MODEL_PROVIDER]
+  const configId = text(raw.id)
+  const providerName = text(raw.provider) || DEFAULT_MODEL_PROVIDER
+  const provider = MODEL_PROVIDERS[providerName]
 
   // A provider this build has no route for (a newer server's): the model is not on the list.
   if (!provider) {
     return null
+  }
+
+  let id = configId
+
+  if (providerName === BRIDGE_MODEL_PROVIDER) {
+    const named = serverNames[configId]
+    id = isRecord(named) ? text(named.name) : ''
+
+    // Managed scope pins no hidden bridge model and none the config does not name: hermes could not call it.
+    if (!id || raw.hidden === true) {
+      return null
+    }
   }
 
   const reasoning = isRecord(raw.reasoning) ? raw.reasoning : {}
@@ -101,37 +152,71 @@ function parseEntry(raw: unknown): ManagedModelEntry | null {
   const wanted = text(reasoning.default)
 
   return {
+    configId,
     defaultLevel: safeLevels.includes(wanted) ? wanted : safeLevels[0],
     hidden: raw.hidden === true,
     id,
-    label: text(raw.label) || id,
+    label: text(raw.label) || configId,
     levels: safeLevels,
     note: text(raw.note) || null,
     provider: provider.slug
   }
 }
 
-/** The `models` section of an effective client config, read tolerantly (main already verified it). */
-export function managedModels(config: unknown): ManagedModels {
+export const isBridgeModel = (entry: Pick<ManagedModelEntry, 'provider'>): boolean =>
+  entry.provider === ATHENA_BRIDGE_PROVIDER
+
+/** Whether a config turns local models on: its own switch (`local_models.enabled`) and feature row F05. */
+export function localModelsOn(config: unknown): boolean {
+  const section = isRecord(config) && isRecord(config.local_models) ? config.local_models : {}
+
+  return section.enabled === true && featureStates(config).flag(LOCAL_MODELS_FEATURE)
+}
+
+/**
+ * The `models` section of an effective client config, read tolerantly (main already verified it). Bridge models
+ * are on the list only while local models are on and `state.bridgeUp` says this laptop's bridge is open.
+ */
+export function managedModels(config: unknown, state: ManagedModelsState = {}): ManagedModels {
   const models = isRecord(config) && isRecord(config.models) ? config.models : {}
+  const local = isRecord(config) && isRecord(config.local_models) ? config.local_models : {}
+  const serverNames = isRecord(local.models) ? local.models : {}
+  const on = localModelsOn(config)
+  const bridgeUp = state.bridgeUp === true
   const seen = new Set<string>()
+  const seenConfigIds = new Set<string>()
   const entries: ManagedModelEntry[] = []
+  const configured: ManagedModelEntry[] = []
 
   for (const raw of Array.isArray(models.allowed) ? models.allowed : []) {
-    const entry = parseEntry(raw)
+    const entry = parseEntry(raw, serverNames)
 
-    if (entry && !seen.has(entry.id)) {
-      seen.add(entry.id)
-      entries.push(entry)
+    if (!entry || seen.has(entry.id) || seenConfigIds.has(entry.configId)) {
+      continue
     }
+
+    if (isBridgeModel(entry)) {
+      configured.push(entry)
+
+      if (!on || !bridgeUp) {
+        continue
+      }
+    }
+
+    seen.add(entry.id)
+    seenConfigIds.add(entry.configId)
+    entries.push(entry)
   }
 
   const wantedDefault = text(models.default)
   const visible = entries.filter(entry => !entry.hidden)
+  // A bridge model answers only while this laptop's bridge is up: never the default (the server refuses one too).
+  const defaultEntry = entries.find(entry => entry.configId === wantedDefault && !isBridgeModel(entry))
 
   return {
-    default: seen.has(wantedDefault) ? wantedDefault : (visible[0]?.id ?? null),
+    default: defaultEntry?.id ?? (visible.find(entry => !isBridgeModel(entry)) ?? visible[0])?.id ?? null,
     entries,
+    localModels: { bridgeUp, configured, on },
     mode: managedMode(config, 'models'),
     reasoningControl: models.reasoning_control !== 'off',
     visible
@@ -150,10 +235,9 @@ export const sameProvider = (a: string, b: string): boolean => providerKey(a) ==
 
 export const isGatewayProvider = (provider: string): boolean => sameProvider(provider, ATHENA_GATEWAY_PROVIDER)
 
-/** The Athena providers a Profile configures: the ones that serve allowed models, and the on-prem vLLM. */
+/** The Athena providers a Profile configures: the Model gateway and the bridge's (`athena-vllm`). */
 export const isAthenaProvider = (provider: string): boolean =>
-  Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug)) ||
-  providerKey(provider) === 'athena-vllm'
+  Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug))
 
 export const isModelSubcommand = (model: string): boolean => MODEL_SUBCOMMANDS.has(model.trim().toLowerCase())
 
@@ -168,15 +252,18 @@ export const findModelEntry = (models: ManagedModels, id: string): ManagedModelE
 
 /**
  * Whether a model is on the role's list: an allowed id (hidden ones too: they
- * stay callable), on an Athena provider when a provider is named. Ignores the
- * master switch; `modelUseDecision` applies it.
+ * stay callable), on the provider its own entry names when a provider is named
+ * (a gateway model on the bridge's provider is refused, and the reverse).
+ * Ignores the master switch; `modelUseDecision` applies it.
  */
 export function isAllowedModel(models: ManagedModels, choice: ModelChoice): boolean {
-  if (!findModelEntry(models, choice.model)) {
+  const entry = findModelEntry(models, choice.model)
+
+  if (!entry) {
     return false
   }
 
-  return choice.provider === undefined || !choice.provider.trim() || isAthenaProvider(choice.provider)
+  return choice.provider === undefined || !choice.provider.trim() || sameProvider(choice.provider, entry.provider)
 }
 
 /** What a model use records (Electron main stamps `ts` and `source`; `kind` is `model`). */
@@ -338,29 +425,24 @@ const madeRow = (provider: string): PickerRow & Record<string, unknown> => ({
 
 /**
  * The picker rows under the managed list: one row per provider that serves a
- * visible allowed model (today the model gateway's alone), carrying exactly
- * that provider's visible ids in config order (from the config, not the
- * backend's cached discovery, so an admin change shows within one poll), plus
- * an `athena-vllm` row only when it serves an allowed id. Every other
- * provider is dropped. Without a provider's row in the catalog (not loaded
- * yet, or a Profile without it) one is made up, so the list still shows.
+ * visible allowed model (the Model gateway's, and the bridge's `athena-vllm`
+ * while a local model is on the list), carrying exactly that provider's
+ * visible ids in config order (from the config, not the backend's cached
+ * discovery, so an admin change shows within one poll). Every other provider,
+ * and every other model of those two, is dropped. Without a provider's row in
+ * the catalog (not loaded yet, or a Profile without it) one is made up, so the
+ * list still shows.
  */
 export function managedPickerRows<T extends PickerRow>(models: ManagedModels, catalog: readonly T[]): T[] {
   if (models.visible.length === 0) {
     return []
   }
 
-  const allowed = new Set(models.visible.map(entry => entry.id))
-  const used = new Set<T>()
   const rows: T[] = []
 
   for (const provider of new Set(models.visible.map(entry => entry.provider))) {
     const ids = models.visible.filter(entry => entry.provider === provider).map(entry => entry.id)
     const found = providerRow(catalog, provider)
-
-    if (found) {
-      used.add(found)
-    }
 
     rows.push({
       ...(found ?? (madeRow(provider) as PickerRow as T)),
@@ -368,18 +450,6 @@ export function managedPickerRows<T extends PickerRow>(models: ManagedModels, ca
       models: ids,
       total_models: ids.length
     })
-  }
-
-  for (const row of catalog) {
-    if (used.has(row) || !isAthenaProvider(row.slug)) {
-      continue
-    }
-
-    const kept = (row.models ?? []).filter(model => allowed.has(model))
-
-    if (kept.length > 0) {
-      rows.push({ ...row, featured_models: kept, models: kept, total_models: kept.length })
-    }
   }
 
   return rows

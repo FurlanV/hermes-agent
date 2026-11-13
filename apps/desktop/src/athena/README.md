@@ -243,11 +243,14 @@ a real filter.
   one row per provider that serves a visible `models.allowed` id, with exactly
   that provider's ids in config order (built from the config, not hermes's
   cached discovery; `hidden` entries such as `mock` stay callable but are
-  never listed; an `athena-vllm` row only when it serves an allowed id; every
-  other provider dropped). Each entry carries the provider that serves it
+  never listed; every other provider, and every other model of a listed
+  provider, dropped). Each entry carries the provider that serves it
   (F05 slice 02): `models.allowed[].provider`, default `gateway`, mapped to
-  the hermes provider by `MODEL_PROVIDERS` (today the Model gateway's row
-  alone); an entry whose provider the build does not know is not on the list.
+  the hermes provider by `MODEL_PROVIDERS` (`gateway` → the Model gateway,
+  `bridge` → `custom:athena-vllm`); an entry whose provider the build does
+  not know is not on the list. A pick names the provider of its own entry or
+  none: a gateway model on `athena-vllm`, or a local model on the gateway, is
+  refused.
   Custom ids are off, and `/model <id>` outside the list answers
   "Not available for your role" (`/model reset` passes). Labels go through
   `managed/model-labels.ts` into `modelDisplayParts`; notes are a
@@ -257,6 +260,39 @@ a real filter.
   recorded (`kind: "model"`). `report`: nothing narrowed, each outside pick
   recorded `allowed_in_report`; `off`: stock. A new `config_version` drops
   the cached `model-options` queries.
+- Local models (F05 slice 05): a bridge model (`models.allowed[].provider:
+  bridge`) is a model on a server only the laptop reaches, through the HPC
+  bridge, on hermes's second provider `custom:athena-vllm`.
+  - It is on the role's list only while three things hold: the config's
+    `local_models.enabled`, feature row `F05`, and a live bridge record.
+    Otherwise it is in no picker, a pick of it is refused and recorded at both
+    seams, and an open session on it moves to the role default like a session
+    on a removed model (below), with the same toast.
+  - Hermes knows it by the model server's name (`local_models.models.<id>.name`),
+    not by the config's id. `ManagedModelEntry.id` is that name (what pickers
+    list, a pick sends, a session reports and the reasoning levels are looked
+    up by); `configId` is the config's id. For a gateway model the two are
+    equal. The row is hermes's `athena-vllm` row, or one made up as "Local
+    models"; the label and note are the admin's.
+  - A bridge model is never the default (`ManagedModels.default`), and a
+    hidden one, or one `local_models.models` does not name, is never offered:
+    managed scope pins neither. Settings › Model's default select lists the
+    main provider's models only, so it does not offer one either.
+  - The bridge record: `electron/athena/hpc-bridge-record.ts` reads
+    `$HERMES_HOME/athena/hpc-bridge.json` (athena's format,
+    `client/profiles/README.md` › "Local models: the second provider"; stale
+    means absent: unreadable, not loopback, not a port, or its `pid` is gone).
+    Main puts it in every client-config snapshot as `hpcBridge` (`{address,
+    port, connectedAt}`, absent while there is none) and polls it with the
+    other inputs, every second, so the bridge coming or going is pushed to
+    every window and to main's own REST seam like a config change.
+    `ManagedModels.localModels` (`on`, `bridgeUp`, `configured`) says what the
+    config offers while the bridge is down.
+  - Tests: `electron/athena/model-provider.test.ts`,
+    `electron/athena/hpc-bridge-record.test.ts`,
+    `managed/local-models.test.tsx`; athena's
+    `tests/hook_sequence/test_local_model_live.py` runs a real hermes turn on
+    the local model against a stand-in server and reads its captured events.
 - A removed model (slice 21): `managed/model-switch.tsx`. On every config or
   session change, each idle open session (the primary composer, draft
   included, and every tile in `$sessionStates`) whose model id left the list

@@ -66,12 +66,15 @@ describe('the managed list', () => {
     expect(managedPickerRows(managedModels(config()), [])).toEqual([
       expect.objectContaining({ models: ['gpt-6-sol', 'gpt-6-luna'], slug: 'custom:athena-gateway' })
     ])
-    // athena-vllm stays only when it serves an allowed id; nothing visible means no rows.
+    // A row lists only the models its own provider serves (F05 slice 05): a gateway model the catalog also shows
+    // under athena-vllm stays on the gateway row alone, and a pick of it there is refused. Nothing visible: no rows.
     const llama = { id: 'llama-3.3-70b', label: 'Llama 3.3' }
-    expect(managedPickerRows(managedModels(config('enforce', [LUNA, llama])), CATALOG).map(row => [row.slug, row.models])).toEqual([
-      ['custom:athena-gateway', ['gpt-6-luna', 'llama-3.3-70b']],
-      ['custom:athena-vllm', ['llama-3.3-70b']]
+    const withLlama = managedModels(config('enforce', [LUNA, llama]))
+    expect(managedPickerRows(withLlama, CATALOG).map(row => [row.slug, row.models])).toEqual([
+      ['custom:athena-gateway', ['gpt-6-luna', 'llama-3.3-70b']]
     ])
+    expect(modelUseDecision(withLlama, { model: 'llama-3.3-70b', provider: 'custom:athena-vllm' }, 'rpc', 'config.set').allowed).toBe(false)
+    expect(modelUseDecision(withLlama, { model: 'llama-3.3-70b', provider: 'athena-gateway' }, 'rpc', 'config.set').allowed).toBe(true)
     expect(managedPickerRows(managedModels(config('enforce', [MOCK])), CATALOG)).toEqual([])
   })
 })
