@@ -751,3 +751,22 @@ override with `ATHENA_F02_BASE`).
 | `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
 | `electron/main.ts` | Installs the HPC bridge (`installAthenaHpcBridge`) after the tool switches, whose `applyConfig` it uses (F05 slice 06) |
 | `package.json` | Dependency `ssh2` (MIT) and its types, for the HPC bridge (F05 slice 06). The root `pnpm-workspace.yaml` (two `overrides`, one `allowBuilds` denial) and `pnpm-lock.yaml` change with it |
+
+## Opened without the launcher (R01 slice 26)
+
+An installed Athena is started by its launcher (athena: `client/installer`), which gives the app its Profile, its own
+user data folder, managed scope and the pinned hermes. The binary opened directly (the Dock icon the running app
+leaves behind, a taskbar pin, a double click on the bundle) has none of that, and Electron's default user data folder
+for an app named Athena is the install root.
+
+- `electron/athena/launcher-handoff.ts` (pure) decides: a binary inside an install root
+  (`<root>/app.noindex/Athena.app`, `<root>/app/Athena.app` or `<root>\app\Athena\Athena.exe`, with
+  `<root>/settings.json`) whose environment lacks the launcher's `HERMES_HOME` and `HERMES_DESKTOP_USER_DATA_DIR`
+  hands the launch to `<root>/share/athena-desktop.sh` (macOS) or `athena-desktop.ps1` (Windows).
+- `electron/athena/launcher-handoff-install.ts` does it: starts the launcher detached and exits. It is the first
+  import of `ipc-guard-install.ts`, itself the first import of `main.ts`, so it runs before main sets user data,
+  takes the single-instance lock or starts a backend. No upstream file changes.
+- With the launcher missing it shows one dialog and exits. A launch by the launcher is never handed over again. A dev
+  bundle or a stock build is in no install root and starts as before.
+- Checked on macOS with the built bundle in a throwaway install root: exit 0, the launcher started with a clean
+  environment, and nothing written to the default user data folder. Not run on Windows.
