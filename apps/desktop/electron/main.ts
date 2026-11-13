@@ -68,7 +68,8 @@ import {
 } from './app-version'
 import { runAppInstallerChecker } from './appinstaller-checker'
 import { installApplicationMenuAfterFirstWindow } from './application-menu-startup'
-import { installAthenaClientConfig } from './athena/client-config-ipc'
+import { athenaClientConfig, installAthenaClientConfig } from './athena/client-config-ipc'
+import { installAthenaHpcBridge } from './athena/hpc-bridge'
 import { onMainPoliciesChanged } from './athena/main-policy'
 import {
   ATHENA_POLICY_REFUSED,
@@ -15252,7 +15253,22 @@ installAthenaClientConfig({
 })
 
 // Athena (F02 slice 28): the Capabilities page's tool switches run `athena config tool` (tool-prefs.json + apply).
-installAthenaToolPrefs({ hermesHome: HERMES_HOME, ipcMain, log: rememberLog })
+const athenaToolPrefs = installAthenaToolPrefs({ hermesHome: HERMES_HOME, ipcMain, log: rememberLog })
+
+// Athena (F05 slice 06): the HPC bridge to the local model server, open only while feature row F05 and the client
+// config's local models are on. Its channels (`athena:hpc-bridge:*`) are the row's.
+installAthenaHpcBridge({
+  allWindows: () => BrowserWindow.getAllWindows(),
+  app,
+  applyConfig: () => athenaToolPrefs.applyConfig(),
+  athenaDir: path.join(HERMES_HOME, 'athena'),
+  clientConfig: athenaClientConfig,
+  installStamp: INSTALL_STAMP,
+  ipcMain,
+  isOnline: () => electronNet.isOnline(),
+  log: rememberLog,
+  powerMonitor: () => powerMonitor
+})
 
 // Privileged channels (Hermes Cloud, updates) register through the Athena
 // policy seam: a channel the policy refuses is never registered.

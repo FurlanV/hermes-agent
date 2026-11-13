@@ -22,6 +22,12 @@ const TOOL_PREFS_SET_SETTINGS = 'athena:tool-prefs:set-settings'
 const CATALOG_SNAPSHOT = 'athena:catalog:snapshot'
 const CATALOG_GET = 'athena:catalog:get'
 
+// Mirrors HPC_BRIDGE_CHANNELS in hpc-bridge-types.ts (F05 slice 06: the HPC bridge's status, connect, disconnect).
+const HPC_BRIDGE_STATUS = 'athena:hpc-bridge:status'
+const HPC_BRIDGE_CONNECT = 'athena:hpc-bridge:connect'
+const HPC_BRIDGE_DISCONNECT = 'athena:hpc-bridge:disconnect'
+const HPC_BRIDGE_CHANGED = 'athena:hpc-bridge:changed'
+
 export function exposeAthenaBridge(): void {
   let snapshot: unknown = null
 
@@ -53,6 +59,20 @@ export function exposeAthenaBridge(): void {
 
         return () => {
           ipcRenderer.removeListener(CHANGED, listener)
+        }
+      }
+    },
+    // F05 slice 06: the HPC bridge. The three calls reject while feature row F05 is off (no handler is registered).
+    hpcBridge: {
+      status: () => ipcRenderer.invoke(HPC_BRIDGE_STATUS),
+      connect: () => ipcRenderer.invoke(HPC_BRIDGE_CONNECT),
+      disconnect: () => ipcRenderer.invoke(HPC_BRIDGE_DISCONNECT),
+      onChanged: (callback: (status: unknown) => void) => {
+        const listener = (_event: unknown, next: unknown) => callback(next)
+        ipcRenderer.on(HPC_BRIDGE_CHANGED, listener)
+
+        return () => {
+          ipcRenderer.removeListener(HPC_BRIDGE_CHANGED, listener)
         }
       }
     },

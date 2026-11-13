@@ -388,6 +388,33 @@ export class AthenaToolPrefs {
     return resolveAthenaCli(this.env, this.launchPath, this.options.isExecutable)
   }
 
+  /**
+   * Re-apply managed scope now (`athena config apply`), queued with the toggles so two CLI runs never write it at
+   * once. The HPC bridge asks for it after its bridge record changed (F05 slice 06). Without a CLI nothing runs:
+   * the Shipper's own apply follows within its sync interval.
+   */
+  applyConfig(): Promise<boolean> {
+    const next = this.queue.then(async () => {
+      const cli = this.cli()
+
+      if (!cli) {
+        this.options.log('[athena] config apply: no athena CLI (ATHENA_CLI or PATH); the next sync applies it')
+
+        return false
+      }
+
+      const result = await (this.options.run ?? runCli)(cli, ['config', 'apply'], this.cliEnv())
+      const message = firstLine(result.code === 0 ? result.stdout : result.stderr || result.stdout)
+      this.options.log(`[athena] ${cli} config apply: exit ${result.code}${message ? ` (${message})` : ''}`)
+
+      return result.code === 0
+    })
+
+    this.queue = next.catch(() => undefined)
+
+    return next
+  }
+
   settings(): PackageSettings {
     return readPackageSettings(this.file)
   }

@@ -293,6 +293,74 @@ a real filter.
     `managed/local-models.test.tsx`; athena's
     `tests/hook_sequence/test_local_model_live.py` runs a real hermes turn on
     the local model against a stand-in server and reads its captured events.
+- The HPC bridge (F05 slice 06): `electron/athena/hpc-bridge.ts`. While local
+  models are on, Electron main keeps one SSH connection to the config's
+  `local_models.login_host:login_port` (22 when absent) and forwards a loopback
+  port to `target_host:target_port`. Nothing in it handles a password.
+  - **Library: `ssh2` 1.17.0, MIT licence** (plan question Q1), with its
+    dependencies `asn1` (MIT), `bcrypt-pbkdf` (BSD-3-Clause), `safer-buffer`
+    (MIT) and `tweetnacl` (Unlicense). It is plain JavaScript on `node:crypto`
+    and is bundled into main by esbuild: the packed app needs no
+    `node_modules` entry and no native addon. Its two optional native pieces
+    are left out by `overrides` in the root `pnpm-workspace.yaml`
+    (`ssh2>cpu-features`, `ssh2>nan`: `-`), and its install script, which only
+    compiles an optional cipher addon, is denied there by name (`allowBuilds:
+    ssh2: false`), so no build host needs a compiler (macOS, Windows, CI).
+    ssh2 reads CommonJS's `__dirname` while it loads, which main's ES-module
+    bundle does not have: the bridge loads it on the first connection attempt
+    (`loadSsh2`), never at startup. `hpc-bridge-bundle.test.ts` builds a bundle
+    with main's options and runs the forward through it.
+  - When it runs: feature row `F05` on, `local_models.enabled` true, the hosts
+    named, a host key pinned for the login host, and a key on this laptop.
+    Otherwise nothing is contacted. It follows every snapshot (switch off →
+    closed), stops on quit, and reconnects after a wake (`powerMonitor`
+    `resume`) and when `net.isOnline()` turns true again.
+  - The login host's key: `electron/athena/hpc-bridge-host-keys.ts` is the
+    pin table bundled in the build, `{"<host>[:<port>]": [<key line or
+    SHA256:… fingerprint>, …]}`. **It is a placeholder: the list for
+    `login5.ccm.sickkids.ca` is empty until slice 01 records the real key**,
+    and an empty list means the host is never contacted (`host_key_unknown`).
+    The key the host presents is checked before any authentication is sent;
+    another key ends the connection (`host_key_mismatch`). Nothing is trusted
+    on first use. Only public-key authentication is offered.
+  - The user's key comes through one seam, `BridgeKeyProvider`
+    (`hpc-bridge-keys.ts`): `() => {username, privateKey, passphrase?} | null`.
+    The key setup (slice 07) plugs in there and calls `connect()` once a key
+    is installed. Until then the only source is for development, honoured
+    only where dev overrides are (`ATHENA_DEV_OVERRIDES=1`, not a managed
+    release): `ATHENA_HPC_BRIDGE_KEY_FILE` + `ATHENA_HPC_BRIDGE_USER`, and
+    `ATHENA_HPC_BRIDGE_HOST_KEYS_FILE` (a JSON pin table merged over the
+    build's, for a stand-in login host). With no key: `no_key`.
+  - The local port: `127.0.0.1` only, chosen once and kept in
+    `$HERMES_HOME/athena/hpc-bridge-port.json` (`{"port": N}`), used again
+    while it is free so hermes's pinned address does not change per launch.
+  - The bridge record (`hpc-bridge-record.ts`, athena's format): written
+    (atomically, 0600, this process's pid) when the forward is up, removed the
+    moment the connection is lost and on quit. After each change main re-reads
+    it into the client-config snapshot at once and runs `athena config apply`
+    (`AthenaToolPrefs.applyConfig`, queued with the Capabilities toggles,
+    debounced 250 ms).
+  - Recovery: keepalives every 5 s (two missed = lost), then retries after
+    0.5, 1, 2, 4, 8 and 15 s (15 s repeats), each giving up after 10 s: back
+    within 30 s of the login host answering again. A refused key
+    (`auth_failed`) is not retried until a config change, a key change or
+    `connect()`; a host-key mismatch is asked again once a minute.
+  - IPC, all under row `F05` (`ipc:athena:hpc-bridge:*`, so not registered
+    while the row is off, and each call asks the row again under
+    `managed.features: report`): `athena:hpc-bridge:status`, `:connect`,
+    `:disconnect` (invoke; each answers the status), and
+    `athena:hpc-bridge:changed` (main → every window). Preload exposes them as
+    `window.athenaDesktop.hpcBridge` (`status()`, `connect()`, `disconnect()`,
+    `onChanged(cb)`; types in `hpc-bridge-types.ts`). The status is
+    `{state, reason?, since, port?}` with `state` one of `off` (`feature_off`,
+    `switch_off`, `not_configured`, `disconnected`), `no_key`
+    (`key_unreadable`), `host_key_unknown`, `connecting`, `connected` (with
+    `port`), `down` (`host_key_mismatch`, `auth_failed`, `unreachable`,
+    `timeout`, `connection_lost`, `local_port_unavailable`,
+    `ssh_unavailable`). `disconnect` holds until `connect` or the next launch.
+  - Tests: `electron/athena/hpc-bridge.test.ts` (a stand-in SSH login node and
+    model server in-process, loopback only: `hpc-bridge.test-helper.ts`) and
+    `hpc-bridge-bundle.test.ts`.
 - A removed model (slice 21): `managed/model-switch.tsx`. On every config or
   session change, each idle open session (the primary composer, draft
   included, and every tile in `$sessionStates`) whose model id left the list
@@ -681,3 +749,5 @@ override with `ATHENA_F02_BASE`).
 | `src/store/mcp-deeplink-install.ts` | `requestMcpInstallFromDeepLink` asks `toolInstallAllowed('ui:mcp-install')` (slice 29) |
 | `src/store/skill-deeplink-install.ts` | `requestSkillInstallFromDeepLink` asks `toolInstallAllowed('ui:skill-install')` (slice 29) |
 | `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
+| `electron/main.ts` | Installs the HPC bridge (`installAthenaHpcBridge`) after the tool switches, whose `applyConfig` it uses (F05 slice 06) |
+| `package.json` | Dependency `ssh2` (MIT) and its types, for the HPC bridge (F05 slice 06). The root `pnpm-workspace.yaml` (two `overrides`, one `allowBuilds` denial) and `pnpm-lock.yaml` change with it |
