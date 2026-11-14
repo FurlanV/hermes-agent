@@ -1104,6 +1104,14 @@
       "area": "Surfaces outside Settings",
       "title": "In-app terminal pane",
       "config_keys": []
+    },
+    {
+      "id": "F05",
+      "mark": "disable",
+      "default": "off",
+      "area": "Local models",
+      "title": "Local models over the HPC bridge",
+      "config_keys": []
     }
   ]
 }

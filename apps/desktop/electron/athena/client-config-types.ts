@@ -19,6 +19,21 @@ export type ClientConfigRejection =
   | 'wrong_type'
   | JwsReason
 
+/** Where this laptop's HPC bridge listens (F05): what main read from a live bridge record (hpc-bridge-record.ts). */
+export interface HpcBridgeAddress {
+  /** A loopback address. */
+  address: string
+  /** When the forward came up (ISO 8601), if the record says. */
+  connectedAt: null | string
+  /** The default model server's forward; absent while that server is down and another is up. */
+  port?: number
+  /**
+   * The port of every model server whose forward is up, by server id (`default` included), when the record lists
+   * them (version 2, F05 slice 12). Absent for a version 1 record: the default server alone, on `port`.
+   */
+  servers?: Record<string, number>
+}
+
 /** What main hands the renderer. `config` is the effective document (bundled < chosen < dev override). */
 export interface ClientConfigSnapshot {
   config: ClientConfigDocument
@@ -26,6 +41,11 @@ export interface ClientConfigSnapshot {
   devOverridesActive: boolean
   /** The reason the file on disk was not used, if it was not (`missing` when there is none). */
   error: ClientConfigRejection | null
+  /**
+   * The HPC bridge of this Profile while it is up (F05 slice 05): present only with a live bridge record. Not
+   * part of the signed config; it rides the snapshot so pickers and the model gate change with the bridge.
+   */
+  hpcBridge?: HpcBridgeAddress
   role: null | string
   source: ClientConfigSource
   /**

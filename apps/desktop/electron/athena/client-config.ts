@@ -23,6 +23,16 @@
 // Main writes `$HERMES_HOME/athena/desktop-status.json` for the Shipper's
 // heartbeat: `{dev_overrides_active, config_version_seen, updated_at}`. Its
 // `config_version_seen` is also the replay floor across restarts.
+//
+// A model server's API key (`local_models.servers.<id>.key.value`, F05 slice 12) never gets past this file: it is
+// taken out of every document the moment it is verified or read (`withoutModelServerKeys`), so no snapshot, no
+// window, no log line, no policy decision and no status file can carry it. The Desktop does not need it: the
+// applier (`athena config apply`) reads the signed file itself and writes the key into hermes managed scope.
+// (Hermes's own `GET /api/config` returns that managed provider entry, key included: that is not this file's.)
+//
+// Every snapshot also says whether this laptop's HPC bridge is up (`hpcBridge`, F05 slice 05): the Profile's
+// bridge record (hpc-bridge-record.ts), polled with the other inputs, so a bridge that comes or goes reaches
+// the model pickers and the model gate like a config change does.
 
 import { type JsonWebKey, type KeyObject } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
@@ -36,6 +46,7 @@ import type {
   ClientConfigSnapshot,
   ClientConfigSource
 } from './client-config-types'
+import { bridgeAddress, readBridgeRecord } from './hpc-bridge-record'
 import { JwsError, trustedKeys, verifyCompactJws } from './jws'
 import type { DesktopVariant } from './variant'
 
@@ -83,6 +94,29 @@ export const BUNDLED_DEFAULT: ClientConfigDocument = Object.freeze(
 
 export function bundledTrustedKeys(): ReadonlyMap<string, KeyObject> {
   return trustedKeys(TRUSTED_KEYS.keys as unknown as JsonWebKey[])
+}
+
+/**
+ * A config document without any model server key value: `local_models.servers.<id>.key` keeps its `type` (the
+ * model gate needs to know whether this build understands it) and loses everything else.
+ */
+export function withoutModelServerKeys<T extends Record<string, unknown>>(config: T): T {
+  const local = config.local_models
+
+  if (!isRecord(local) || !isRecord(local.servers)) {
+    return config
+  }
+
+  const servers = Object.fromEntries(
+    Object.entries(local.servers).map(([id, server]) => [
+      id,
+      isRecord(server) && server.key !== undefined && server.key !== null
+        ? { ...server, key: isRecord(server.key) ? { type: server.key.type } : {} }
+        : server
+    ])
+  )
+
+  return { ...config, local_models: { ...local, servers } }
 }
 
 // ── Signed-in subject ───────────────────────────────────────────────────────
@@ -387,7 +421,9 @@ export class AthenaClientConfig {
     return [
       fileSignature(this.configFile),
       fileSignature(path.join(this.athenaDir, TOKEN_FILE)),
-      this.devOverrides.allowed ? fileSignature(this.devOverrides.file) : ''
+      this.devOverrides.allowed ? fileSignature(this.devOverrides.file) : '',
+      // The record itself, not the file's stat: it also goes stale when the process that wrote it dies.
+      JSON.stringify(readBridgeRecord(this.athenaDir))
     ].join('|')
   }
 
@@ -411,7 +447,8 @@ export class AthenaClientConfig {
       this.held = null
     } else {
       try {
-        const config = verifyClientConfig(token, this.trusted, sub)
+        // The keys go here, before anything holds the document.
+        const config = withoutModelServerKeys(verifyClientConfig(token, this.trusted, sub))
         const version = config.config_version as number
 
         if (version < this.versionSeen) {
@@ -447,11 +484,17 @@ export class AthenaClientConfig {
       config = deepMerge(config, override)
     }
 
+    // Again on the merged document: a bundled default or a dev override may name a key too.
+    config = withoutModelServerKeys(config)
+
+    const hpcBridge = bridgeAddress(readBridgeRecord(this.athenaDir))
+
     return {
       config,
       configVersion: chosen ? (chosen.config.config_version as number) : null,
       devOverridesActive: override !== null,
       error,
+      ...(hpcBridge ? { hpcBridge } : {}),
       role: chosen && typeof chosen.config.role === 'string' ? chosen.config.role : null,
       source,
       variant: this.variant,

@@ -27,23 +27,39 @@ const PLAN = path.join(
   'backlog/2026-11-09-managed-client/overview.md'
 )
 
+/** Rows added after the F02 audit, in registry order (the audit table does not list them). */
+const LATER_ROWS = ['F05']
+const AUDIT_ROWS = FEATURE_ROWS.filter(row => !LATER_ROWS.includes(row.id))
+
 const exported = () => `${JSON.stringify(exportedFeatureRegistry(), null, 2)}\n`
 
 describe('the feature registry', () => {
-  test('holds every audit row once: S01–S124 with the a/b splits', () => {
+  test('holds every audit row once: S01–S124 with the a/b splits, then the rows later plans added', () => {
     const ids = FEATURE_ROWS.map(row => row.id)
 
     const expected = Array.from({ length: 124 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`).flatMap(id =>
       ['S08', 'S70', 'S118'].includes(id) ? [`${id}a`, `${id}b`] : [id]
     )
 
-    expect(ids).toEqual(expected)
+    expect(ids).toEqual([...expected, ...LATER_ROWS])
   })
 
   test('has the audit totals: 40 keep, 65 disable, 22 remove', () => {
-    const count = (mark: string) => FEATURE_ROWS.filter(row => row.mark === mark).length
+    const count = (mark: string) => AUDIT_ROWS.filter(row => row.mark === mark).length
 
     expect([count('keep'), count('disable'), count('remove')]).toEqual([40, 65, 22])
+  })
+
+  test('F05, local models over the HPC bridge: off by default, and its IPC channels are its entries', () => {
+    const f05 = FEATURE_ROWS.find(row => row.id === 'F05')
+
+    expect(f05).toMatchObject({ area: 'Local models', entries: ['ipc:athena:hpc-bridge:*'], mark: 'disable' })
+    expect(rowsForEntry('ipc:athena:hpc-bridge:connect')).toEqual(['F05'])
+
+    const allowed = (config: unknown) => featureEntryFilter(config)('ipc:athena:hpc-bridge:status')
+
+    expect(allowed({})).toBe(false)
+    expect(allowed({ features: { F05: 'on' } })).toBe(true)
   })
 
   // The plan's table is the source; this keeps the registry from drifting from it.
@@ -61,7 +77,7 @@ describe('the feature registry', () => {
       }
     }
 
-    expect(Object.fromEntries(FEATURE_ROWS.map(row => [row.id, row.mark]))).toEqual(Object.fromEntries(audit))
+    expect(Object.fromEntries(AUDIT_ROWS.map(row => [row.id, row.mark]))).toEqual(Object.fromEntries(audit))
   })
 
   test('build defaults: keep on, disable off, remove has no flag', () => {
@@ -73,7 +89,9 @@ describe('the feature registry', () => {
       expect(new Set(row.entries).size, row.id).toBe(row.entries.length)
 
       for (const entry of row.entries) {
-        expect(entry, row.id).toMatch(/^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog|rest|rpc|ipc|env|devtools):[^*]*\*?$/)
+        expect(entry, row.id).toMatch(
+          /^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog|rest|rpc|ipc|env|devtools):[^*]*\*?$/
+        )
       }
     }
   })

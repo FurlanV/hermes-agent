@@ -55,6 +55,12 @@ overrides:
   yaml: 2.9.1
   vitest: 4.1.12
   '@vitest/mocker': 4.1.12
+  # Athena (F05): the desktop's SSH client. ssh2 runs on node:crypto alone; its two optional
+  # dependencies only feed native addons (a faster cipher binding, CPU feature detection) that would
+  # need a compiler on every build host, Windows included. Left out, nothing native is installed.
+  'ssh2>cpu-features': '-'
+  'ssh2>nan': '-'
+  '@types/ssh2>@types/node': 22.20.5
 
 allowBuilds:
   unicode-animations: false
@@ -70,3 +76,6 @@ allowBuilds:
   # apps/desktop/scripts/dev-get-windows.mjs). Keyed by name: the denial holds for every version.
   get-windows: false
   lefthook@2.2.1: true
+  # Athena (F05): ssh2's install script only tries to compile its optional cipher addon. Denied by
+  # name, for every version: the desktop bundles ssh2 as plain JavaScript (see the overrides above).
+  ssh2: false

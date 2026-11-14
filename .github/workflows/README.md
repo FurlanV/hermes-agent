@@ -531,6 +531,7 @@ gh workflow run windows-install-update-e2e.yml --ref <branch> -f strict_acceptan
 | File | Name | Triggers | Called by |
 |---|---|---|---|
 | `archive-inputs.yml` | Archive pinned PM inputs | main (paths), dispatch, call | none |
+| `athena-desktop-windows.yml` | Athena Desktop Windows build | push `feature/friends-build`, `release/**` (paths), dispatch | none |
 | `bootstrap-installer-build.yml` | Bootstrap installer build | dispatch | none |
 | `bootstrap-installer.yml` | Bootstrap installer | R | ci |
 | `canary-release.yml` | Canary Release | cron daily 06:41, dispatch | none |

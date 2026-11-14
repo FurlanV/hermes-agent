@@ -13,6 +13,7 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { type ReactElement, useMemo, useRef, useState } from 'react'
 
+import { AthenaLocalModelStatus } from '@/athena/managed/local-models-settings'
 import { managedModelLabel } from '@/athena/managed/model-labels'
 import {
   allowsCustomModelIds,
@@ -399,6 +400,8 @@ function ModelResults({
               <span className={cn('min-w-0 flex-1 truncate', dimmed && !isCurrent && 'text-muted-foreground')}>
                 <HighlightMatches foldSeparators query={search} text={managedModelLabel(model) ?? model} />
               </span>
+              {/* Athena (F05 slice 08): a local model's row says whether it is connected. */}
+              <AthenaLocalModelStatus model={model} provider={provider.slug} />
               {loadProgress && (
                 <span className="flex shrink-0 items-center gap-1.5" title={copy.loadingIntoMemory}>
                   <span className="h-1 w-16 overflow-hidden rounded-full bg-(--ui-bg-tertiary)">

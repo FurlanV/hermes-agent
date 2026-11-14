@@ -3,6 +3,7 @@ import { type QueryClient } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
 
 import type { ModelSelection } from '@/app/shell/model-menu-panel'
+import { offerLocalModelConnect } from '@/athena/managed/local-models'
 import { getGlobalModelInfo } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { isBusySessionModelSwitch } from '@/lib/gateway-rpc'
@@ -255,6 +256,11 @@ export function useModelControls({
   // busy primary turn.
   const selectModel = useCallback(
     async (selection: ModelSelection): Promise<boolean> => {
+      // Athena (F05 slice 07): a local model that is not connected is not picked; the connection is offered first.
+      if (offerLocalModelConnect(selection)) {
+        return false
+      }
+
       const primaryRuntimeId = $activeSessionId.get()
       const liveSessionId = 'sessionId' in selection ? (selection.sessionId ?? null) : primaryRuntimeId
       const touchesPrimary = !liveSessionId || liveSessionId === primaryRuntimeId

@@ -14,6 +14,14 @@ export const TRUSTED_KEYS = {
       "kty": "OKP",
       "use": "sig",
       "x": "3nvIdaNL4iTVpm4QfgAPaMCu02YrwbMCzcFQfDOgYO0"
+    },
+    {
+      "alg": "EdDSA",
+      "crv": "Ed25519",
+      "kid": "9Pg5wgTp4uerY2kvkxxoQfgWiM21THTRgg1JaQJLBUM",
+      "kty": "OKP",
+      "use": "sig",
+      "x": "RVONMGab1Q3SrTVSTUg9d-VQpei4_h1IB55gB09R9AA"
     }
   ]
 } as const

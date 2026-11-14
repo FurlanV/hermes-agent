@@ -22,6 +22,13 @@ const TOOL_PREFS_SET_SETTINGS = 'athena:tool-prefs:set-settings'
 const CATALOG_SNAPSHOT = 'athena:catalog:snapshot'
 const CATALOG_GET = 'athena:catalog:get'
 
+// Mirrors HPC_BRIDGE_CHANNELS in hpc-bridge-types.ts (F05 slice 06: the HPC bridge's status, connect, disconnect).
+const HPC_BRIDGE_STATUS = 'athena:hpc-bridge:status'
+const HPC_BRIDGE_CONNECT = 'athena:hpc-bridge:connect'
+const HPC_BRIDGE_DISCONNECT = 'athena:hpc-bridge:disconnect'
+const HPC_BRIDGE_FORGET_USER = 'athena:hpc-bridge:forget-user'
+const HPC_BRIDGE_CHANGED = 'athena:hpc-bridge:changed'
+
 export function exposeAthenaBridge(): void {
   let snapshot: unknown = null
 
@@ -53,6 +60,24 @@ export function exposeAthenaBridge(): void {
 
         return () => {
           ipcRenderer.removeListener(CHANGED, listener)
+        }
+      }
+    },
+    // F05 slices 06 and 07: the HPC bridge. The calls reject while feature row F05 is off (no handler is
+    // registered). `connect` may carry the sign-in dialog's user name and password: handed to main once, kept
+    // nowhere here.
+    hpcBridge: {
+      status: () => ipcRenderer.invoke(HPC_BRIDGE_STATUS),
+      connect: (signIn?: { password: string; username: string }) =>
+        signIn ? ipcRenderer.invoke(HPC_BRIDGE_CONNECT, signIn) : ipcRenderer.invoke(HPC_BRIDGE_CONNECT),
+      disconnect: () => ipcRenderer.invoke(HPC_BRIDGE_DISCONNECT),
+      forgetUser: () => ipcRenderer.invoke(HPC_BRIDGE_FORGET_USER),
+      onChanged: (callback: (status: unknown) => void) => {
+        const listener = (_event: unknown, next: unknown) => callback(next)
+        ipcRenderer.on(HPC_BRIDGE_CHANGED, listener)
+
+        return () => {
+          ipcRenderer.removeListener(HPC_BRIDGE_CHANGED, listener)
         }
       }
     },

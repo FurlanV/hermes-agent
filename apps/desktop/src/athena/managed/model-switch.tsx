@@ -5,11 +5,20 @@
  * session whose model is no longer on the role's list switches to the role
  * default between turns, through the app's own model pick (`selectModel` in
  * `use-model-controls.ts`: `config.set key=model … --provider
- * custom:athena-gateway`, which the canonical protocol sends as the fenced
+ * <the target's provider>`, which the canonical protocol sends as the fenced
  * `session.mutate operation=model` slice 08 recorded, retried once on a fence
  * refusal). A busy session waits for its turn to end; that turn keeps the D07
  * behaviour (the gateway refuses, hermes falls back within the turn). One
  * toast per session: "GPT-6 Sol is no longer available. Switched to GPT-6 Luna."
+ *
+ * A session on a local model whose HPC bridge is not up (F05 slice 08) is not
+ * "removed": while the bridge is on its way (connecting, or retrying with what
+ * main holds) the session waits up to 30 s (`localModelGrace`). After that, or
+ * when nothing is on its way (a new launch, before the user has signed in; a
+ * refused password; Disconnect), it moves to the role default like any other,
+ * and its toast says "Qwen (local) is not connected. Switched to GPT-6 Luna."
+ * with a Connect button that connects and brings the session back to the local
+ * model. A local model is never the target of a switch.
  *
  * If the switch fails, or no model is left to pick, the composer shows "No
  * model available. Contact your administrator" and cancels sends through a
@@ -28,8 +37,9 @@ import { notify } from '@/store/notifications'
 import { $activeSessionId, $currentModel, $currentProvider } from '@/store/session'
 import { $sessionStates } from '@/store/session-states'
 
-import { ATHENA_GATEWAY_PROVIDER, findModelEntry, type ManagedModels } from '../../../electron/athena/model-policy'
+import { findModelEntry, type ManagedModels } from '../../../electron/athena/model-policy'
 
+import { $hpcBridge, localModelGrace, offlineLocalModel, reconnectSession, setLocalModelSelector } from './local-models'
 import { $managedModels, enforcedModels } from './model-policy'
 
 export const NO_MODEL_MESSAGE = 'No model available. Contact your administrator.'
@@ -68,8 +78,19 @@ const attempted = new Set<string>()
 const toasted = new Set<string>()
 const inFlight = new Set<string>()
 
+/** Runs the pass again when the wait for the HPC bridge is over (one timer, re-armed by each pass that waits). */
+let graceTimer: null | ReturnType<typeof setTimeout> = null
+
+function clearGraceTimer(): void {
+  if (graceTimer) {
+    clearTimeout(graceTimer)
+    graceTimer = null
+  }
+}
+
 /** Forget every attempt, toast and failure (tests, and the hook's unmount). */
 export function resetModelSwitches(): void {
+  clearGraceTimer()
   attempted.clear()
   toasted.clear()
   inFlight.clear()
@@ -134,11 +155,16 @@ export function reconcileModelSessions(select: SelectModel): void {
     return
   }
 
-  for (const entry of models.entries) {
+  for (const entry of [...models.localModels.configured, ...models.entries]) {
     knownLabels.set(entry.id, entry.label)
   }
 
+  clearGraceTimer()
+  let wait = 0
+
   const target = switchTarget(models)
+  // The provider that serves the target, read from its entry (never a constant: F05 slice 02).
+  const targetProvider = target ? findModelEntry(models, target)?.provider : undefined
 
   for (const session of openSessions()) {
     const model = session.model.trim()
@@ -150,7 +176,17 @@ export function reconcileModelSessions(select: SelectModel): void {
       continue
     }
 
-    if (!target) {
+    // F05 slice 08: a local model whose bridge is on its way is not gone; the session waits for it.
+    const local = offlineLocalModel(models, { model, provider: '' })
+    const grace = local ? localModelGrace(local) : 0
+
+    if (grace > 0) {
+      wait = wait === 0 ? grace : Math.min(wait, grace)
+
+      continue
+    }
+
+    if (!target || !targetProvider) {
       continue
     }
 
@@ -165,7 +201,7 @@ export function reconcileModelSessions(select: SelectModel): void {
 
     const selection: ModelSelection = {
       model: target,
-      provider: ATHENA_GATEWAY_PROVIDER,
+      provider: targetProvider,
       ...(session.sessionId ? { sessionId: session.sessionId } : {})
     }
 
@@ -182,10 +218,23 @@ export function reconcileModelSessions(select: SelectModel): void {
           notify({
             id: `athena-model-removed-${session.key}`,
             kind: 'info',
-            message: `${labelOf(model)} is no longer available. Switched to ${labelOf(target)}.`
+            // A local model that is only not connected is still the role's: say so, and offer the way back.
+            ...(local
+              ? {
+                  action: { label: 'Connect', onClick: () => reconnectSession(local, session.sessionId) },
+                  message: `${labelOf(model)} is not connected. Switched to ${labelOf(target)}.`
+                }
+              : { message: `${labelOf(model)} is no longer available. Switched to ${labelOf(target)}.` })
           })
         }
       })
+  }
+
+  if (wait > 0) {
+    graceTimer = setTimeout(() => {
+      graceTimer = null
+      reconcileModelSessions(select)
+    }, wait + 50)
   }
 }
 
@@ -221,7 +270,13 @@ function NoModelBanner() {
 export function installNoModelGate(): () => void {
   return registry.registerMany([
     { area: 'composer.middleware', data: middleware, id: 'athena-no-model-gate', order: -1000, source: 'athena' },
-    { area: 'composer.top', id: 'athena-no-model-banner', order: -1000, render: () => <NoModelBanner />, source: 'athena' }
+    {
+      area: 'composer.top',
+      id: 'athena-no-model-banner',
+      order: -1000,
+      render: () => <NoModelBanner />,
+      source: 'athena'
+    }
   ])
 }
 
@@ -237,15 +292,18 @@ export function useManagedModelSwitch(select: SelectModel): void {
   useEffect(() => {
     const removeGate = installNoModelGate()
     const run = () => reconcileModelSessions(selection => selectRef.current(selection))
+    // F05 slice 07: a pick that waited for the HPC bridge is made with the same pick, once its model is listed.
+    setLocalModelSelector(selection => selectRef.current(selection))
 
-    const offs = [$managedModels, $sessionStates, $currentModel, $currentProvider, $activeSessionId].map(store =>
-      store.listen(run)
+    const offs = [$managedModels, $sessionStates, $currentModel, $currentProvider, $activeSessionId, $hpcBridge].map(
+      store => store.listen(run)
     )
 
     run()
 
     return () => {
       offs.forEach(off => off())
+      setLocalModelSelector(null)
       removeGate()
     }
   }, [])

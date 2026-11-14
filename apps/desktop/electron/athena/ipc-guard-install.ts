@@ -2,6 +2,10 @@
 // `ipcMain.handle`/`on` of a channel the feature registry lists (`ipc:<channel>`), or of a tool install
 // channel (tool-install-policy.ts), is registered only while the policy allows it (policy-seams.ts).
 
+// R01 slice 26: before all of that, a binary opened without its launcher hands the launch over and exits
+// (launcher-handoff-install.ts). It is this module's first import, so it runs before anything else in main.
+import './launcher-handoff-install'
+
 import { ipcMain } from 'electron'
 
 import { isPolicyIpcChannel } from './backend-policy'

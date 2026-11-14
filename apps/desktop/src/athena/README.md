@@ -24,6 +24,58 @@ To run it against the pinned hermes, start it through the Athena launcher
 app would then try the GitHub bootstrap. `build-mac-dev.sh --launch` does
 both steps when `ATHENA_REPO` (or `ATHENA_DESKTOP_LAUNCHER`) is set.
 
+## Windows build
+
+`.github/workflows/athena-desktop-windows.yml` ("Athena Desktop Windows build")
+builds the Athena variant for Windows x64 on a GitHub-hosted `windows-2025`
+runner. It runs on a push to `feature/friends-build` or `release/**` that
+touches `apps/desktop/**` or the workflow, and on dispatch once the file is on
+`main`. It is unsigned and reads no secret. It is not an MSIX, which needs a
+trusted signing certificate (P09).
+
+1. `scripts/athena-copies.mjs --check`: the bundled athena copies equal
+   `athena-copies.json` (below).
+2. `pnpm run build`, then `pnpm run builder --dir --publish never --win --x64`
+   with `HERMES_DESKTOP_VARIANT=athena`.
+3. The folder holds `Athena.exe` (no `Hermes.exe` or `electron.exe`) whose
+   version info says ProductName `Athena` and CompanyName `SickKids`.
+   `scripts/check-packed-app.mjs` then checks that its icon is `assets/icon.ico`
+   image for image (and that file is not the stock Hermes icon), that the
+   install stamp says `brand: athena`, and that the built bundles carry the
+   bundled trusted keys and catalog.
+4. It uploads one file, `Athena-<version>-win-x64.zip`. `<version>` is the
+   dispatch input, else `<desktop package version>-<short commit>`. The zip
+   holds one top folder, `Athena/`, with `Athena/Athena.exe`; the installer
+   extracts it to `%LOCALAPPDATA%\Athena\app\Athena\`. The run summary lists
+   its sha256.
+
+`check-packed-app.mjs` also takes a macOS app (without the exe checks):
+`node apps/desktop/src/athena/scripts/check-packed-app.mjs apps/desktop/release/mac-arm64/Athena.app`.
+
+## Bundled athena copies
+
+The build bundles four athena files: the catalog (`catalog/catalog.json`), the
+trusted keys and the default client config (both in
+`electron/athena/bundled-config-data.ts`), and the feature registry export
+(`electron/athena/features.json`). athena is private and this fork is public,
+so CI here cannot read athena. `athena-copies.json` is athena's side instead:
+for each file, its athena path, the fork copy, and the sha256 of the athena
+file. The two copies embedded in TypeScript also carry `json_sha256`, the
+sha256 of their canonical JSON: keys sorted, no whitespace, UTF-8 (Python:
+`json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False)`).
+
+```sh
+node apps/desktop/src/athena/scripts/athena-copies.mjs --check                 # fork copies vs the manifest
+node apps/desktop/src/athena/scripts/athena-copies.mjs --check --athena ../athena  # and athena's files
+node apps/desktop/src/athena/scripts/athena-copies.mjs --write --athena ../athena  # after copying new athena files
+```
+
+After a new catalog, key, default config or feature export lands in athena,
+copy it here, run `--write` and commit both. athena's CI checks its own files
+against the same manifest (read from the fork commit `hermes.lock` pins), so a
+copy that drifts on either side fails a check. `athena-copies.test.ts` runs
+both scripts.
+
 ## Icons
 
 `assets/source/sickkids-logo.svg` is a byte copy of
@@ -49,7 +101,8 @@ with a few lines of Python, and writes over the upstream paths
 byte-for-byte repeatable. The Icon Composer package keeps the upstream
 `icon.json`; electron-builder compiles it only with `actool` from Xcode 26,
 otherwise it packs `icon.icns` alone (which `after-pack.mjs` restores anyway).
-The Windows MSIX tiles in `assets/appx/` stay stock (Windows is out of scope).
+The Windows MSIX tiles in `assets/appx/` stay stock (the Windows build is an
+unpacked zip, not an MSIX).
 
 ## Colours and splash
 
@@ -187,11 +240,18 @@ a real filter.
 - The role's models (slice 20): `managed/model-policy.ts` follows
   `$clientConfig` (`models` section, read by `electron/athena/model-policy.ts`,
   shared with main). Under `managed.models: enforce` the selector's `rows` are
-  the gateway row with exactly the visible `models.allowed` ids in config
-  order (built from the config, not hermes's cached discovery; `hidden`
-  entries such as `mock` stay callable but are never listed; an
-  `athena-vllm` row only when it serves an allowed id; every other provider
-  dropped), custom ids are off, and `/model <id>` outside the list answers
+  one row per provider that serves a visible `models.allowed` id, with exactly
+  that provider's ids in config order (built from the config, not hermes's
+  cached discovery; `hidden` entries such as `mock` stay callable but are
+  never listed; every other provider, and every other model of a listed
+  provider, dropped). Each entry carries the provider that serves it
+  (F05 slice 02): `models.allowed[].provider`, default `gateway`, mapped to
+  the hermes provider by `MODEL_PROVIDERS` (`gateway` → the Model gateway,
+  `bridge` → `custom:athena-vllm`); an entry whose provider the build does
+  not know is not on the list. A pick names the provider of its own entry or
+  none: a gateway model on `athena-vllm`, or a local model on the gateway, is
+  refused.
+  Custom ids are off, and `/model <id>` outside the list answers
   "Not available for your role" (`/model reset` passes). Labels go through
   `managed/model-labels.ts` into `modelDisplayParts`; notes are a
   `modelMenu.row` badge. A pick outside the list is also refused at the
@@ -200,12 +260,324 @@ a real filter.
   recorded (`kind: "model"`). `report`: nothing narrowed, each outside pick
   recorded `allowed_in_report`; `off`: stock. A new `config_version` drops
   the cached `model-options` queries.
+- Local models (F05 slice 05): a bridge model (`models.allowed[].provider:
+  bridge`) is a model on a server only the laptop reaches, through the HPC
+  bridge, on hermes's second provider `custom:athena-vllm`.
+  - It is on the role's list only while three things hold: the config's
+    `local_models.enabled`, feature row `F05`, and a live bridge record.
+    Otherwise it is in no picker, a pick of it is refused and recorded at both
+    seams, and an open session on it moves to the role default like a session
+    on a removed model (below), with the same toast.
+  - Hermes knows it by the model server's name (`local_models.models.<id>.name`),
+    not by the config's id. `ManagedModelEntry.id` is that name (what pickers
+    list, a pick sends, a session reports and the reasoning levels are looked
+    up by); `configId` is the config's id. For a gateway model the two are
+    equal. The row is hermes's `athena-vllm` row, or one made up as "Local
+    models"; the label and note are the admin's.
+  - A bridge model is never the default (`ManagedModels.default`), and a
+    hidden one, or one `local_models.models` does not name, is never offered:
+    managed scope pins neither. Settings › Model's default select lists the
+    main provider's models only, so it does not offer one either.
+  - The bridge record: `electron/athena/hpc-bridge-record.ts` reads
+    `$HERMES_HOME/athena/hpc-bridge.json` (athena's format,
+    `client/profiles/README.md` › "Local models: the second provider"; stale
+    means absent: unreadable, not loopback, not a port, or its `pid` is gone).
+    Main puts it in every client-config snapshot as `hpcBridge` (`{address,
+    port, connectedAt}`, absent while there is none) and polls it with the
+    other inputs, every second, so the bridge coming or going is pushed to
+    every window and to main's own REST seam like a config change.
+    `ManagedModels.localModels` (`on`, `bridgeUp`, `configured`) says what the
+    config offers while the bridge is down.
+  - Tests: `electron/athena/model-provider.test.ts`,
+    `electron/athena/hpc-bridge-record.test.ts`,
+    `managed/local-models.test.tsx`; athena's
+    `tests/hook_sequence/test_local_model_live.py` runs a real hermes turn on
+    the local model against a stand-in server and reads its captured events.
+- The HPC bridge (F05 slice 06): `electron/athena/hpc-bridge.ts`. While local
+  models are on, Electron main keeps one SSH connection to the config's
+  `local_models.login_host:login_port` (22 when absent) and forwards a loopback
+  port to `target_host:target_port`. Slice 06 signs in with a key only; the
+  password sign-in is slice 07's, below.
+  - **Library: `ssh2` 1.17.0, MIT licence** (plan question Q1), with its
+    dependencies `asn1` (MIT), `bcrypt-pbkdf` (BSD-3-Clause), `safer-buffer`
+    (MIT) and `tweetnacl` (Unlicense). It is plain JavaScript on `node:crypto`
+    and is bundled into main by esbuild: the packed app needs no
+    `node_modules` entry and no native addon. Its two optional native pieces
+    are left out by `overrides` in the root `pnpm-workspace.yaml`
+    (`ssh2>cpu-features`, `ssh2>nan`: `-`), and its install script, which only
+    compiles an optional cipher addon, is denied there by name (`allowBuilds:
+    ssh2: false`), so no build host needs a compiler (macOS, Windows, CI).
+    ssh2 reads CommonJS's `__dirname` while it loads, which main's ES-module
+    bundle does not have: the bridge loads it on the first connection attempt
+    (`loadSsh2`), never at startup. `hpc-bridge-bundle.test.ts` builds a bundle
+    with main's options and runs the forward through it.
+  - When it runs: feature row `F05` on, `local_models.enabled` true, the hosts
+    named, a host key pinned for the login host, and a key on this laptop.
+    Otherwise nothing is contacted. It follows every snapshot (switch off →
+    closed), stops on quit, and reconnects after a wake (`powerMonitor`
+    `resume`) and when `net.isOnline()` turns true again.
+  - The login host's key: `electron/athena/hpc-bridge-host-keys.ts` is the
+    pin table bundled in the build, `{"<host>[:<port>]": [<key line or
+    SHA256:… fingerprint>, …]}`. It pins one key for
+    `login5.ccm.sickkids.ca`, recorded on 2026-11-13 from the owner's
+    known_hosts (`SHA256:FJ3J1rGZ1+eFtI8vkGwfITtOQ1sBZ1zCh1Bd90p4yU8`) and
+    still to be compared with what HPC support publishes. A host with no
+    entry, or an empty list, is never contacted (`host_key_unknown`).
+    The key the host presents is checked before any authentication is sent;
+    another key ends the connection (`host_key_mismatch`). Nothing is trusted
+    on first use. With a configured key only public-key authentication is
+    offered.
+  - The user's key comes through one seam, `BridgeKeyProvider`
+    (`hpc-bridge-keys.ts`): `() => {username, privateKey, passphrase?} | null`.
+    A later, optional "install a key" step would plug in there. The only
+    source today is for development, honoured
+    only where dev overrides are (`ATHENA_DEV_OVERRIDES=1`, not a managed
+    release): `ATHENA_HPC_BRIDGE_KEY_FILE` + `ATHENA_HPC_BRIDGE_USER`, and
+    `ATHENA_HPC_BRIDGE_HOST_KEYS_FILE` (a JSON pin table merged over the
+    build's, for a stand-in login host). With no key and no password held:
+    `no_key`.
+  - The local port: `127.0.0.1` only, chosen once and kept in
+    `$HERMES_HOME/athena/hpc-bridge-port.json` (`{"port": N}`), used again
+    while it is free so hermes's pinned address does not change per launch.
+  - The bridge record (`hpc-bridge-record.ts`, athena's format): written
+    (atomically, 0600, this process's pid) when the forward is up, removed the
+    moment the connection is lost and on quit. After each change main re-reads
+    it into the client-config snapshot at once and runs `athena config apply`
+    (`AthenaToolPrefs.applyConfig`, queued with the Capabilities toggles,
+    debounced 250 ms).
+  - Recovery: keepalives every 5 s (two missed = lost), then retries after
+    0.5, 1, 2, 4, 8 and 15 s (15 s repeats), each giving up after 10 s: back
+    within 30 s of the login host answering again. A refused key
+    (`auth_failed`) is not retried until a config change, a key change or
+    `connect()`; a host-key mismatch is asked again once a minute.
+  - IPC, all under row `F05` (`ipc:athena:hpc-bridge:*`, so not registered
+    while the row is off, and each call asks the row again under
+    `managed.features: report`): `athena:hpc-bridge:status`, `:connect`,
+    `:disconnect` (invoke; each answers the status), and
+    `athena:hpc-bridge:changed` (main → every window). Preload exposes them as
+    `window.athenaDesktop.hpcBridge` (`status()`, `connect()`, `disconnect()`,
+    `onChanged(cb)`; types in `hpc-bridge-types.ts`). The status is
+    `{state, reason?, since, port?}` with `state` one of `off` (`feature_off`,
+    `switch_off`, `not_configured`, `disconnected`), `no_key`
+    (`key_unreadable`), `host_key_unknown`, `connecting`, `connected` (with
+    `port`), `down` (`host_key_mismatch`, `auth_failed`, `unreachable`,
+    `timeout`, `connection_lost`, `local_port_unavailable`,
+    `ssh_unavailable`). `disconnect` holds until `connect` or the next launch.
+  - Tests: `electron/athena/hpc-bridge.test.ts` (a stand-in SSH login node and
+    model server in-process, loopback only: `hpc-bridge.test-helper.ts`) and
+    `hpc-bridge-bundle.test.ts`.
+- More than one model server, with a key (F05 slice 12). The config may name
+  several model servers behind the login host: the default one
+  (`local_models.target_host`/`target_port`, id `default`, no key) and each
+  entry of `local_models.servers` (`{host, port, key?}` by id);
+  `local_models.models.<id>.server` says which one a bridge model is on. A
+  config for the one default server reads and behaves as before.
+  - **One connection, one forward per server** (`bridgePlan` in
+    `hpc-bridge.ts`), each on its own kept loopback port.
+    `hpc-bridge-port.json` is `{"port": <default>, "servers": {"<id>": N}}`
+    (`{"port": N}` with the default server alone, as before).
+  - **Each server has its own state.** After signing in, the bridge asks the
+    login host for each server once: a channel opened and closed, nothing sent
+    to the model server. A server that does not answer within 5 s
+    (`probeTimeoutMs`), or whose loopback port cannot be opened, is `down` on
+    its own and is asked for again on the retry backoff (0.5 s … 15 s); the
+    others work meanwhile. A request that fails on a server that was up marks
+    it down the same way. `connected` is announced once a first server
+    answers, or once all have been asked.
+  - **Status**: slice 06's fields, plus `servers: {"<id>": {state, port?,
+    reason?}}` while `connected`, with `state` one of `checking`, `up`,
+    `down` (`target_unreachable`, `local_port_unavailable`). The top-level
+    `port` is the default server's forward, absent while that server is down.
+    A change in `servers` alone does not move `since`.
+  - **The bridge record is version 2**: `{version: 2, address, pid,
+    connected_at, port?, servers: {"<id>": {port}}}`, listing the servers
+    whose forward is up; `port` repeats the default server's while it is up
+    (what version 1 had). It is rewritten when one server comes or goes and
+    removed when none is up. Readers (`readBridgeRecord`, athena's
+    `read_record`) take a version 1 record as the default server alone, drop
+    an entry whose id or port is not one, and treat a record with no usable
+    server as stale. The snapshot's `hpcBridge` gains `servers` (`{"<id>":
+    port}`) and its `port` is optional; `bridgePorts()` reads either form.
+  - **One hermes provider per server** (`bridgeProviderFor` in
+    `model-policy.ts`, athena's `bridge_provider`): `custom:athena-vllm` for
+    the default server, `custom:athena-local-<id>` for another. A bridge
+    model is on the list only while its own server's forward is up
+    (`bridgeState(snapshot.hpcBridge)` → `ManagedModelsState.serversUp`), on
+    its own server's row, and a pick of it is accepted only on that provider.
+    `ManagedModelEntry.server` is the server's id.
+    `ManagedModels.localModels` gains `serversUp` and `leftOut`: bridge models
+    this build can never offer, with the reason (`server_unknown`: the config
+    does not list the server; `key_type_unknown`: its key source is not
+    `shared`). Sessions on a model whose server went away move through the
+    same auto-switch as any removed model.
+  - **The key never reaches the Desktop's state.** A server's API key rides
+    the signed config (`key: {type: shared, value}`). `client-config.ts`
+    takes the value out of every document the moment it is verified
+    (`withoutModelServerKeys`: only `key.type` stays), so no snapshot, window,
+    log line, status file, policy decision or bridge status can carry it. The
+    Desktop does not need it, and neither does hermes's configuration:
+    `athena config apply` writes a command, not the key, as the provider's
+    credential in hermes managed scope
+    (`key_cmd: <athena> local-model-key <server id>`, `api_key: ''`). Hermes
+    runs it when it calls the server, and `athena local-model-key` prints the
+    key from the verified signed file. The bridge only forwards bytes.
+    Hermes's own `GET /api/config` answers the merged configuration, managed
+    scope included, with a provider's `api_key` unmasked; the provider has
+    none, so a window that asks for the configuration record (Settings)
+    receives the command, never the key. athena's
+    `tests/hook_sequence/test_local_model_live.py` checks that against a
+    running hermes: the keyed server gets the key as its bearer, and no
+    hermes endpoint and no file under the Profile carries it.
+  - Tests: `electron/athena/hpc-bridge-servers.test.ts` (two stand-in model
+    servers behind the stand-in login node, one of them refusing requests
+    without a marker key: both up, either one down, one coming back, one
+    going away, the model gate per server, and the marker absent from the
+    log, the statuses, the record, the port file, the snapshot and the
+    decisions file), `hpc-bridge-record.test.ts` and
+    `managed/model-servers.test.tsx` (the pickers, the JSON-RPC seam and the
+    auto-switch per server). Athena's `tests/hook_sequence/test_local_model_live.py`
+    runs real hermes turns against two stand-in model servers.
+- Signing in with the HPC password (F05 slice 07). Owner decision,
+  2026-11-13: the bridge signs in to the login host with the user's HPC user
+  name and password. No key is generated or installed; nothing is written on
+  the HPC.
+  - **Precedence.** A configured key (`BridgeKeyProvider`, slice 06) is used
+    when there is one, as before, and a password entered beside it is dropped
+    unused. Without a key the bridge needs the password; until one is entered
+    the status is `no_key` with `credential: none`.
+  - **The password** lives in one private field (`BridgePassword` in
+    `electron/athena/hpc-bridge-user.ts`) in Electron main's memory, for the
+    app's run. A reconnect after a drop, a sleep or a network change signs in
+    again from memory and asks nothing. It is forgotten on quit, on
+    Disconnect, when local models go off (the switch or the row), when the
+    remembered user name is forgotten, and the moment the login host refuses
+    it. It is never written to a file, a log line, a status, the bridge
+    record, a snapshot or a message to a window, and it never goes to the
+    Athena server or a model server. The holder prints as `[password]`.
+  - **How it is sent.** Only after the host key matched a pin (ssh2 runs the
+    authentication handler after `hostVerifier`). First `none`, which asks
+    the login host for its methods and carries the user name only; then the
+    password once: as `password` authentication when the host takes it, else
+    as the answer to a `keyboard-interactive` request with exactly one hidden
+    prompt whose text asks for a password. It is never sent twice in one
+    sign-in, so a wrong password costs the account one failed attempt.
+    Anything else the host asks for (a second prompt, several prompts, a
+    visible prompt, a verification code, a partial success, a password
+    change) ends the sign-in with `auth_unsupported`.
+  - **Refused.** `auth_failed` and `auth_unsupported` are not retried: the
+    password is forgotten, the loopback listeners close, and the status has
+    `credential: none`. A wake or a `connect()` does not contact the login
+    host again; only a new sign-in does.
+  - **The user name** is not a secret. Once the login host has accepted a
+    sign-in it is remembered in `$HERMES_HOME/athena/hpc-bridge-user.json`
+    (`{"username": "<name>"}`, 0600, beside `hpc-bridge-port.json`), so the
+    next launch asks for the password only. A refused sign-in writes nothing.
+  - **Status** gains `credential` (`key`, `password` or `none`: what main
+    holds now) and `username` (the one in use, else the remembered one).
+  - **IPC** (row `F05`, as the others): `athena:hpc-bridge:connect` takes an
+    optional `{username, password}`. With it main keeps the password, connects
+    and answers once the attempt has settled (`connected`, or `down` with the
+    reason); without it, it connects with what main holds.
+    `athena:hpc-bridge:disconnect` also forgets the password.
+    `athena:hpc-bridge:forget-user` removes the remembered user name; the
+    password goes with it and a bridge opened with it closes. Preload:
+    `hpcBridge.connect(signIn?)`, `hpcBridge.forgetUser()`.
+  - **The renderer** (`managed/local-models.ts`, `local-models-dialog.tsx`).
+    `$hpcBridge` follows main's status. While local models are on, every
+    picker lists the role's local models whether or not they are connected
+    (`pickerModels`); the gate is unchanged, so one that is not connected is
+    still refused at both seams. A pick of one that is not connected never
+    reaches hermes: the first line of the app's `selectModel`
+    (`offerLocalModelConnect`) keeps the pick and offers the connection. With
+    nothing held (or after a refusal) that is the dialog, mounted once in
+    `wiring.tsx`; with a password or key held it asks main to connect. A build
+    that pins no host key for the login host says so and never asks for a
+    password. Once the model is callable the kept pick is made through the
+    app's own pick, 1.5 s after it is listed (hermes learns the provider from
+    `athena config apply` just after the list changes) and only if the
+    primary composer is still on the same session. Cancel drops it.
+  - **The dialog** says "Local models run on the HPC. To use them, Athena
+    signs in to the HPC from this computer with your HPC account." and "Your
+    password is kept only while Athena is open and is never saved.", with the
+    fields "HPC username" (the remembered one filled in) and "HPC password".
+    On Connect the password leaves the field and goes to main once; the
+    field is empty from then on, whatever main answers, and closing the dialog
+    unmounts the form. No store, storage or log in the renderer holds it.
+    Messages for a failed sign-in are in `SIGN_IN_ERRORS`.
+  - Not covered: an Electron crash dump is a copy of main's memory and would
+    contain the password while it is held. Crash reporting is not started by
+    this code.
+  - Tests: `electron/athena/hpc-bridge-password.test.ts` (a stand-in login
+    node that takes a password, by `password` or by keyboard prompt: sign-in,
+    reconnect without asking, relaunch, wrong password, a changed password,
+    a second factor, the host key checked first, key precedence, Disconnect,
+    Forget, and a marker password searched for in every file under the
+    Profile and the app data folder, the log, every message to a window, the
+    IPC answers and the snapshot) and `managed/local-models-connect.test.tsx`
+    (the dialog, the kept pick, and the marker absent from the page and every
+    store after the dialog closes).
+- The status of local models, and disconnecting (F05 slice 08):
+  `managed/local-models-status.ts` (the words) and
+  `managed/local-models-settings.tsx` (where they show).
+  - **Next to each local model.** The composer menu's row badge
+    (`rowBadges` in `managed/model-policy.ts`, the `modelMenu.row` slot the
+    admin's note uses) and a tag on the picker dialog's row
+    (`AthenaLocalModelStatus`): "Connected" (in the menu, after the admin's
+    note: "On the HPC · Connected"), "Connecting…", "Not connected", or the
+    reason alone: "Login node unreachable", "Password refused", "Model server
+    not answering", "Host key mismatch". The menu works a row's badge out when
+    the contribution changes, so the policy registers it again on every bridge
+    status: an open menu follows the bridge. Edit Models lists the model
+    without a status.
+  - **A model's status** is the connection's, narrowed by its own model
+    server (`status.servers[<id>]`): one server down leaves the others
+    "Connected". Reasons, from main's: `unreachable`, `timeout`,
+    `connection_lost` → login node unreachable; `auth_failed` → password
+    refused; `host_key_mismatch` → host key mismatch; a server's
+    `target_unreachable` → model server not answering.
+  - **A pick while not connected** offers to connect (slice 07's
+    `offerConnect`): the dialog when main holds nothing or the password was
+    refused; a reconnect when it holds a password or key; and with the
+    connection up but the model's server down, the note "<label> is not
+    connected: model server not answering. Athena keeps trying." The pick
+    waits up to two minutes and is made when the server answers.
+  - **Settings › Model, "Local models"** (`AthenaLocalModelsSettings`, shown
+    only while local models are on for the role): "Connection to the HPC"
+    with the status in full ("Connected as <user>", "Not connected: password
+    refused") and Connect or Disconnect; one line per local model; and
+    "Remembered HPC username" with Forget. Disconnect closes the forwards and
+    forgets the password, so the next pick shows the dialog; the models stay
+    listed as "Not connected". Forget removes the remembered name and, with
+    it, the sign-in.
+  - **Within 30 seconds.** Main pushes every status
+    (`athena:hpc-bridge:changed`) and the snapshot without or with the bridge
+    record; the renderer shows each at once. Main notices a dead link within
+    10 s and is back within 25 s of the login node answering (slice 06's
+    timings). A model server that stops while the connection is up is noticed
+    at the next request to it, not by a timer; one that comes back is asked
+    for every 15 s at most.
+  - **A session on a local model whose bridge is not up** (plan question
+    Q11; `reconcileModelSessions` in `managed/model-switch.tsx`). While the
+    bridge is on its way (connecting, a server being checked, or main
+    retrying with a password or key it holds) the session is left alone for
+    up to 30 s from the status's `since` (`localModelGrace`); at launch,
+    before main has answered, the 30 s count from when the window started to
+    follow the bridge. When nothing is on its way (a new launch, where main
+    holds no password yet; a refused password; Disconnect; a host-key
+    mismatch; the model's server down) or the 30 s are over, the session
+    moves to the role default as for a removed model, and the toast says
+    "<label> is not connected. Switched to <default>." with a Connect button:
+    it offers the connection and, once the model is callable, moves that
+    session back. A local model is never a default and never the target of a
+    move.
+  - Tests: `managed/local-models-status.test.tsx`; the pushes and the 30 s
+    arithmetic in `electron/athena/hpc-bridge-password.test.ts`.
 - A removed model (slice 21): `managed/model-switch.tsx`. On every config or
   session change, each idle open session (the primary composer, draft
   included, and every tile in `$sessionStates`) whose model id left the list
   is switched once to the role default (first listed model if the default is
   hidden) through the controller's own `selectModel` (`config.set key=model
-  … --provider custom:athena-gateway`, sent as slice 08's fenced
+  … --provider <the target entry's provider>`, sent as slice 08's fenced
   `session.mutate`). A busy session waits for its turn to end. One toast per
   session ("GPT-6 Sol is no longer available. Switched to GPT-6 Luna.").
   With no listed model left, or a failed switch for the active session, a
@@ -262,7 +634,9 @@ a real filter.
 
 - The feature registry (slice 15): `electron/athena/feature-registry.ts`,
   shared by main and the renderer (no imports). One row per line of the
-  plan's audit (S01–S124 with the a/b splits): its mark (`keep`, `disable`,
+  plan's audit (S01–S124 with the a/b splits), then the rows later plans
+  added (`F05`, local models over the HPC bridge, off by default; its entries
+  are the `athena:hpc-bridge:*` IPC channels): its mark (`keep`, `disable`,
   `remove`), its build default (keep → on, disable → off, remove → no flag,
   always off) and the entry ids that reach it: `settings:<view>[/<page>]`,
   `config-field:<key>`, `setting:<view>.<kebab>`, `credential:<KEY>`,
@@ -586,3 +960,48 @@ override with `ATHENA_F02_BASE`).
 | `src/store/mcp-deeplink-install.ts` | `requestMcpInstallFromDeepLink` asks `toolInstallAllowed('ui:mcp-install')` (slice 29) |
 | `src/store/skill-deeplink-install.ts` | `requestSkillInstallFromDeepLink` asks `toolInstallAllowed('ui:skill-install')` (slice 29) |
 | `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
+| `electron/main.ts` | Installs the HPC bridge (`installAthenaHpcBridge`) after the tool switches, whose `applyConfig` it uses (F05 slice 06) |
+| `src/app/session/hooks/use-model-controls.ts` | `selectModel` asks `offerLocalModelConnect` first: a local model that is not connected is not picked, the connection is offered (F05 slice 07) |
+| `src/app/contrib/wiring.tsx` | Mounts `AthenaLocalModelsDialog`, the sign-in for local models (F05 slice 07) |
+| `src/components/model-picker.tsx` | A local model's row shows `AthenaLocalModelStatus`: connected, connecting, or why not (F05 slice 08) |
+| `src/app/settings/model-settings.tsx` | The main page shows `AthenaLocalModelsSettings`: the HPC bridge's status, Connect / Disconnect and the remembered user name (F05 slice 08) |
+| `package.json` | Dependency `ssh2` (MIT) and its types, for the HPC bridge (F05 slice 06). The root `pnpm-workspace.yaml` (two `overrides`, one `allowBuilds` denial) and `pnpm-lock.yaml` change with it |
+
+## Opened without the launcher (R01 slice 26)
+
+An installed Athena is started by its launcher (athena: `client/installer`), which gives the app its Profile, its own
+user data folder, managed scope and the pinned hermes. The binary opened directly (the Dock icon the running app
+leaves behind, a taskbar pin, a double click on the bundle) has none of that, and Electron's default user data folder
+for an app named Athena is the install root.
+
+- `electron/athena/launcher-handoff.ts` (pure) decides: a binary inside an install root
+  (`<root>/app.noindex/Athena.app`, `<root>/app/Athena.app` or `<root>\app\Athena\Athena.exe`, with
+  `<root>/settings.json`) whose environment lacks the launcher's `HERMES_HOME` and `HERMES_DESKTOP_USER_DATA_DIR`
+  hands the launch to `<root>/share/athena-desktop.sh` (macOS) or `athena-desktop.ps1` (Windows).
+- `electron/athena/launcher-handoff-install.ts` does it: starts the launcher detached and exits. It is the first
+  import of `ipc-guard-install.ts`, itself the first import of `main.ts`, so it runs before main sets user data,
+  takes the single-instance lock or starts a backend. No upstream file changes.
+- With the launcher missing it shows one dialog and exits. A launch by the launcher is never handed over again. A dev
+  bundle or a stock build is in no install root and starts as before.
+- Checked on macOS with the built bundle in a throwaway install root: exit 0, the launcher started with a clean
+  environment, and nothing written to the default user data folder. Not run on Windows.
+
+## A package that did not connect (R01 slice 27)
+
+A package switched on while its upstream is down is parked by hermes, which tries it again by itself every five
+minutes (`tools/mcp_tool.py` `_PARKED_RETRY_INTERVAL`) and registers its tools when the upstream answers; new chats
+then have them. Nothing in hermes needed fixing. What was missing was the page saying so: the card promised "Applies
+to new chats within a minute".
+
+- `src/athena/catalog/mcp-reload.ts`: `reloadPackageServers` returns which catalog packages `reload.mcp` named as not
+  connected, from its `unavailable` list or from a `mcp_servers_unavailable` refusal (`data.detail`,
+  `gateway/session_ancillary.py`). Package servers are left out of the stock "Did not connect" notice, which would
+  show a server name (`eagle_asd_evidence`) the user never chose.
+- `src/athena/catalog/catalog-page.tsx`: such a card shows "Not connected: … Athena tries again every few minutes,
+  and new chats get its tools once it connects", with **Check again**, which sends `reload.mcp` once more.
+- Limits, both from hermes as it is:
+  - `reload.mcp` does not wake a parked server; Check again only reads the state.
+  - A revived server counts as connected only once it has stayed healthy for a keepalive interval (a few minutes), so
+    Check again can say "Still not connected" for that long after new chats already have the tools.
+  - The page learns the state only from a `reload.mcp` it sent. A package that failed at app start shows nothing until
+    it is switched or checked.

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
 import { useFeatureEntry } from '@/athena/managed/features'
+import { AthenaLocalModelsSettings } from '@/athena/managed/local-models-settings'
 import { managedEffortValues, REASONING_UNAVAILABLE, useManagedReasoning } from '@/athena/managed/model-reasoning'
 import { modelPickerProviders, useModelPolicy } from '@/athena/managed/models'
 import { Button } from '@/components/ui/button'
@@ -1216,6 +1217,9 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
           )}
         </section>
       )}
+
+      {/* Athena (F05 slice 08): the HPC bridge's status, Connect / Disconnect and the remembered user name. */}
+      {showMain && <AthenaLocalModelsSettings />}
 
       {showAuxiliary && (
         <section>

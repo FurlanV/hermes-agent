@@ -80,7 +80,7 @@ import {
 } from './catalog'
 import { type CurrentCatalog, currentCatalog, refreshCatalog } from './catalog-source'
 import { LearnedSkills } from './learned-skills'
-import { needsMcpReload, reloadPackageServers } from './mcp-reload'
+import { MCP_KINDS, needsMcpReload, reloadPackageServers } from './mcp-reload'
 import {
   $installedPackages,
   $packageAccess,
@@ -134,8 +134,11 @@ interface CardProps {
   busy: boolean
   card: CatalogCard
   note: null | string
+  /** The daemon said this package's server did not connect (R01 slice 27). */
+  unreachable: boolean
   onInstall: () => void
   onAccept: () => void
+  onCheck: () => void
   onRemove: () => void
   onRequest: (reason: string) => void
   onToggle: (on: boolean) => void
@@ -405,7 +408,7 @@ function UpdateLine({ busy, onAccept, title, update }: { busy: boolean; onAccept
   )
 }
 
-function CatalogCardView({ busy, card, note, onAccept, onInstall, onRemove, onRequest, onToggle, view }: CardProps) {
+function CatalogCardView({ busy, card, note, onAccept, onCheck, onInstall, onRemove, onRequest, onToggle, unreachable, view }: CardProps) {
   const { access, entry, experimental, installed, managed, on, removable, update } = card
   const banner = statusBanner(entry)
   const worksBestWith = worksBestWithLine(card)
@@ -559,6 +562,27 @@ function CatalogCardView({ busy, card, note, onAccept, onInstall, onRemove, onRe
               {worksBestWith}
             </p>
           )}
+          {unreachable && on && (
+            <p
+              className="mt-1 rounded bg-amber-500/10 px-2 py-1 text-[0.68rem] text-amber-700 dark:text-amber-300"
+              data-slot="athena-catalog-unreachable"
+              role="status"
+            >
+              Not connected: {entry.title} could not be reached. Athena tries again every few minutes, and new chats
+              get its tools once it connects.
+              <Button
+                aria-label={`Check ${entry.title} again`}
+                className="ml-2 h-auto px-0 text-[0.68rem]"
+                data-slot="athena-catalog-check-again"
+                disabled={busy}
+                onClick={onCheck}
+                size="xs"
+                variant="text"
+              >
+                Check again
+              </Button>
+            </p>
+          )}
           {note && (
             <p className="text-[0.68rem] text-(--ui-text-secondary)" data-slot="athena-catalog-note" role="status">
               {note}
@@ -667,6 +691,7 @@ export function AthenaCatalogPage() {
   const [category, setCategory] = useState<CatalogCategory | null>(null)
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set())
   const [notes, setNotes] = useState<Readonly<Record<string, string>>>({})
+  const [unreachable, setUnreachable] = useState<ReadonlySet<string>>(new Set())
   const [current, setCurrent] = useState<CurrentCatalog>(() => currentCatalog())
   const config = useMemo(() => snapshot?.config ?? {}, [snapshot])
   const role = snapshot?.role ?? null
@@ -724,13 +749,50 @@ export function AthenaCatalogPage() {
 
   const note = (id: string, text: string) => setNotes(state => ({ ...state, [id]: text }))
 
-  // A newly pinned MCP server reaches the running daemon on reload.mcp, not at the next new chat (mcp-reload.ts).
+  // Ask the daemon to connect what is pinned and learn which packages did not connect (mcp-reload.ts). True when
+  // `id` is connected as far as the daemon says; null when the daemon could not be asked.
+  const reloadServers = async (id: string): Promise<boolean | null> => {
+    const packages = Object.values(current.catalog.entries)
+      .filter(entry => MCP_KINDS.has(entry.kind))
+      .map(entry => entry.id)
+
+    const result = await reloadPackageServers(packages)
+
+    if (!result.sent) {
+      return null
+    }
+
+    const down = new Set(result.unreachable ?? [id])
+
+    setUnreachable(down)
+
+    return !down.has(id)
+  }
+
+  // A newly pinned MCP server reaches the running daemon on reload.mcp, not at the next new chat.
   const reloadIfNeeded = async (id: string, on: boolean) => {
     const entry = current.catalog.entries[id]
 
-    if (entry && needsMcpReload(entry, on) && !(await reloadPackageServers())) {
-      note(id, 'Applies to new chats within a minute')
+    if (!entry || !needsMcpReload(entry, on)) {
+      return
     }
+
+    const connected = await reloadServers(id)
+
+    if (connected === null) {
+      note(id, 'Applies to new chats within a minute')
+    } else if (!connected) {
+      note(id, '') // the card's "Not connected" line says what happens next
+    }
+  }
+
+  const checkAgain = async (id: string) => {
+    const connected = await withBusy(id, () => reloadServers(id))
+
+    note(
+      id,
+      connected === null ? 'Athena could not check right now' : connected ? 'Connected. Applies to new chats' : 'Still not connected'
+    )
   }
 
   const toggle = async (id: string, on: boolean) => {
@@ -743,6 +805,10 @@ export function AthenaCatalogPage() {
     }
 
     note(id, result.applied ? 'Applies to new chats' : result.message || 'Applies to new chats after the next sync')
+
+    if (!on) {
+      setUnreachable(state => new Set([...state].filter(other => other !== id)))
+    }
 
     if (result.applied) {
       await reloadIfNeeded(id, on)
@@ -839,10 +905,12 @@ export function AthenaCatalogPage() {
                   key={card.entry.id}
                   note={notes[card.entry.id] ?? null}
                   onAccept={() => void acceptUpdate(card.entry.id)}
+                  onCheck={() => void checkAgain(card.entry.id)}
                   onInstall={() => void install(card.entry.id)}
                   onRemove={() => void remove(card.entry.id)}
                   onRequest={reason => void request(card.entry.id, reason)}
                   onToggle={on => void toggle(card.entry.id, on)}
+                  unreachable={unreachable.has(card.entry.id)}
                   view={view}
                 />
               ))}
