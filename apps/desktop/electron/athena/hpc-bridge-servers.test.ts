@@ -451,7 +451,12 @@ describe('one model server down', () => {
     h.bridge.reconcile()
     await settled(h, { default: 'up', [SERVER]: 'up' })
 
-    expect(h.bridge.disconnect()).toEqual({ reason: 'disconnected', since: expect.any(String), state: 'off' })
+    expect(h.bridge.disconnect()).toEqual({
+      credential: 'key',
+      reason: 'disconnected',
+      since: expect.any(String),
+      state: 'off'
+    })
     expect(readBridgeRecord(athenaDir)).toBeNull()
     await login.goAway()
     await h.bridge.connect()

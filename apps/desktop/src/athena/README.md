@@ -296,7 +296,8 @@ a real filter.
 - The HPC bridge (F05 slice 06): `electron/athena/hpc-bridge.ts`. While local
   models are on, Electron main keeps one SSH connection to the config's
   `local_models.login_host:login_port` (22 when absent) and forwards a loopback
-  port to `target_host:target_port`. Nothing in it handles a password.
+  port to `target_host:target_port`. Slice 06 signs in with a key only; the
+  password sign-in is slice 07's, below.
   - **Library: `ssh2` 1.17.0, MIT licence** (plan question Q1), with its
     dependencies `asn1` (MIT), `bcrypt-pbkdf` (BSD-3-Clause), `safer-buffer`
     (MIT) and `tweetnacl` (Unlicense). It is plain JavaScript on `node:crypto`
@@ -324,15 +325,17 @@ a real filter.
     entry, or an empty list, is never contacted (`host_key_unknown`).
     The key the host presents is checked before any authentication is sent;
     another key ends the connection (`host_key_mismatch`). Nothing is trusted
-    on first use. Only public-key authentication is offered.
+    on first use. With a configured key only public-key authentication is
+    offered.
   - The user's key comes through one seam, `BridgeKeyProvider`
     (`hpc-bridge-keys.ts`): `() => {username, privateKey, passphrase?} | null`.
-    The key setup (slice 07) plugs in there and calls `connect()` once a key
-    is installed. Until then the only source is for development, honoured
+    A later, optional "install a key" step would plug in there. The only
+    source today is for development, honoured
     only where dev overrides are (`ATHENA_DEV_OVERRIDES=1`, not a managed
     release): `ATHENA_HPC_BRIDGE_KEY_FILE` + `ATHENA_HPC_BRIDGE_USER`, and
     `ATHENA_HPC_BRIDGE_HOST_KEYS_FILE` (a JSON pin table merged over the
-    build's, for a stand-in login host). With no key: `no_key`.
+    build's, for a stand-in login host). With no key and no password held:
+    `no_key`.
   - The local port: `127.0.0.1` only, chosen once and kept in
     `$HERMES_HOME/athena/hpc-bridge-port.json` (`{"port": N}`), used again
     while it is free so hermes's pinned address does not change per launch.
@@ -434,6 +437,85 @@ a real filter.
     `managed/model-servers.test.tsx` (the pickers, the JSON-RPC seam and the
     auto-switch per server). Athena's `tests/hook_sequence/test_local_model_live.py`
     runs real hermes turns against two stand-in model servers.
+- Signing in with the HPC password (F05 slice 07). Owner decision,
+  2026-11-13: the bridge signs in to the login host with the user's HPC user
+  name and password. No key is generated or installed; nothing is written on
+  the HPC.
+  - **Precedence.** A configured key (`BridgeKeyProvider`, slice 06) is used
+    when there is one, as before, and a password entered beside it is dropped
+    unused. Without a key the bridge needs the password; until one is entered
+    the status is `no_key` with `credential: none`.
+  - **The password** lives in one private field (`BridgePassword` in
+    `electron/athena/hpc-bridge-user.ts`) in Electron main's memory, for the
+    app's run. A reconnect after a drop, a sleep or a network change signs in
+    again from memory and asks nothing. It is forgotten on quit, on
+    Disconnect, when local models go off (the switch or the row), when the
+    remembered user name is forgotten, and the moment the login host refuses
+    it. It is never written to a file, a log line, a status, the bridge
+    record, a snapshot or a message to a window, and it never goes to the
+    Athena server or a model server. The holder prints as `[password]`.
+  - **How it is sent.** Only after the host key matched a pin (ssh2 runs the
+    authentication handler after `hostVerifier`). First `none`, which asks
+    the login host for its methods and carries the user name only; then the
+    password once: as `password` authentication when the host takes it, else
+    as the answer to a `keyboard-interactive` request with exactly one hidden
+    prompt whose text asks for a password. It is never sent twice in one
+    sign-in, so a wrong password costs the account one failed attempt.
+    Anything else the host asks for (a second prompt, several prompts, a
+    visible prompt, a verification code, a partial success, a password
+    change) ends the sign-in with `auth_unsupported`.
+  - **Refused.** `auth_failed` and `auth_unsupported` are not retried: the
+    password is forgotten, the loopback listeners close, and the status has
+    `credential: none`. A wake or a `connect()` does not contact the login
+    host again; only a new sign-in does.
+  - **The user name** is not a secret. Once the login host has accepted a
+    sign-in it is remembered in `$HERMES_HOME/athena/hpc-bridge-user.json`
+    (`{"username": "<name>"}`, 0600, beside `hpc-bridge-port.json`), so the
+    next launch asks for the password only. A refused sign-in writes nothing.
+  - **Status** gains `credential` (`key`, `password` or `none`: what main
+    holds now) and `username` (the one in use, else the remembered one).
+  - **IPC** (row `F05`, as the others): `athena:hpc-bridge:connect` takes an
+    optional `{username, password}`. With it main keeps the password, connects
+    and answers once the attempt has settled (`connected`, or `down` with the
+    reason); without it, it connects with what main holds.
+    `athena:hpc-bridge:disconnect` also forgets the password.
+    `athena:hpc-bridge:forget-user` removes the remembered user name; the
+    password goes with it and a bridge opened with it closes. Preload:
+    `hpcBridge.connect(signIn?)`, `hpcBridge.forgetUser()`.
+  - **The renderer** (`managed/local-models.ts`, `local-models-dialog.tsx`).
+    `$hpcBridge` follows main's status. While local models are on, every
+    picker lists the role's local models whether or not they are connected
+    (`pickerModels`); the gate is unchanged, so one that is not connected is
+    still refused at both seams. A pick of one that is not connected never
+    reaches hermes: the first line of the app's `selectModel`
+    (`offerLocalModelConnect`) keeps the pick and offers the connection. With
+    nothing held (or after a refusal) that is the dialog, mounted once in
+    `wiring.tsx`; with a password or key held it asks main to connect. A build
+    that pins no host key for the login host says so and never asks for a
+    password. Once the model is callable the kept pick is made through the
+    app's own pick, 1.5 s after it is listed (hermes learns the provider from
+    `athena config apply` just after the list changes) and only if the
+    primary composer is still on the same session. Cancel drops it.
+  - **The dialog** says "Local models run on the HPC. To use them, Athena
+    signs in to the HPC from this computer with your HPC account." and "Your
+    password is kept only while Athena is open and is never saved.", with the
+    fields "HPC username" (the remembered one filled in) and "HPC password".
+    On Connect the password leaves the field and goes to main once; the
+    field is empty from then on, whatever main answers, and closing the dialog
+    unmounts the form. No store, storage or log in the renderer holds it.
+    Messages for a failed sign-in are in `SIGN_IN_ERRORS`.
+  - Not covered: an Electron crash dump is a copy of main's memory and would
+    contain the password while it is held. Crash reporting is not started by
+    this code.
+  - Tests: `electron/athena/hpc-bridge-password.test.ts` (a stand-in login
+    node that takes a password, by `password` or by keyboard prompt: sign-in,
+    reconnect without asking, relaunch, wrong password, a changed password,
+    a second factor, the host key checked first, key precedence, Disconnect,
+    Forget, and a marker password searched for in every file under the
+    Profile and the app data folder, the log, every message to a window, the
+    IPC answers and the snapshot) and `managed/local-models-connect.test.tsx`
+    (the dialog, the kept pick, and the marker absent from the page and every
+    store after the dialog closes).
 - A removed model (slice 21): `managed/model-switch.tsx`. On every config or
   session change, each idle open session (the primary composer, draft
   included, and every tile in `$sessionStates`) whose model id left the list
@@ -823,6 +905,8 @@ override with `ATHENA_F02_BASE`).
 | `src/store/skill-deeplink-install.ts` | `requestSkillInstallFromDeepLink` asks `toolInstallAllowed('ui:skill-install')` (slice 29) |
 | `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
 | `electron/main.ts` | Installs the HPC bridge (`installAthenaHpcBridge`) after the tool switches, whose `applyConfig` it uses (F05 slice 06) |
+| `src/app/session/hooks/use-model-controls.ts` | `selectModel` asks `offerLocalModelConnect` first: a local model that is not connected is not picked, the connection is offered (F05 slice 07) |
+| `src/app/contrib/wiring.tsx` | Mounts `AthenaLocalModelsDialog`, the sign-in for local models (F05 slice 07) |
 | `package.json` | Dependency `ssh2` (MIT) and its types, for the HPC bridge (F05 slice 06). The root `pnpm-workspace.yaml` (two `overrides`, one `allowBuilds` denial) and `pnpm-lock.yaml` change with it |
 
 ## Opened without the launcher (R01 slice 26)

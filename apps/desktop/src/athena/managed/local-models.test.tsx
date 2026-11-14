@@ -295,11 +295,10 @@ describe('local models on and the bridge up: every picker lists the local model'
   })
 })
 
-describe('local models off, or no bridge: the local model is in no picker and a pick is refused and recorded', () => {
+describe('local models off: the local model is in no picker and a pick is refused and recorded', () => {
   test.each([
     ['the config switch off', { switchOn: false }],
-    ['feature row F05 off', { feature: 'off' as const }],
-    ['the bridge down', { bridge: false }]
+    ['feature row F05 off', { feature: 'off' as const }]
   ])('%s', async (_name, options) => {
     setClientConfigSnapshot(snapshot({ ...options, configVersion: 6 }))
 
@@ -322,19 +321,46 @@ describe('local models off, or no bridge: the local model is in no picker and a 
     ])
   })
 
-  test('the pickers follow the bridge as it comes and goes, and the cached model options are dropped', async () => {
+  // F05 slice 07: with local models on, the model stays in the pickers while the bridge is down (so a pick can
+  // offer the connection, local-models-connect.test.tsx); what may be called does not change.
+  test('the bridge down: still listed, and a pick by name is refused and recorded at the seams', async () => {
+    setClientConfigSnapshot(snapshot({ bridge: false, configVersion: 6 }))
+
+    expect(rows()).toEqual([
+      [GATEWAY, ['gpt-6-sol', 'gpt-6-luna']],
+      ['athena-vllm', [QWEN_NAME]]
+    ])
+    expect($managedModels.get()?.entries.map(entry => entry.id)).toEqual(['gpt-6-sol', 'gpt-6-luna'])
+    expect(isModelSelectable({ model: QWEN_NAME, provider: BRIDGE_PROVIDER })).toBe(false)
+    expect(isModelSelectable({ model: QWEN.id })).toBe(false)
+
+    renderMenu()
+    await waitFor(() => expect(menuRows().join('\n')).toContain('Qwen 3.8 27B (local)'))
+
+    const allowed = rpcPolicyForSnapshot($clientConfig.get())
+    expect(allowed('config.set', pick(QWEN_NAME, BRIDGE_PROVIDER))).toBe(false)
+    expect(allowed('slash.exec', { command: `/model ${QWEN_NAME}` })).toBe(false)
+    expect(allowed('command.dispatch', { arg: QWEN.id, name: 'model' })).toBe(false)
+    expect(recorded()).toEqual([
+      ['model', QWEN_NAME, 'refused', 'enforce', 'rpc', 'config.set'],
+      ['model', QWEN_NAME, 'refused', 'enforce', 'rpc', 'slash.exec'],
+      ['model', QWEN.id, 'refused', 'enforce', 'rpc', 'command.dispatch']
+    ])
+  })
+
+  test('the bridge coming and going drops the cached model options, and the model keeps its row and label', async () => {
     setClientConfigSnapshot(snapshot({ bridge: false }))
     renderMenu()
-    await waitFor(() => expect(menuRows().join('\n')).toContain('GPT-6 Luna'))
-    expect(menuRows().join('\n')).not.toContain('Qwen')
+    await waitFor(() => expect(menuRows().join('\n')).toContain('Qwen 3.8 27B (local)'))
     const invalidated = vi.spyOn(queryClient, 'invalidateQueries')
 
     act(() => setClientConfigSnapshot(snapshot({ bridge: true })))
-    await waitFor(() => expect(menuRows().join('\n')).toContain('Qwen 3.8 27B (local)'))
+    await waitFor(() => expect(isModelSelectable({ model: QWEN_NAME, provider: BRIDGE_PROVIDER })).toBe(true))
     expect(invalidated).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['model-options'] }))
 
     act(() => setClientConfigSnapshot(snapshot({ bridge: false })))
-    await waitFor(() => expect(menuRows().join('\n')).not.toContain('Qwen'))
+    expect(isModelSelectable({ model: QWEN_NAME, provider: BRIDGE_PROVIDER })).toBe(false)
+    expect(menuRows().join('\n')).toContain('Qwen 3.8 27B (local)')
     // An old session still shows the admin's label, not the server's name.
     expect(displayModelName(QWEN_NAME)).toBe('Qwen 3.8 27B (local)')
   })

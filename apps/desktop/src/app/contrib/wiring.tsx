@@ -14,6 +14,7 @@ import { type CSSProperties, lazy, type ReactNode, Suspense, useCallback, useEff
 import { useLocation, useNavigate } from 'react-router'
 
 import { isFeatureAllowed, useFeatureEntry } from '@/athena/managed/features'
+import { AthenaLocalModelsDialog } from '@/athena/managed/local-models-dialog'
 import { useManagedReasoningReset } from '@/athena/managed/model-reasoning-reset'
 import { useManagedModelSwitch } from '@/athena/managed/model-switch'
 import { formatRefValue } from '@/components/assistant-ui/directive-text'
@@ -1318,6 +1319,8 @@ export function ContribWiring({ children }: { children: ReactNode }) {
           the statusbar chip, the first-launch intro). It owns the flow; the
           entry points only record the intent. */}
       {!isAuxiliaryWindow() && freeTierAllowed && <FreeTierSignInDialog onSelectModel={selectModel} />}
+      {/* Athena (F05 slice 07): the sign-in for local models, opened by a pick of one that is not connected. */}
+      <AthenaLocalModelsDialog />
       <ModelPickerOverlay
         gateway={gateway || undefined}
         onSelect={selectModel}

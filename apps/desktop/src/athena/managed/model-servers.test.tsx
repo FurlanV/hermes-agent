@@ -215,7 +215,14 @@ describe('one model server down', () => {
   ])('%s: the other server model stays listed and accepted', (_name, up, row, gone, goneProvider) => {
     setClientConfigSnapshot(snapshot(up, 6))
 
-    expect(rows()).toEqual([[GATEWAY, ['gpt-6-sol', 'gpt-6-luna']], row])
+    // The model whose server is down stays in the pickers as not connected (F05 slice 07); it cannot be called.
+    expect(rows()).toHaveLength(3)
+    expect(rows()).toEqual(expect.arrayContaining([[GATEWAY, ['gpt-6-sol', 'gpt-6-luna']], row]))
+    expect($managedModels.get()?.visible.map(entry => entry.id)).toEqual([
+      'gpt-6-sol',
+      'gpt-6-luna',
+      (row[1] as string[])[0]
+    ])
     expect(isModelSelectable({ model: gone, provider: goneProvider })).toBe(false)
 
     const allowed = rpcPolicyForSnapshot($clientConfig.get())
@@ -224,10 +231,17 @@ describe('one model server down', () => {
     expect(record.mock.calls.map(([line]) => [line.id, line.action])).toEqual([[gone, 'refused']])
   })
 
-  test('with no forward up there is no local model at all', () => {
+  test('with no forward up no local model can be called; both stay listed as not connected', () => {
     setClientConfigSnapshot(snapshot([], 6))
 
-    expect(rows()).toEqual([[GATEWAY, ['gpt-6-sol', 'gpt-6-luna']]])
+    expect($managedModels.get()?.visible.map(entry => entry.id)).toEqual(['gpt-6-sol', 'gpt-6-luna'])
+    expect(rows()).toEqual([
+      [GATEWAY, ['gpt-6-sol', 'gpt-6-luna']],
+      ['athena-vllm', [QWEN_NAME]],
+      ['athena-local-hpc-llm', [DEEPSEEK.id]]
+    ])
+    expect(isModelSelectable({ model: QWEN_NAME, provider: BRIDGE_PROVIDER })).toBe(false)
+    expect(isModelSelectable({ model: DEEPSEEK.id, provider: KEYED_PROVIDER })).toBe(false)
   })
 })
 

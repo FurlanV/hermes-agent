@@ -1,6 +1,7 @@
-// Test helper (F05 slice 06): a stand-in HPC on loopback. A login node (an in-process SSH server that accepts one
-// public key and forwards `direct-tcpip` channels) and, behind it, a model server (a small OpenAI-shaped HTTP
-// server). Nothing here leaves 127.0.0.1, and no real host is ever named in a connection.
+// Test helper (F05 slices 06 and 07): a stand-in HPC on loopback. A login node (an in-process SSH server that
+// accepts one public key, or one user's password, and forwards `direct-tcpip` channels) and, behind it, a model
+// server (a small OpenAI-shaped HTTP server). Nothing here leaves 127.0.0.1, and no real host is ever named in a
+// connection.
 
 import { timingSafeEqual } from 'node:crypto'
 import { createServer as createHttpServer, request as httpRequest } from 'node:http'
@@ -118,7 +119,27 @@ export async function startModelServer(
 
 // ── The login node ──────────────────────────────────────────────────────────
 
+/** A user the login node knows by password (F05 slice 07). */
+export interface LoginAccount {
+  /**
+   * How the node asks for the password: SSH `password` authentication (the default), or `keyboard-interactive`
+   * with one hidden "Password:" prompt, as a PAM login node does.
+   */
+  ask?: 'keyboard-interactive' | 'password'
+  /**
+   * With `keyboard-interactive`: a second question asked after the password (a verification code), or `together`
+   * to ask both in one round. The node never lets such a sign-in through.
+   */
+  secondFactor?: 'after' | 'together'
+  password: string
+  /** After a right password, ask for more through another method (a partial success), as a node with MFA does. */
+  thenMore?: boolean
+  username: string
+}
+
 export interface LoginNodeOptions {
+  /** A user who signs in with a password. Mutable: a test changes `password` to play a password change. */
+  account?: LoginAccount
   /** The public key (OpenSSH line) the node's `authorized_keys` holds. */
   authorizedKey: string
   /** Where a forward to `<host>:<port>` really goes on loopback (null: the node cannot reach it). */
@@ -133,6 +154,11 @@ export interface LoginNode {
   connections: number
   /** Cut every open connection, as a network drop does. */
   drop: () => void
+  /**
+   * Every answer a client gave to a password question (the `password` method, or a `keyboard-interactive` prompt),
+   * right or wrong, in order. Empty when no password ever reached the node.
+   */
+  passwords: string[]
   /** Every forward a signed-in client asked for. */
   forwards: { host: string; port: number }[]
   hostKey: KeyPair
@@ -155,8 +181,57 @@ export async function startLoginNode(options: LoginNodeOptions): Promise<LoginNo
     client.on('authentication', context => {
       node.auth.push({ method: context.method, username: context.username })
 
+      const account = options.account
+      const offered = account ? ['publickey', account.ask ?? 'password'] : ['publickey']
+
+      const same = (given: string) =>
+        Boolean(account) && context.username === account!.username && given === account!.password
+
+      if (account && context.method === 'password' && (account.ask ?? 'password') === 'password') {
+        node.passwords.push(context.password)
+
+        if (!same(context.password)) {
+          context.reject(offered)
+        } else if (account.thenMore) {
+          context.reject(['keyboard-interactive'], true)
+        } else {
+          context.accept()
+        }
+
+        return
+      }
+
+      if (
+        account &&
+        context.method === 'keyboard-interactive' &&
+        (account.ask === 'keyboard-interactive' || account.thenMore)
+      ) {
+        const questions = [{ echo: false, prompt: 'Password: ' }]
+        const code = { echo: false, prompt: 'Verification code: ' }
+
+        if (account.thenMore) {
+          context.prompt([code], () => context.reject(offered))
+
+          return
+        }
+
+        context.prompt(account.secondFactor === 'together' ? [...questions, code] : questions, answers => {
+          node.passwords.push(...answers)
+
+          if (answers.length !== 1 || !same(answers[0] ?? '')) {
+            context.reject(offered)
+          } else if (account.secondFactor === 'after') {
+            context.prompt([code], () => context.reject(offered))
+          } else {
+            context.accept()
+          }
+        })
+
+        return
+      }
+
       if (context.method !== 'publickey') {
-        context.reject(['publickey'])
+        context.reject(offered)
 
         return
       }
@@ -220,6 +295,7 @@ export async function startLoginNode(options: LoginNodeOptions): Promise<LoginNo
       }
     },
     forwards: [],
+    passwords: [],
     goAway: async () => {
       const server = tcp
       tcp = null

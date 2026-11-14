@@ -901,7 +901,12 @@ describe('installed in main', () => {
     // The admin turns the row on: the channels register and the bridge opens with the next snapshot.
     app.setConfig(document())
     expect([...app.ipc.handlers.keys()].sort()).toEqual(
-      [HPC_BRIDGE_CHANNELS.connect, HPC_BRIDGE_CHANNELS.disconnect, HPC_BRIDGE_CHANNELS.status].sort()
+      [
+        HPC_BRIDGE_CHANNELS.connect,
+        HPC_BRIDGE_CHANNELS.disconnect,
+        HPC_BRIDGE_CHANNELS.forgetUser,
+        HPC_BRIDGE_CHANNELS.status
+      ].sort()
     )
     await vi.waitFor(() => expect(app.bridge.status().state).toBe('connected'), { timeout: 5000 })
 

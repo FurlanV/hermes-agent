@@ -1,4 +1,4 @@
-// Athena: the HPC bridge (F05 slices 06 and 12).
+// Athena: the HPC bridge (F05 slices 06, 07 and 12).
 //
 // The local model servers are on nodes only the user's laptop can reach, through the HPC login host. While local
 // models are on, Electron main keeps one SSH connection to the login host of the client config
@@ -15,11 +15,20 @@
 //   others work meanwhile. A request that fails on a server that was up marks that server down the same way.
 // - The bridge never sees a model server's API key: hermes sends it, from managed scope.
 // - It runs only while feature row F05 is on, `local_models.enabled` is true, the config names the hosts, the build
-//   pins a host key for the login host and this laptop has a key (hpc-bridge-keys.ts). Otherwise nothing is
-//   contacted and the status says why.
+//   pins a host key for the login host and main holds something to sign in with: a configured key
+//   (hpc-bridge-keys.ts) or the password the user entered (hpc-bridge-user.ts). Otherwise nothing is contacted and
+//   the status says why.
 // - The login host's key is checked against the pinned ones before any authentication is sent. Another key ends
 //   the connection there (`host_key_mismatch`). Nothing is ever trusted on first use.
-// - Only public-key authentication is offered. There is no password here.
+// - Signing in (F05 slice 07): with a configured key, public-key authentication only, as before. Without one, the
+//   user's HPC user name and password, entered once in the Desktop's dialog (`signIn`). The password is held in
+//   main's memory for the app's run (`BridgePassword`), so a reconnect after a drop, a sleep or a network change
+//   asks nothing. It is forgotten on quit, on Disconnect, when local models go off, and the moment the login host
+//   refuses it; a refused password is sent once and never again. It is sent only after the host key matched a pin,
+//   as `password` authentication, or as the answer to a `keyboard-interactive` request with exactly one hidden
+//   prompt that asks for a password. Anything else the login host asks for (a second factor, a new password) ends
+//   the sign-in with `auth_unsupported`. Nothing is written on the HPC. The user name is remembered for the next
+//   launch (`hpc-bridge-user.json`); the password never reaches a file, a log line, a status or the record.
 // - Every forward listens on 127.0.0.1 only. Each server's port is chosen once and kept in
 //   `$HERMES_HOME/athena/hpc-bridge-port.json`, so the address hermes is pinned to is the same after every launch;
 //   another port is taken only when that one is in use.
@@ -57,17 +66,26 @@ import {
 import { DEFAULT_MODEL_SERVER, MODEL_SERVER_ID, removeBridgeRecord, writeBridgeRecord } from './hpc-bridge-record'
 import {
   HPC_BRIDGE_CHANNELS,
+  type HpcBridgeCredential,
   type HpcBridgeServerState,
   type HpcBridgeServerStatus,
   type HpcBridgeState,
   type HpcBridgeStatus
 } from './hpc-bridge-types'
+import {
+  bridgePassword,
+  BridgePassword,
+  bridgeUsername,
+  forgetBridgeUser,
+  readBridgeUser,
+  writeBridgeUser
+} from './hpc-bridge-user'
 import { onMainPoliciesChanged } from './main-policy'
 import { LOCAL_MODELS_FEATURE } from './model-policy'
 import { policyRefusalMessage } from './policy-seams'
 
 export { HPC_BRIDGE_CHANNELS }
-export type { HpcBridgeServerState, HpcBridgeServerStatus, HpcBridgeState, HpcBridgeStatus }
+export type { HpcBridgeCredential, HpcBridgeServerState, HpcBridgeServerStatus, HpcBridgeState, HpcBridgeStatus }
 
 export const BRIDGE_PORT_FILE = 'hpc-bridge-port.json'
 export const BRIDGE_ADDRESS = '127.0.0.1'
@@ -390,12 +408,34 @@ export class HpcBridge {
   private reconciling = false
   private reconcileAgain = false
   private stopped = false
+  /** The password of the sign-in, in memory only (F05 slice 07). Nothing here reads it but the connection attempt. */
+  private readonly password = new BridgePassword()
+  /** The user name of the password sign-in: entered now, or remembered from an earlier launch. Not a secret. */
+  private username: null | string
+  /** Whether the last look found a configured key (a key wins over the password). */
+  private keyHeld = false
+  /** What the current connection signed in with (null while there is none). */
+  private clientAuth: 'key' | 'password' | null = null
+  /** Called at each new status (a sign-in waits here for its attempt to settle). */
+  private readonly watchers = new Set<() => void>()
 
   constructor(private readonly options: HpcBridgeOptions) {
     this.log = options.log ?? (() => {})
     this.now = options.now ?? Date.now
     this.timings = { ...BRIDGE_TIMINGS, ...options.timings }
-    this.current = { reason: 'feature_off', since: new Date(this.now()).toISOString(), state: 'off' }
+    this.username = readBridgeUser(options.athenaDir)
+    this.current = {
+      credential: 'none',
+      reason: 'feature_off',
+      since: new Date(this.now()).toISOString(),
+      state: 'off',
+      ...(this.username ? { username: this.username } : {})
+    }
+  }
+
+  /** What main holds to sign in with: a configured key wins, else the password entered since the app started. */
+  private credential(): HpcBridgeCredential {
+    return this.keyHeld ? 'key' : this.password.held ? 'password' : 'none'
   }
 
   status(): HpcBridgeStatus {
@@ -443,6 +483,8 @@ export class HpcBridge {
     const off = bridgeOffReason(snapshot) ?? (this.paused ? 'disconnected' : null)
 
     if (off) {
+      // Not wanted (the row or the switch went off, or the user disconnected): nothing is kept to sign in with.
+      this.password.forget()
       this.teardown()
       this.setStatus('off', off)
 
@@ -462,8 +504,9 @@ export class HpcBridge {
   }
 
   /**
-   * The user (or the key setup, once a key is installed) asks to connect now. Answers once the attempt is under
-   * way: `connecting`, or why there is none (`off`, `no_key`, `host_key_unknown`).
+   * The user asks to connect now, with what main holds (a configured key, or the password entered earlier in this
+   * run). Answers once the attempt is under way: `connecting`, or why there is none (`off`, `host_key_unknown`,
+   * `no_key`: nothing is held, the dialog must ask).
    */
   async connect(): Promise<HpcBridgeStatus> {
     this.paused = false
@@ -473,12 +516,98 @@ export class HpcBridge {
     return this.current
   }
 
-  /** The user disconnects: the forwards close and stay closed until `connect`. */
-  disconnect(): HpcBridgeStatus {
-    this.paused = true
-    this.reconcile()
+  /**
+   * The user signs in from the dialog (F05 slice 07). The password is kept in memory and the bridge connects; once
+   * the login host accepts the sign-in the user name is remembered for the next launch. Answers once the attempt
+   * has settled: `connected`, or why not (`down` with `auth_failed` when the login host refused the password; the
+   * password is then already forgotten, no port is left open and no user name was written). With a
+   * configured key the key is used and the password is dropped unused. While local models are off nothing is kept.
+   */
+  async signIn(input: unknown): Promise<HpcBridgeStatus> {
+    const { password: rawPassword, username: rawUsername } = (input ?? {}) as { password?: unknown; username?: unknown }
+    const username = bridgeUsername(rawUsername)
+    const password = bridgePassword(rawPassword)
+
+    if (!username || password === null) {
+      throw new Error('athena hpc bridge: a user name and a password are needed')
+    }
+
+    if (this.stopped || bridgeOffReason(this.options.snapshot())) {
+      return this.current
+    }
+
+    // The user name is written down only once the login host has accepted the sign-in (`ready`).
+    this.username = username
+    this.password.set(password)
+    this.paused = false
+    this.restart()
+    await this.starting
+    await this.settled()
 
     return this.current
+  }
+
+  /** Resolves once the status is no longer `connecting` (or the sign-in and its checks could not take longer). */
+  private settled(): Promise<void> {
+    if (this.current.state !== 'connecting') {
+      return Promise.resolve()
+    }
+
+    return new Promise(resolve => {
+      const done = () => {
+        if (this.current.state !== 'connecting') {
+          finish()
+        }
+      }
+
+      const finish = () => {
+        clearTimeout(timer)
+        this.watchers.delete(done)
+        resolve()
+      }
+
+      const timer = setTimeout(finish, this.timings.readyTimeoutMs + this.timings.probeTimeoutMs + 1000)
+      timer.unref?.()
+      this.watchers.add(done)
+    })
+  }
+
+  /** The user disconnects: the forwards close and stay closed until `connect`, and the password is forgotten. */
+  disconnect(): HpcBridgeStatus {
+    this.paused = true
+    this.password.forget()
+    this.reconcile()
+    this.announce()
+
+    return this.current
+  }
+
+  /**
+   * Forget the remembered user name. The sign-in goes with it: the password is forgotten and a bridge that was
+   * opened with it closes. A bridge on a configured key is not touched.
+   */
+  forgetUser(): HpcBridgeStatus {
+    this.username = null
+    this.password.forget()
+
+    try {
+      forgetBridgeUser(this.options.athenaDir)
+    } catch (error) {
+      this.log(`[athena] hpc bridge: could not forget the user name: ${String(error)}`)
+    }
+
+    if (this.plan && !this.keyHeld) {
+      this.restart()
+    }
+
+    this.announce()
+
+    return this.current
+  }
+
+  /** Tell the status again when what main holds, or the user name, changed under the same state. */
+  private announce(): void {
+    this.setStatus(this.current.state, this.current.reason)
   }
 
   /**
@@ -486,7 +615,9 @@ export class HpcBridge {
    * connection is dead more often than not, and waiting for the keepalives to say so wastes 10 s).
    */
   kick(options: { force?: boolean } = {}): void {
-    if (!this.plan || (this.ready && !options.force) || this.current.reason === 'auth_failed') {
+    const refused = this.current.reason === 'auth_failed' || this.current.reason === 'auth_unsupported'
+
+    if (!this.plan || (this.ready && !options.force) || refused) {
       return
     }
 
@@ -496,6 +627,7 @@ export class HpcBridge {
   /** The app quits: close everything and remove the record, synchronously. */
   stop(): void {
     this.stopped = true
+    this.password.forget()
     this.teardown()
     this.setStatus('off', bridgeOffReason(this.options.snapshot()) ?? 'disconnected')
 
@@ -543,18 +675,28 @@ export class HpcBridge {
     const servers = state === 'connected' ? this.serverStatuses() : undefined
     const port = servers?.[DEFAULT_MODEL_SERVER]?.port
     const sameState = this.current.state === state && this.current.reason === reason
+    const credential = this.credential()
+    const username = this.username ?? undefined
 
-    if (sameState && this.current.port === port && JSON.stringify(this.current.servers) === JSON.stringify(servers)) {
+    if (
+      sameState &&
+      this.current.port === port &&
+      this.current.credential === credential &&
+      this.current.username === username &&
+      JSON.stringify(this.current.servers) === JSON.stringify(servers)
+    ) {
       return
     }
 
     this.current = {
+      credential,
       ...(port === undefined ? {} : { port }),
       ...(reason === undefined ? {} : { reason }),
       ...(servers === undefined ? {} : { servers }),
       // `since` is when the state or its reason changed, not when a model server came or went.
       since: sameState ? this.current.since : new Date(this.now()).toISOString(),
-      state
+      state,
+      ...(username === undefined ? {} : { username })
     }
 
     const listed = Object.entries(servers ?? {})
@@ -567,6 +709,10 @@ export class HpcBridge {
       this.options.onStatus?.(this.current)
     } catch (error) {
       this.log(`[athena] hpc bridge: status listener failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+
+    for (const watcher of [...this.watchers]) {
+      watcher()
     }
   }
 
@@ -585,6 +731,7 @@ export class HpcBridge {
 
     const client = this.client
     this.client = null
+    this.clientAuth = null
     this.ready = false
     this.announced = false
     this.closeSockets()
@@ -870,7 +1017,18 @@ export class HpcBridge {
       return
     }
 
-    if (!key) {
+    this.keyHeld = Boolean(key)
+
+    if (key) {
+      // A configured key wins (slice 06's path, unchanged): a password entered beside it is dropped unused.
+      this.password.forget()
+    }
+
+    const password = key ? null : this.password.use()
+    const username = key ? key.username : this.username
+
+    if (!key && (password === null || !username)) {
+      // Nothing to sign in with: the Desktop's dialog asks for the user name and password (`signIn`).
       this.closeListeners()
       this.setStatus('no_key')
 
@@ -946,6 +1104,14 @@ export class HpcBridge {
       this.attempts = 0
       this.announced = false
 
+      if (!key && username && readBridgeUser(this.options.athenaDir) !== username) {
+        try {
+          writeBridgeUser(this.options.athenaDir, username)
+        } catch (error) {
+          this.log(`[athena] hpc bridge: could not remember the user name: ${String(error)}`)
+        }
+      }
+
       // One connection, one forward per model server. Each server is asked for once before its models are
       // offered: a server that is down (or a port that could not be opened) does not hold the others back.
       for (const forward of this.forwards.values()) {
@@ -964,11 +1130,76 @@ export class HpcBridge {
       lost('connection_lost')
     })
     client.on('close', () => lost('connection_lost'))
+    // The login host wants the password changed: not something the bridge does.
+    client.on('change password', () => {
+      reason = 'auth_unsupported'
+      lost('auth_unsupported')
+    })
     this.client = client
+    this.clientAuth = key ? 'key' : 'password'
+
+    // The password sign-in (F05 slice 07). ssh2 calls this only after the host key passed `hostVerifier` below, so
+    // nothing here runs for a host whose key is not pinned. One step at a time:
+    //   1. `none`: asks the login host which methods it takes (as OpenSSH does); sends the user name only;
+    //   2. the password, once: as `password` when the host takes that, else as the answer to `keyboard-interactive`;
+    //   3. whatever comes back that is not success ends the sign-in. The password is never sent a second time, so
+    //      a wrong one costs one failed attempt on the account, not two.
+    let step = 0
+    let prompted = false
+
+    const answerPrompt = (
+      _name: string,
+      _instructions: string,
+      _language: string,
+      prompts: readonly { echo?: boolean; prompt: string }[],
+      finish: (answers: string[]) => void
+    ) => {
+      const only = prompts.length === 1 ? prompts[0] : null
+
+      // Exactly one hidden prompt that asks for a password, once. A second round, a visible prompt, several
+      // prompts or another question (a verification code) is not answered.
+      if (prompted || !only || only.echo === true || !/password/i.test(only.prompt)) {
+        reason = 'auth_unsupported'
+        this.log('[athena] hpc bridge: the login host asked for more than one password; sign-in stopped')
+        lost('auth_unsupported')
+
+        return
+      }
+
+      prompted = true
+      finish([password!])
+    }
+
+    const passwordAuth = (
+      methodsLeft: null | readonly string[],
+      partial: boolean | null,
+      next: (auth: unknown) => void
+    ) => {
+      step += 1
+
+      if (step === 1) {
+        next({ type: 'none', username })
+
+        return
+      }
+
+      const methods = methodsLeft ?? []
+
+      if (step === 2 && methods.includes('password')) {
+        next({ password, type: 'password', username })
+      } else if (step === 2 && methods.includes('keyboard-interactive')) {
+        next({ prompt: answerPrompt, type: 'keyboard-interactive', username })
+      } else {
+        // No method takes a password, or the password was accepted and more is asked for (`partial`): not
+        // supported. Otherwise the login host refused the password.
+        reason ??= step === 2 || partial ? 'auth_unsupported' : 'auth_failed'
+        next(false)
+      }
+    }
 
     const config: ConnectConfig = {
-      // Public key only: no `none` probe, no password, no agent, no keyboard prompts.
-      authHandler: ['publickey'],
+      // With a key: public key only (no `none` probe, no password, no agent, no keyboard prompts).
+      authHandler: (key ? ['publickey'] : passwordAuth) as never,
       host: plan.loginHost,
       hostVerifier: (hostKey: Buffer) => {
         const trusted = pins.fingerprints.has(hostKeyFingerprint(hostKey))
@@ -986,11 +1217,10 @@ export class HpcBridge {
       },
       keepaliveCountMax: this.timings.keepaliveCountMax,
       keepaliveInterval: this.timings.keepaliveIntervalMs,
-      passphrase: key.passphrase,
       port: plan.loginPort,
-      privateKey: key.privateKey,
       readyTimeout: this.timings.readyTimeoutMs,
-      username: key.username,
+      username: username!,
+      ...(key ? { passphrase: key.passphrase, privateKey: key.privateKey } : {}),
       ...(pins.algorithms ? { algorithms: { serverHostKey: pins.algorithms as never } } : {})
     }
 
@@ -1010,7 +1240,9 @@ export class HpcBridge {
     }
 
     const wasReady = this.ready
+    const auth = this.clientAuth
     this.client = null
+    this.clientAuth = null
     this.ready = false
     this.announced = false
     this.closeSockets()
@@ -1033,11 +1265,21 @@ export class HpcBridge {
       return
     }
 
+    const refused = reason === 'auth_failed' || reason === 'auth_unsupported'
+
+    if (refused && auth === 'password') {
+      // A password the login host does not take is not kept, and so cannot be sent again. Nothing stays open, and
+      // the user name falls back to the one an accepted sign-in left (if any).
+      this.password.forget()
+      this.username = readBridgeUser(this.options.athenaDir)
+      this.closeListeners()
+    }
+
     this.setStatus('down', reason)
 
-    if (reason === 'auth_failed') {
-      // The login host refused the key. Asking again and again would only look like an attack: wait for a new
-      // key, a config change or the user.
+    if (refused) {
+      // The login host refused the key or the password. Asking again and again would only look like an attack (and
+      // locks an account): wait for a new sign-in, a config change or the user.
       return
     }
 
@@ -1259,15 +1501,15 @@ export function installAthenaHpcBridge(options: InstallHpcBridgeOptions): HpcBri
   // The channels are row F05's, so the IPC guard registers them only while the row lets it (policy-seams.ts).
   // Under `managed.features: report` it registers them whatever the row says: each call asks the row again.
   const guarded =
-    <T>(channel: string, run: () => T) =>
-    (): T => {
+    <T>(channel: string, run: (payload: unknown) => T) =>
+    (_event?: unknown, payload?: unknown): T => {
       const current = snapshot()
 
       if (!current || current.variant === 'stock' || !featureStates(current.config).flag(LOCAL_MODELS_FEATURE)) {
         throw new Error(policyRefusalMessage('ipc', channel))
       }
 
-      return run()
+      return run(payload)
     }
 
   options.ipcMain.handle(
@@ -1276,11 +1518,18 @@ export function installAthenaHpcBridge(options: InstallHpcBridgeOptions): HpcBri
   )
   options.ipcMain.handle(
     HPC_BRIDGE_CHANNELS.connect,
-    guarded(HPC_BRIDGE_CHANNELS.connect, () => bridge.connect())
+    // With a sign-in (the dialog's user name and password, sent once): kept in main's memory, never echoed back.
+    guarded(HPC_BRIDGE_CHANNELS.connect, payload =>
+      payload === undefined || payload === null ? bridge.connect() : bridge.signIn(payload)
+    )
   )
   options.ipcMain.handle(
     HPC_BRIDGE_CHANNELS.disconnect,
     guarded(HPC_BRIDGE_CHANNELS.disconnect, () => bridge.disconnect())
+  )
+  options.ipcMain.handle(
+    HPC_BRIDGE_CHANNELS.forgetUser,
+    guarded(HPC_BRIDGE_CHANNELS.forgetUser, () => bridge.forgetUser())
   )
 
   onMainPoliciesChanged(() => bridge.reconcile())

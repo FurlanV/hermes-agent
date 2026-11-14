@@ -19,6 +19,11 @@
  * listed on that server's provider row, under the name hermes knows it by, with
  * the admin's label (F05 slice 12: one provider per model server).
  *
+ * While local models are on, a local model that is not connected is listed too
+ * (F05 slice 07, `pickerModels` in local-models.ts), so the user can pick it
+ * and be offered the connection. The gate does not change: `selectable` and
+ * the JSON-RPC check accept it only while its server's forward is up.
+ *
  * A new `config_version`, or the bridge coming or going, also drops the cached
  * model options, so no picker keeps an hour-old catalog.
  */
@@ -45,6 +50,13 @@ import {
 } from '../../../electron/athena/model-policy'
 
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
+import {
+  connectHpcBridge,
+  pickerModels,
+  resetLocalModels,
+  setManagedModelsReader,
+  settlePendingPick
+} from './local-models'
 
 export { managedPickerRows }
 import { setManagedModelLabels } from './model-labels'
@@ -73,6 +85,8 @@ export function modelPolicyFor(models: ManagedModels | null): ModelPolicy {
     return ALLOW_ALL_MODELS
   }
 
+  // What the pickers list: the models that can be called, and the local models that are not connected (F05 slice 07).
+  const listed = pickerModels(enforced)
   // One cached result per catalog reference, so memoized pickers keep their rows.
   let lastCatalog: null | readonly ModelOptionProvider[] = null
   let lastRows: readonly ModelOptionProvider[] = []
@@ -82,7 +96,7 @@ export function modelPolicyFor(models: ManagedModels | null): ModelPolicy {
     rows: catalog => {
       if (catalog !== lastCatalog) {
         lastCatalog = catalog
-        lastRows = managedPickerRows(enforced, catalog)
+        lastRows = managedPickerRows(listed, catalog)
       }
 
       return lastRows
@@ -148,9 +162,14 @@ export function installModelPolicy(): () => void {
 
   let lastVersion: string | undefined
 
+  // F05 slice 07: follow main's HPC bridge, and make a pick that waited for the connection once its model is listed.
+  setManagedModelsReader(() => enforcedModels())
+  const offBridge = connectHpcBridge()
+
   const offModels = $managedModels.subscribe(models => {
     setModelPolicy(modelPolicyFor(models))
     setManagedModelLabels(labelsFor(models))
+    settlePendingPick(enforcedModels(models))
   })
 
   const offVersion = $clientConfig.subscribe(snapshot => {
@@ -169,6 +188,9 @@ export function installModelPolicy(): () => void {
   return () => {
     offModels()
     offVersion()
+    offBridge()
+    setManagedModelsReader(() => null)
+    resetLocalModels()
     removeNotes()
     setModelPolicy(null)
     setManagedModelLabels(null)

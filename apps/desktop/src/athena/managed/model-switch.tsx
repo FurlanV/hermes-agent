@@ -30,6 +30,7 @@ import { $sessionStates } from '@/store/session-states'
 
 import { findModelEntry, type ManagedModels } from '../../../electron/athena/model-policy'
 
+import { setLocalModelSelector } from './local-models'
 import { $managedModels, enforcedModels } from './model-policy'
 
 export const NO_MODEL_MESSAGE = 'No model available. Contact your administrator.'
@@ -223,7 +224,13 @@ function NoModelBanner() {
 export function installNoModelGate(): () => void {
   return registry.registerMany([
     { area: 'composer.middleware', data: middleware, id: 'athena-no-model-gate', order: -1000, source: 'athena' },
-    { area: 'composer.top', id: 'athena-no-model-banner', order: -1000, render: () => <NoModelBanner />, source: 'athena' }
+    {
+      area: 'composer.top',
+      id: 'athena-no-model-banner',
+      order: -1000,
+      render: () => <NoModelBanner />,
+      source: 'athena'
+    }
   ])
 }
 
@@ -239,6 +246,8 @@ export function useManagedModelSwitch(select: SelectModel): void {
   useEffect(() => {
     const removeGate = installNoModelGate()
     const run = () => reconcileModelSessions(selection => selectRef.current(selection))
+    // F05 slice 07: a pick that waited for the HPC bridge is made with the same pick, once its model is listed.
+    setLocalModelSelector(selection => selectRef.current(selection))
 
     const offs = [$managedModels, $sessionStates, $currentModel, $currentProvider, $activeSessionId].map(store =>
       store.listen(run)
@@ -248,6 +257,7 @@ export function useManagedModelSwitch(select: SelectModel): void {
 
     return () => {
       offs.forEach(off => off())
+      setLocalModelSelector(null)
       removeGate()
     }
   }, [])
