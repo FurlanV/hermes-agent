@@ -197,7 +197,8 @@ describe('local models on and the bridge up: every picker lists the local model'
       expect.stringMatching(/^GPT-6 SolMost capable/),
       expect.stringMatching(/^GPT-6 LunaFaster/),
       'Athena vLLM',
-      expect.stringMatching(/^Qwen 3\.8 27B \(local\)On the HPC/),
+      // Its row says the admin's note and, since slice 08, whether it is connected.
+      expect.stringMatching(/^Qwen 3\.8 27B \(local\)On the HPC · Connected/),
       'Edit models…'
     ])
 
@@ -224,7 +225,7 @@ describe('local models on and the bridge up: every picker lists the local model'
     expect(screen.getAllByRole('option').map(item => item.textContent?.trim())).toEqual([
       expect.stringMatching(/^GPT-6 Sol/),
       'GPT-6 Luna',
-      'Qwen 3.8 27B (local)'
+      'Qwen 3.8 27B (local)Connected'
     ])
     unmount()
 
@@ -373,6 +374,8 @@ describe('open sessions and the second provider', () => {
   const flush = () => act(async () => await new Promise(resolve => setTimeout(resolve, 0)))
   const toasts = () => vi.mocked(notify).mock.calls.map(([input]) => input.message)
   const MOVED = 'Qwen 3.8 27B (local) is no longer available. Switched to GPT-6 Sol.'
+  // Since slice 08: with local models still on, the model is not gone, only not connected.
+  const NOT_CONNECTED = 'Qwen 3.8 27B (local) is not connected. Switched to GPT-6 Sol.'
 
   beforeEach(() => {
     $activeSessionId.set('rt-1')
@@ -396,10 +399,10 @@ describe('open sessions and the second provider', () => {
   })
 
   test.each([
-    ['the switch goes off', { switchOn: false }],
-    ['feature row F05 goes off', { feature: 'off' as const }],
-    ['the bridge closes', { bridge: false }]
-  ])('%s: each session on the local model moves to the role default, with one toast', async (_name, options) => {
+    ['the switch goes off', { switchOn: false }, MOVED],
+    ['feature row F05 goes off', { feature: 'off' as const }, MOVED],
+    ['the bridge closes', { bridge: false }, NOT_CONNECTED]
+  ])('%s: each session on the local model moves to the role default, with one toast', async (_name, options, toast) => {
     const select = vi.fn<SelectModel>(async () => true)
     reconcileModelSessions(select) // seen while it was still listed: its label is known
 
@@ -411,7 +414,7 @@ describe('open sessions and the second provider', () => {
       { model: 'gpt-6-sol', provider: GATEWAY },
       { model: 'gpt-6-sol', provider: GATEWAY, sessionId: 'rt-2' }
     ])
-    expect(toasts()).toEqual([MOVED, MOVED])
+    expect(toasts()).toEqual([toast, toast])
 
     reconcileModelSessions(select)
     await flush()

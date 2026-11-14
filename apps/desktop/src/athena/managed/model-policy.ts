@@ -51,6 +51,7 @@ import {
 
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
 import {
+  $hpcBridge,
   connectHpcBridge,
   pickerModels,
   resetLocalModels,
@@ -59,6 +60,7 @@ import {
 } from './local-models'
 
 export { managedPickerRows }
+import { LOCAL_MODEL_STATE, localModelTag } from './local-models-status'
 import { setManagedModelLabels } from './model-labels'
 import { ALLOW_ALL_MODELS, type ModelPolicy, setModelPolicy } from './models'
 import { recordModelDecision } from './policy-decisions'
@@ -136,14 +138,21 @@ const labelsFor = (models: ManagedModels | null): null | ReadonlyMap<string, str
 
 const NOTES_CONTRIBUTION_ID = 'athena-model-notes'
 
-const notes: ModelMenuRowContribution = {
+/** A local model's row says its status (F05 slice 08); any other row of an Athena provider, the admin's note. */
+const rowBadges = (): ModelMenuRowContribution => ({
   decorate: ({ model, provider }) => {
     const enforced = enforcedModels()
     const note = enforced && isAthenaProvider(provider) ? findModelEntry(enforced, model)?.note : null
+    const status = localModelTag(enforced, model, provider)
+
+    if (status) {
+      // Connected: the admin's note stays beside it. Not connected: the reason alone, it is what matters then.
+      return { badge: note && status === LOCAL_MODEL_STATE.connected ? `${note} · ${status}` : status }
+    }
 
     return note ? { badge: note } : null
   }
-}
+})
 
 /** Drop every cached model-options read: the next picker open reads the backend again. */
 export function dropCachedModelOptions(): void {
@@ -153,11 +162,15 @@ export function dropCachedModelOptions(): void {
 
 /** Follow `$clientConfig`; returns the uninstall (which restores the stock pickers). */
 export function installModelPolicy(): () => void {
-  const removeNotes = registry.register({
-    area: MODEL_MENU_ROW_AREA,
-    data: notes,
-    id: NOTES_CONTRIBUTION_ID,
-    source: 'athena'
+  // A row's decoration is worked out when the contribution changes, not when a store does: registering it again
+  // (the same id replaces it) is what makes an open menu show a new bridge status.
+  const registerBadges = () =>
+    registry.register({ area: MODEL_MENU_ROW_AREA, data: rowBadges(), id: NOTES_CONTRIBUTION_ID, source: 'athena' })
+
+  let removeNotes = registerBadges()
+
+  const offStatus = $hpcBridge.listen(() => {
+    removeNotes = registerBadges()
   })
 
   let lastVersion: string | undefined
@@ -170,6 +183,7 @@ export function installModelPolicy(): () => void {
     setModelPolicy(modelPolicyFor(models))
     setManagedModelLabels(labelsFor(models))
     settlePendingPick(enforcedModels(models))
+    removeNotes = registerBadges()
   })
 
   const offVersion = $clientConfig.subscribe(snapshot => {
@@ -189,6 +203,7 @@ export function installModelPolicy(): () => void {
     offModels()
     offVersion()
     offBridge()
+    offStatus()
     setManagedModelsReader(() => null)
     resetLocalModels()
     removeNotes()

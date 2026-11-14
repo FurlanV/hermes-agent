@@ -14,6 +14,7 @@ import { isPolicyIpcChannel } from './backend-policy'
 import { BUNDLED_DEFAULT_CONFIG } from './bundled-config-data'
 import { AthenaClientConfig } from './client-config'
 import {
+  BRIDGE_TIMINGS,
   HPC_BRIDGE_CHANNELS,
   HpcBridge,
   type HpcBridgeOptions,
@@ -718,6 +719,78 @@ describe('the password stays in memory', () => {
     expect(await app.invoke(HPC_BRIDGE_CHANNELS.connect)).toMatchObject({ state: 'no_key', username: USER })
     expect(app.invoke(HPC_BRIDGE_CHANNELS.forgetUser)).not.toHaveProperty('username')
     await expect(app.invoke(HPC_BRIDGE_CHANNELS.connect, { username: USER })).rejects.toThrow('are needed')
+  })
+
+  // F05 slice 08: what the Desktop's status shows is what main pushes to every window.
+  test('every window hears the bridge go down and come back, and the model server on its own', async () => {
+    const app = install(document())
+    await vi.waitFor(() => expect(app.bridge.status().state).toBe('no_key'))
+    await app.invoke(HPC_BRIDGE_CHANNELS.connect, { password: PASSWORD, username: USER })
+
+    const pushed = () =>
+      (app.sent as [string, HpcBridgeStatus][])
+        .filter(([channel]) => channel === HPC_BRIDGE_CHANNELS.changed)
+        .map(([, status]) => status)
+
+    const told = (state: string, reason?: string) =>
+      pushed().some(status => status.state === state && status.reason === reason)
+
+    expect(told('connecting')).toBe(true)
+    expect(told('connected')).toBe(true)
+
+    // The login node goes away: the windows hear `down` with the reason, and the snapshot loses the bridge.
+    const before = pushed().length
+    const wentAt = Date.now()
+    await login.goAway()
+    await vi.waitFor(() =>
+      expect(
+        pushed()
+          .slice(before)
+          .some(status => status.state === 'down')
+      ).toBe(true)
+    )
+    expect(pushed().at(-1)).toMatchObject({ credential: 'password', state: 'down', username: USER })
+    expect(['connection_lost', 'unreachable']).toContain(pushed().at(-1)!.reason)
+    await vi.waitFor(() => expect(app.source.snapshot().hpcBridge).toBeUndefined())
+
+    // And comes back: `connected` again, by itself, from the password in memory.
+    await login.listen()
+    await vi.waitFor(() => expect(pushed().at(-1)).toMatchObject({ state: 'connected' }), { timeout: 5000 })
+    expect(pushed().at(-1)!.servers).toMatchObject({ default: { state: 'up' } })
+    // With the short test timings this is moments; the app's timings keep each change within 30 s (below).
+    expect(Date.now() - wentAt).toBeLessThan(10_000)
+
+    // The model server stops while the login node is fine: the next request finds out, and the windows hear that
+    // the connection is up and that server is not.
+    await model.close()
+    await chat(app.bridge.status().port!, QWEN_NAME).catch(() => null)
+    await vi.waitFor(() =>
+      expect(pushed().at(-1)).toMatchObject({
+        servers: { default: { reason: 'target_unreachable', state: 'down' } },
+        state: 'connected'
+      })
+    )
+    expect(app.source.snapshot().hpcBridge).toBeUndefined()
+    model = await startModelServer()
+    await vi.waitFor(() => expect(pushed().at(-1)!.servers).toMatchObject({ default: { state: 'up' } }), {
+      timeout: 5000
+    })
+
+    // Disconnect: the forward closes and the windows hear that nothing is held any more.
+    app.invoke(HPC_BRIDGE_CHANNELS.disconnect)
+    expect(pushed().at(-1)).toMatchObject({ credential: 'none', reason: 'disconnected', state: 'off' })
+    expect(readBridgeRecord(athenaDir)).toBeNull()
+    expect(app.bridge.localPort).toBeNull()
+  })
+
+  test('the timings the app runs with: a status change reaches the window within 30 seconds', () => {
+    const { backoffMs, keepaliveCountMax, keepaliveIntervalMs, probeTimeoutMs, readyTimeoutMs } = BRIDGE_TIMINGS
+
+    // Going down: a link that died silently is noticed after the missed keepalives (a closed one, at once).
+    expect(keepaliveIntervalMs * keepaliveCountMax).toBeLessThanOrEqual(30_000)
+    // Coming back: at most the longest wait between tries, the sign-in, and the first model server's answer.
+    expect(Math.max(...backoffMs) + readyTimeoutMs).toBeLessThan(30_000)
+    expect(Math.max(...backoffMs) + probeTimeoutMs).toBeLessThan(30_000)
   })
 
   test('with the row off the sign-in is refused before it is looked at', async () => {

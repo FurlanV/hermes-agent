@@ -11,6 +11,10 @@
  * - A pick of one that is not connected never reaches hermes (`offerLocalModelConnect`, the first line of the
  *   app's own `selectModel`). It offers to connect instead: the sign-in dialog when main holds nothing to sign in
  *   with, else a plain reconnect. Once the model's server is up the pick is made for the user (`pendingPick`).
+ * - A session that is on a local model when the bridge is not up (F05 slice 08): while the bridge is on its way
+ *   (connecting, or retrying with a password or key main holds) the session is left alone for up to 30 s
+ *   (`localModelGrace`). Otherwise it moves to the role default as for a removed model, with a note that says the
+ *   model is not connected and a Connect button that brings the session back to it (`reconnectSession`).
  * - The password is typed into the dialog (local-models-dialog.tsx) and handed to main once, by `signIn`. It is
  *   kept nowhere in the renderer: no store here ever holds it.
  */
@@ -185,6 +189,8 @@ export function setLocalModelSelector(select: null | Select): void {
 /** What the picker's caller is told about a pick that was not made (`null`: the dialog says it). */
 export const LOCAL_MODELS_CONNECTING = 'Connecting to local models…'
 export const LOCAL_MODELS_UNAVAILABLE = 'Local models are not available right now.'
+export const modelServerDownMessage = (label?: string): string =>
+  `${label ?? 'This local model'} is not connected: model server not answering. Athena keeps trying.`
 export const LOCAL_MODELS_NOT_IN_BUILD =
   'This version of Athena cannot connect to local models. Contact your administrator.'
 
@@ -243,9 +249,22 @@ export function offerConnect(label?: string): void {
     return
   }
 
-  if (status.state === 'connected' || status.state === 'connecting') {
-    // The connection is there or on its way; the model's own server is what is missing.
+  if (status.state === 'connecting') {
     notify({ id: 'athena-local-models', kind: 'info', message: LOCAL_MODELS_CONNECTING })
+
+    return
+  }
+
+  if (status.state === 'connected') {
+    // The connection to the HPC is there; the model's own server is what is missing. Main asks for it again by
+    // itself, and the pick is made when it answers.
+    const checking = Object.values(status.servers ?? {}).some(server => server.state === 'checking')
+
+    notify({
+      id: 'athena-local-models',
+      kind: checking ? 'info' : 'warning',
+      message: checking ? LOCAL_MODELS_CONNECTING : modelServerDownMessage(label)
+    })
 
     return
   }
@@ -254,6 +273,62 @@ export function offerConnect(label?: string): void {
   void Promise.resolve()
     .then(() => api.connect())
     .then(setStatus, () => {})
+}
+
+/** A "Connect" button on a session that was moved off a local model: connect, then bring the session back to it. */
+export function reconnectSession(
+  entry: Pick<ManagedModelEntry, 'id' | 'label' | 'provider'>,
+  sessionId?: string
+): void {
+  pending = {
+    activeSession: $activeSessionId.get(),
+    at: Date.now(),
+    pick: { model: entry.id, provider: entry.provider, ...(sessionId ? { sessionId } : {}) }
+  }
+  offerConnect(entry.label)
+  settlePendingPick(managedModelsReader())
+}
+
+// ── A session on a local model while the bridge is on its way ───────────────
+
+/** How long a session on a local model waits for the bridge before it is moved to the role default. */
+export const LOCAL_MODEL_GRACE_MS = 30_000
+
+let followingSince = Date.now()
+
+/**
+ * Whether a session on this local model should be left alone for now: the bridge is connecting, or retrying with
+ * what main holds, or main already says the model's server is up (the role's list follows within a moment). Answers
+ * how long is left of the 30 s (0: no grace). At launch, before main has said anything, the wait counts from when
+ * this window started to follow the bridge.
+ */
+export function localModelGrace(entry: Pick<ManagedModelEntry, 'server'>, now: number = Date.now()): number {
+  if (!$localModelsOn.get() || !bridgeApi()) {
+    return 0
+  }
+
+  const status = $hpcBridge.get()
+
+  if (!status) {
+    return Math.max(0, LOCAL_MODEL_GRACE_MS - (now - followingSince))
+  }
+
+  const server = status.servers?.[entry.server ?? 'default']
+  const refused = status.reason === 'auth_failed' || status.reason === 'auth_unsupported'
+  const held = (status.credential ?? 'none') !== 'none'
+
+  const onItsWay =
+    status.state === 'connecting' ||
+    (status.state === 'connected' && (server?.state === 'checking' || server?.state === 'up')) ||
+    (status.state === 'down' && held && !refused && status.reason !== 'host_key_mismatch')
+
+  if (!onItsWay) {
+    return 0
+  }
+
+  const since = Date.parse(status.since)
+
+  return Math.max(0, LOCAL_MODEL_GRACE_MS - (now - (Number.isFinite(since) ? since : now)))
 }
 
 /** How long after its model is listed a waiting pick is made: hermes learns the provider just after the list does. */
@@ -331,6 +406,7 @@ export function connectHpcBridge(): () => void {
     return () => {}
   }
 
+  followingSince = Date.now()
   const offChanged = api.onChanged(setStatus)
 
   // The channels exist only while the row is on: ask again each time local models come on, forget when they go.

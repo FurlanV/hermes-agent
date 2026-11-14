@@ -281,7 +281,7 @@ describe('open sessions follow their own model server', () => {
 
     expect(select.mock.calls.map(([selection]) => selection)).toEqual([{ model: 'gpt-6-sol', provider: GATEWAY }])
     expect(vi.mocked(notify).mock.calls.map(([input]) => input.message)).toEqual([
-      'deepseek-v4f-moe is no longer available. Switched to GPT-6 Sol.'
+      'deepseek-v4f-moe is not connected. Switched to GPT-6 Sol.'
     ])
   })
 

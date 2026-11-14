@@ -11,6 +11,15 @@
  * behaviour (the gateway refuses, hermes falls back within the turn). One
  * toast per session: "GPT-6 Sol is no longer available. Switched to GPT-6 Luna."
  *
+ * A session on a local model whose HPC bridge is not up (F05 slice 08) is not
+ * "removed": while the bridge is on its way (connecting, or retrying with what
+ * main holds) the session waits up to 30 s (`localModelGrace`). After that, or
+ * when nothing is on its way (a new launch, before the user has signed in; a
+ * refused password; Disconnect), it moves to the role default like any other,
+ * and its toast says "Qwen (local) is not connected. Switched to GPT-6 Luna."
+ * with a Connect button that connects and brings the session back to the local
+ * model. A local model is never the target of a switch.
+ *
  * If the switch fails, or no model is left to pick, the composer shows "No
  * model available. Contact your administrator" and cancels sends through a
  * `composer.middleware` contribution (the pattern the Athena desktop plugin's
@@ -30,7 +39,7 @@ import { $sessionStates } from '@/store/session-states'
 
 import { findModelEntry, type ManagedModels } from '../../../electron/athena/model-policy'
 
-import { setLocalModelSelector } from './local-models'
+import { $hpcBridge, localModelGrace, offlineLocalModel, reconnectSession, setLocalModelSelector } from './local-models'
 import { $managedModels, enforcedModels } from './model-policy'
 
 export const NO_MODEL_MESSAGE = 'No model available. Contact your administrator.'
@@ -69,8 +78,19 @@ const attempted = new Set<string>()
 const toasted = new Set<string>()
 const inFlight = new Set<string>()
 
+/** Runs the pass again when the wait for the HPC bridge is over (one timer, re-armed by each pass that waits). */
+let graceTimer: null | ReturnType<typeof setTimeout> = null
+
+function clearGraceTimer(): void {
+  if (graceTimer) {
+    clearTimeout(graceTimer)
+    graceTimer = null
+  }
+}
+
 /** Forget every attempt, toast and failure (tests, and the hook's unmount). */
 export function resetModelSwitches(): void {
+  clearGraceTimer()
   attempted.clear()
   toasted.clear()
   inFlight.clear()
@@ -135,9 +155,12 @@ export function reconcileModelSessions(select: SelectModel): void {
     return
   }
 
-  for (const entry of models.entries) {
+  for (const entry of [...models.localModels.configured, ...models.entries]) {
     knownLabels.set(entry.id, entry.label)
   }
+
+  clearGraceTimer()
+  let wait = 0
 
   const target = switchTarget(models)
   // The provider that serves the target, read from its entry (never a constant: F05 slice 02).
@@ -149,6 +172,16 @@ export function reconcileModelSessions(select: SelectModel): void {
     // Only the model id is compared: hermes may report the gateway entry as `custom`.
     if (!model || findModelEntry(models, model)) {
       setFailed(session.key, false)
+
+      continue
+    }
+
+    // F05 slice 08: a local model whose bridge is on its way is not gone; the session waits for it.
+    const local = offlineLocalModel(models, { model, provider: '' })
+    const grace = local ? localModelGrace(local) : 0
+
+    if (grace > 0) {
+      wait = wait === 0 ? grace : Math.min(wait, grace)
 
       continue
     }
@@ -185,10 +218,23 @@ export function reconcileModelSessions(select: SelectModel): void {
           notify({
             id: `athena-model-removed-${session.key}`,
             kind: 'info',
-            message: `${labelOf(model)} is no longer available. Switched to ${labelOf(target)}.`
+            // A local model that is only not connected is still the role's: say so, and offer the way back.
+            ...(local
+              ? {
+                  action: { label: 'Connect', onClick: () => reconnectSession(local, session.sessionId) },
+                  message: `${labelOf(model)} is not connected. Switched to ${labelOf(target)}.`
+                }
+              : { message: `${labelOf(model)} is no longer available. Switched to ${labelOf(target)}.` })
           })
         }
       })
+  }
+
+  if (wait > 0) {
+    graceTimer = setTimeout(() => {
+      graceTimer = null
+      reconcileModelSessions(select)
+    }, wait + 50)
   }
 }
 
@@ -249,8 +295,8 @@ export function useManagedModelSwitch(select: SelectModel): void {
     // F05 slice 07: a pick that waited for the HPC bridge is made with the same pick, once its model is listed.
     setLocalModelSelector(selection => selectRef.current(selection))
 
-    const offs = [$managedModels, $sessionStates, $currentModel, $currentProvider, $activeSessionId].map(store =>
-      store.listen(run)
+    const offs = [$managedModels, $sessionStates, $currentModel, $currentProvider, $activeSessionId, $hpcBridge].map(
+      store => store.listen(run)
     )
 
     run()

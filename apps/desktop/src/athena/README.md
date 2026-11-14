@@ -516,6 +516,62 @@ a real filter.
     IPC answers and the snapshot) and `managed/local-models-connect.test.tsx`
     (the dialog, the kept pick, and the marker absent from the page and every
     store after the dialog closes).
+- The status of local models, and disconnecting (F05 slice 08):
+  `managed/local-models-status.ts` (the words) and
+  `managed/local-models-settings.tsx` (where they show).
+  - **Next to each local model.** The composer menu's row badge
+    (`rowBadges` in `managed/model-policy.ts`, the `modelMenu.row` slot the
+    admin's note uses) and a tag on the picker dialog's row
+    (`AthenaLocalModelStatus`): "Connected" (in the menu, after the admin's
+    note: "On the HPC · Connected"), "Connecting…", "Not connected", or the
+    reason alone: "Login node unreachable", "Password refused", "Model server
+    not answering", "Host key mismatch". The menu works a row's badge out when
+    the contribution changes, so the policy registers it again on every bridge
+    status: an open menu follows the bridge. Edit Models lists the model
+    without a status.
+  - **A model's status** is the connection's, narrowed by its own model
+    server (`status.servers[<id>]`): one server down leaves the others
+    "Connected". Reasons, from main's: `unreachable`, `timeout`,
+    `connection_lost` → login node unreachable; `auth_failed` → password
+    refused; `host_key_mismatch` → host key mismatch; a server's
+    `target_unreachable` → model server not answering.
+  - **A pick while not connected** offers to connect (slice 07's
+    `offerConnect`): the dialog when main holds nothing or the password was
+    refused; a reconnect when it holds a password or key; and with the
+    connection up but the model's server down, the note "<label> is not
+    connected: model server not answering. Athena keeps trying." The pick
+    waits up to two minutes and is made when the server answers.
+  - **Settings › Model, "Local models"** (`AthenaLocalModelsSettings`, shown
+    only while local models are on for the role): "Connection to the HPC"
+    with the status in full ("Connected as <user>", "Not connected: password
+    refused") and Connect or Disconnect; one line per local model; and
+    "Remembered HPC username" with Forget. Disconnect closes the forwards and
+    forgets the password, so the next pick shows the dialog; the models stay
+    listed as "Not connected". Forget removes the remembered name and, with
+    it, the sign-in.
+  - **Within 30 seconds.** Main pushes every status
+    (`athena:hpc-bridge:changed`) and the snapshot without or with the bridge
+    record; the renderer shows each at once. Main notices a dead link within
+    10 s and is back within 25 s of the login node answering (slice 06's
+    timings). A model server that stops while the connection is up is noticed
+    at the next request to it, not by a timer; one that comes back is asked
+    for every 15 s at most.
+  - **A session on a local model whose bridge is not up** (plan question
+    Q11; `reconcileModelSessions` in `managed/model-switch.tsx`). While the
+    bridge is on its way (connecting, a server being checked, or main
+    retrying with a password or key it holds) the session is left alone for
+    up to 30 s from the status's `since` (`localModelGrace`); at launch,
+    before main has answered, the 30 s count from when the window started to
+    follow the bridge. When nothing is on its way (a new launch, where main
+    holds no password yet; a refused password; Disconnect; a host-key
+    mismatch; the model's server down) or the 30 s are over, the session
+    moves to the role default as for a removed model, and the toast says
+    "<label> is not connected. Switched to <default>." with a Connect button:
+    it offers the connection and, once the model is callable, moves that
+    session back. A local model is never a default and never the target of a
+    move.
+  - Tests: `managed/local-models-status.test.tsx`; the pushes and the 30 s
+    arithmetic in `electron/athena/hpc-bridge-password.test.ts`.
 - A removed model (slice 21): `managed/model-switch.tsx`. On every config or
   session change, each idle open session (the primary composer, draft
   included, and every tile in `$sessionStates`) whose model id left the list
@@ -907,6 +963,8 @@ override with `ATHENA_F02_BASE`).
 | `electron/main.ts` | Installs the HPC bridge (`installAthenaHpcBridge`) after the tool switches, whose `applyConfig` it uses (F05 slice 06) |
 | `src/app/session/hooks/use-model-controls.ts` | `selectModel` asks `offerLocalModelConnect` first: a local model that is not connected is not picked, the connection is offered (F05 slice 07) |
 | `src/app/contrib/wiring.tsx` | Mounts `AthenaLocalModelsDialog`, the sign-in for local models (F05 slice 07) |
+| `src/components/model-picker.tsx` | A local model's row shows `AthenaLocalModelStatus`: connected, connecting, or why not (F05 slice 08) |
+| `src/app/settings/model-settings.tsx` | The main page shows `AthenaLocalModelsSettings`: the HPC bridge's status, Connect / Disconnect and the remembered user name (F05 slice 08) |
 | `package.json` | Dependency `ssh2` (MIT) and its types, for the HPC bridge (F05 slice 06). The root `pnpm-workspace.yaml` (two `overrides`, one `allowBuilds` denial) and `pnpm-lock.yaml` change with it |
 
 ## Opened without the launcher (R01 slice 26)
