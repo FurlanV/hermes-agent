@@ -16,6 +16,9 @@
 // - `athena:tool-prefs:set-settings` (invoke, `{id, values}`): runs `athena config settings <id> --values <json>`
 //   (`--clear` for no values), which checks them against the package's schema, writes them and re-applies managed
 //   scope. Needs the CLI, like the package actions.
+// - `athena:tool-prefs:set-part` (invoke, `{id, part, on}`, F11): runs `athena config tool <id>/<part> on|off`, one
+//   source of a package, stored beside the package's switch as `enabled["<id>/<part>"]`. The CLI refuses a part
+//   the administrator locked, with the reason. Without the CLI main writes the file itself, as for a package.
 //
 // The CLI is found, in order, at `ATHENA_CLI` (the dev launcher passes the monorepo venv's `athena` by absolute
 // path), else as `athena` on the PATH the app was launched with, captured when main installs this module (before
@@ -59,6 +62,7 @@ export const TOOL_PREFS_CHANNELS = Object.freeze({
   installed: 'athena:tool-prefs:installed',
   package: 'athena:tool-prefs:package',
   set: 'athena:tool-prefs:set',
+  setPart: 'athena:tool-prefs:set-part',
   setSettings: 'athena:tool-prefs:set-settings',
   settings: 'athena:tool-prefs:settings'
 } as const)
@@ -119,7 +123,16 @@ export function settingsArgument(values: unknown): null | string {
 
 /** A catalog id (athena_schemas `ToolId`); anything else never reaches the CLI's argv. */
 const ENTRY_ID = /^[a-z0-9][a-z0-9-]{0,63}$/
+/** A part id inside an entry (athena_schemas `Slug`, F11). */
+const PART_ID = /^[a-z0-9][a-z0-9-]{0,63}$/
 const CLI_TIMEOUT_MS = 60_000
+
+/** A switch key: a catalog id, or `<id>/<part>` (F11). */
+const isSwitchId = (id: string): boolean => {
+  const [entry, part, ...rest] = id.split('/')
+
+  return ENTRY_ID.test(entry) && (part === undefined || (PART_ID.test(part) && rest.length === 0))
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -463,8 +476,25 @@ export class AthenaToolPrefs {
     return next
   }
 
+  /** One source of a package (F11), queued with the other toggles: `athena config tool <id>/<part> on|off`. */
+  setPart(id: unknown, part: unknown, on: unknown): Promise<ToolToggleResult> {
+    const valid = typeof id === 'string' && ENTRY_ID.test(id) && typeof part === 'string' && PART_ID.test(part)
+
+    const refused = (): ToolToggleResult => ({
+      applied: false,
+      enabled: this.prefs(),
+      message: 'Not a package source.',
+      ok: false
+    })
+
+    const next = this.queue.then(() => (valid ? this.setNow(`${id}/${part}`, on) : refused()))
+    this.queue = next.catch(() => undefined)
+
+    return next
+  }
+
   private async setNow(id: unknown, on: unknown): Promise<ToolToggleResult> {
-    if (typeof id !== 'string' || !ENTRY_ID.test(id) || typeof on !== 'boolean') {
+    if (typeof id !== 'string' || !isSwitchId(id) || typeof on !== 'boolean') {
       return { ok: false, applied: false, enabled: this.prefs(), message: 'Not a catalog tool.' }
     }
 
@@ -506,6 +536,11 @@ export function installAthenaToolPrefs(options: InstallToolPrefsOptions): Athena
     const { id, on } = isRecord(request) ? request : {}
 
     return prefs.set(id, on)
+  })
+  options.ipcMain.handle(TOOL_PREFS_CHANNELS.setPart, (_event, request: unknown) => {
+    const { id, on, part } = isRecord(request) ? request : {}
+
+    return prefs.setPart(id, part, on)
   })
   options.ipcMain.handle(TOOL_PREFS_CHANNELS.installed, () => prefs.installed())
   options.ipcMain.handle(TOOL_PREFS_CHANNELS.package, (_event, request: unknown) => {

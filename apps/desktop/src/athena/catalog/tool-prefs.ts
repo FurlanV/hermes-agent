@@ -44,6 +44,8 @@ export interface AthenaToolsBridge {
   /** F03 slice 27. */
   getSettings?: () => Promise<unknown>
   setSettings?: (id: string, values: Record<string, SettingValue>) => Promise<unknown>
+  /** F11: one source of a package. */
+  setPart?: (id: string, part: string, on: boolean) => Promise<unknown>
 }
 
 /** The bridge preload exposes (`window.athenaDesktop.tools`); undefined outside Electron. */
@@ -103,6 +105,42 @@ export async function setToolEnabled(
 
   try {
     const raw: unknown = await bridge.set(id, on)
+    const result = isRecord(raw) ? raw : {}
+    const enabled = asPrefs(result.enabled)
+    $toolPrefs.set(enabled)
+
+    return {
+      applied: result.applied === true,
+      enabled,
+      message: typeof result.message === 'string' ? result.message : '',
+      ok: result.ok === true
+    }
+  } catch (error) {
+    return {
+      applied: false,
+      enabled: $toolPrefs.get(),
+      message: error instanceof Error ? error.message : String(error),
+      ok: false
+    }
+  }
+}
+
+/**
+ * Ask main to turn one source of a package on or off (F11: `athena config tool <id>/<part> on|off`). Never throws:
+ * a refusal (a part the administrator locked, an older main) comes back as `ok: false` with the reason.
+ */
+export async function setPartEnabled(
+  id: string,
+  part: string,
+  on: boolean,
+  bridge: AthenaToolsBridge | undefined = toolsBridge()
+): Promise<ToolToggleResult> {
+  if (!bridge?.setPart) {
+    return { applied: false, enabled: $toolPrefs.get(), message: 'Source switches need a newer Athena desktop app.', ok: false }
+  }
+
+  try {
+    const raw: unknown = await bridge.setPart(id, part, on)
     const result = isRecord(raw) ? raw : {}
     const enabled = asPrefs(result.enabled)
     $toolPrefs.set(enabled)

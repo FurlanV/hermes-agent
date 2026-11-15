@@ -23,6 +23,9 @@
  * Settings (F03 slice 27): an installed package that declares `settings` shows a form in its details (text, choice,
  * toggle, number with bounds). Values are checked here and again by `athena config settings <id>`, stored in
  * tool-prefs.json and sent to the package with each call of new chats. A secret-typed setting is never shown.
+ *
+ * Sources (F11): an installed package whose catalog entry declares `parts` expands to one switch per source
+ * (`part-switches.tsx`, `athena config tool <id>/<part> on|off`). A package without parts looks as before.
  */
 
 import { useStore } from '@nanostores/react'
@@ -81,6 +84,7 @@ import {
 import { type CurrentCatalog, currentCatalog, refreshCatalog } from './catalog-source'
 import { LearnedSkills } from './learned-skills'
 import { MCP_KINDS, needsMcpReload, reloadPackageServers } from './mcp-reload'
+import { PartSwitches } from './part-switches'
 import {
   $installedPackages,
   $packageAccess,
@@ -588,6 +592,7 @@ function CatalogCardView({ busy, card, note, onAccept, onCheck, onInstall, onRem
               {note}
             </p>
           )}
+          <PartSwitches card={card} view={view} />
           <Button
             aria-controls={detailsId}
             aria-expanded={open}
