@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.17",
+  "catalog_version": "2026.11.18",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -503,7 +503,7 @@
       "review": {
         "at": "2026-11-15",
         "by": "claude-code/implement-plan",
-        "notes": "F08 slice 13: eight read-only tools (readOnlyHint) over public curations, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3, a cache fill, never curation data); eagle-api limits how many fills one user may cause and answers \"rate limited, retry in N seconds\" past it. Every result names its source, release and fetch date. Mondo as published in EBI OLS has no OMIM cross-references (F08 slice 12), so OMIM and MONDO diseases cannot be matched by identifier through it. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+        "notes": "F08 slice 13: eight read-only tools (readOnlyHint) over public curations, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3, a cache fill, never curation data); eagle-api limits how many fills one user may cause and answers \"rate limited, retry in N seconds\" past it. Every result names its source, release and fetch date. Mondo as published in EBI OLS has no OMIM cross-references (F08 slice 12), so OMIM and MONDO diseases cannot be matched by identifier through it. Public, granted to every role (migration 0009). F08 slice 14: the genome_build setting (GRCh38 or GRCh37, GRCh38 by default) is the build get_clingen_dosage reads when the chat names none; a preference, never a secret, and it sends nothing new. Awaiting human review and the EAGLE team's sign-off."
       },
       "roles": [
         "researcher",
@@ -528,16 +528,31 @@
           ]
         }
       ],
-      "sha256": "3d1da92c1423b57a87914d4c49b40684b289244474e50553cda0e35bdab3c95c",
+      "settings": [
+        {
+          "choices": [
+            "GRCh38",
+            "GRCh37"
+          ],
+          "default": "GRCh38",
+          "description": "The build ClinGen dosage is read on unless you ask for the other one in the chat. GRCh38 and GRCh37 are ClinGen's two curation lists.",
+          "id": "genome_build",
+          "maximum": null,
+          "minimum": null,
+          "title": "Genome build",
+          "type": "choice"
+        }
+      ],
+      "sha256": "ea35b6d70ddbd86ddfbbb58edf98316d943b23fae0c1c2d748bd07139b852106",
       "skill": {
         "path": "skills/eagle-disease-evidence",
-        "sha256": "b069b4f4f36ac8754b4829fb23aef4d828fce78ad20cef03cd2ceb38a94247d9"
+        "sha256": "59c065a7a23106d0493b09eca64c3b86d2742c9d26a202d21223f33066f11789"
       },
       "source": {
         "gateway": {
           "capability": "eagle",
           "surface": {
-            "get_clingen_dosage": "d28fc2dd9a42c36938cc7d62bc17c06112b282209a8780b303ca949515f5e7e8",
+            "get_clingen_dosage": "48a510fcdf61486c8cf0b73f4ba4d51a71461073e69f3e12d5506fb8c78969ed",
             "get_clingen_validity": "992862c6ceda6ef167db8b470a89fefd73049973376b17b4fcd49d5fb0d262cb",
             "get_disease_ontology": "4e53ff177c42c0fd18f06ec3393dcc22abddb060040f82531f83b741a1313ec2",
             "get_gene2phenotype": "27dbd0b52f7d2f05791e9d4defa8d2b48194dde618d7772747a2e9e53a513c66",
@@ -562,7 +577,7 @@
       "summary": "Gene-disease evidence from ClinGen, Gene2Phenotype, PanelApp and SFARI Gene, and disease names from Mondo, read through EAGLE.",
       "title": "Disease evidence",
       "user_toggle": true,
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     "eagle-gene-biology": {
       "category": "database",
@@ -857,7 +872,7 @@
       "review": {
         "at": "2026-11-15",
         "by": "claude-code/implement-plan",
-        "notes": "F08 slice 13: five read-only tools (readOnlyHint) over public variant data, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3); gnomAD and VariantValidator share one rate budget in eagle-api (F08 slice 10), and a spent budget is answered \"rate limited, retry in N seconds\", never as an empty result. The variants a user asks about leave the hospital for gnomAD and VariantValidator when EAGLE does not hold them yet; the companion skill tells the agent to send the variant only. Build-dependent tools take genome_build (GRCh38 by default) and name the build they used. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+        "notes": "F08 slice 13: five read-only tools (readOnlyHint) over public variant data, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3); gnomAD and VariantValidator share one rate budget in eagle-api (F08 slice 10), and a spent budget is answered \"rate limited, retry in N seconds\", never as an empty result. The variants a user asks about leave the hospital for gnomAD and VariantValidator when EAGLE does not hold them yet; the companion skill tells the agent to send the variant only. Build-dependent tools take genome_build and name the build they used; since F08 slice 14 they default to the user's genome_build setting (GRCh38 or GRCh37, GRCh38 by default), a preference, never a secret, that sends nothing new. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
       },
       "roles": [
         "researcher",
@@ -879,20 +894,35 @@
           ]
         }
       ],
-      "sha256": "d8817307f104861e1cadf3007715d328f8d92d68dda1b80f92f80f60af914702",
+      "settings": [
+        {
+          "choices": [
+            "GRCh38",
+            "GRCh37"
+          ],
+          "default": "GRCh38",
+          "description": "The build gnomAD constraint, gnomAD frequencies and VariantValidator are read on unless you ask for the other one in the chat. GRCh38 reads gnomAD v4, GRCh37 gnomAD v2.1.1.",
+          "id": "genome_build",
+          "maximum": null,
+          "minimum": null,
+          "title": "Genome build",
+          "type": "choice"
+        }
+      ],
+      "sha256": "4b47532727460734788189323d81dd4aba19b987f91b43ad6ce8b8b202f10974",
       "skill": {
         "path": "skills/eagle-variant-data",
-        "sha256": "8e7c12b3d3c52ce0dac3ad265b3d7ed9563b25a196e9f916cca45d9b53faa50c"
+        "sha256": "fc0e85592f6811bbc296d5f22a73a645b1788a11848afa04c7751077e55d839e"
       },
       "source": {
         "gateway": {
           "capability": "eagle",
           "surface": {
             "get_clinvar_variants": "87339b944f2e9ea0558d6178b62274409e73acbbd09ab76c344f3fc4c07985d0",
-            "get_gnomad_constraint": "37614d9c1cb396b6c429bcbec00b012cc1449714cc4542592701fc7893ea723e",
-            "get_variant_frequency": "cddc689cf369246687b319439e77b51963b70e43d6b79ed14f4c1ccee7658ad2",
+            "get_gnomad_constraint": "8c2950dd1ab133191e83b1ee7b1161191751e9b605c316767f3dbae47d21bfc8",
+            "get_variant_frequency": "b4d69f500d1cfa45faac0dfc43ecd9fa6d6120f64ae7899509681511c08d27b5",
             "list_variant_annotation_sources": "612215ca0b547f8748b64fda628d5e00df19bf86e0bc53cab83b6fa0785a7bad",
-            "normalize_variant": "8ffb5e0455c9a8028f80f6f6687c59b438f71d1c593569c485d883c23a288624"
+            "normalize_variant": "fb3fad5046da95c361d9b64cd62b0f933f3f9dde175e57aa88f74d6baf66c200"
           },
           "tools": [
             "get_gnomad_constraint",
@@ -907,7 +937,7 @@
       "summary": "gnomAD constraint and allele frequencies, ClinVar records and VariantValidator normalisation, read through EAGLE.",
       "title": "Variant data",
       "user_toggle": true,
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     "files": {
       "category": "built-in",
