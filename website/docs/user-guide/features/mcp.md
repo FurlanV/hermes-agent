@@ -1033,6 +1033,25 @@ mcp_servers:
 
 A [portable plugin package](../../developer-guide/plugins/index.md#portable-agent-plugins-v1-packages) can declare the same table for its server. If you add a same-name `mcp_servers` entry (for example to set `trust: full`), the package's `tool_costs`, `spend_limit` and `cost_unit` still apply unless your entry sets those keys itself; `spend_limit: 0` turns the package's limit off and `tool_costs: {}` drops its costs.
 
+## Tools that ask before every call
+
+`tools.confirm` lists tools that ask you before **every** call, for actions you want to approve one by one (asking a service to add a record, send a message, start a job):
+
+```yaml
+mcp_servers:
+  literature:
+    url: "https://gateway.example.org/packages/literature/mcp"
+    trust: untrusted
+    tools:
+      confirm: [request_paper_ingestion]   # exact names or globs, like tools.include
+```
+
+- A listed tool asks whatever the server's `trust` and its `readOnlyHint` annotation, so a server cannot silence the prompt by changing its annotations.
+- The prompt offers only Allow Once and Deny. An earlier Session or Always answer, [YOLO](../security.md#yolo-mode) and `approvals.mode: off` do not skip it. Where nobody can answer (cron jobs, `hermes chat -q`, a gateway with no approver), the call is refused without running.
+- The prompt quotes the server's description of the tool (bounded, with control characters escaped) and the call's arguments, so you see what you are approving.
+- Declining, closing the prompt or letting it time out (`approvals.timeout`) sends nothing; the model is told you did not approve.
+- Without `tools.confirm` nothing changes. A value that is not a name or a list is ignored with a warning.
+
 ## MCP Elicitation Support
 
 MCP servers can ask the user for structured input mid-tool-call via the `elicitation/create` protocol (mcp Python SDK ≥ 1.11.0). Hermes routes **form-mode** elicitations through its existing approval surface — an interactive prompt in the CLI/TUI, or approval buttons on gateway platforms like Telegram and Slack — so the request reaches you wherever the session lives. Each answer covers that one request, so the prompt offers only Allow Once and Deny. YOLO and `approvals.mode: off` do not answer these for you: the server is asking you a question, not asking permission. **URL-mode** elicitations (where a server points you at an external URL) are declined as unsupported.

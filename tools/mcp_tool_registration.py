@@ -74,6 +74,20 @@ def _record_cost_policy(server_name: str, config: dict, key) -> None:
         _core._server_cost_policies[key] = policy
 
 
+def _record_confirm_policy(server_name: str, config: dict, key, tools: Iterable[Any] = ()) -> None:
+    """``tools.confirm`` for *key*: the tools asked about before every call, with the description the server
+    gave each (shown on the card). Caller holds ``_core._lock``."""
+    tools_cfg = (config or {}).get("tools")
+    raw = tools_cfg.get("confirm") if isinstance(tools_cfg, dict) else None
+    patterns = _normalize_name_filter(raw, f"mcp_servers.{server_name}.tools.confirm")
+    if not patterns:
+        _core._server_confirm_tools.pop(key, None)
+        return
+    notes = {t.name: str(getattr(t, "description", "") or "") for t in tools
+             if getattr(t, "name", None) and matches_name_filter(t.name, patterns)}
+    _core._server_confirm_tools[key] = (frozenset(patterns), notes)
+
+
 def _record_tool_trust_metadata(server_name: str, config: dict, tools: list[Any], key=None) -> None:
     """Capture per-server trust and per-tool readOnlyHint at discovery — the security boundary: the call-time gate
     classifies from data we control, never re-read server-supplied state. *key* is the connection (default: the
@@ -84,6 +98,7 @@ def _record_tool_trust_metadata(server_name: str, config: dict, tools: list[Any]
             key = _server_key(server_name)
         _core._server_trust_levels[key] = _normalize_server_trust((config or {}).get("trust"))
         _record_cost_policy(server_name, config, key)
+        _record_confirm_policy(server_name, config, key, tools)
         hints = _core._tool_read_only_hints.setdefault(key, {})
         hints.update({t.name: _annotation_read_only_hint(t) for t in tools if getattr(t, "name", None)})
 
@@ -98,14 +113,15 @@ def _warn_unknown_cost_keys(server_name: str, key, tool_names: list[str]) -> Non
                        "'mcp_%s_' prefix).", server_name, unknown, server_name)
 
 
-def _record_scope_trust(server_name: str, config: dict, scope: str) -> None:
-    """``trust`` (and the cost policy) is the CONSUMING profile's policy, never the connection's: an
-    ``untrusted`` profile that adopts a ``full`` profile's live connection must still be asked before every
-    write-capable call."""
+def _record_scope_trust(server_name: str, config: dict, scope: str, tools: Iterable[Any] = ()) -> None:
+    """``trust`` (and the cost and ``tools.confirm`` policies) is the CONSUMING profile's policy, never the
+    connection's: an ``untrusted`` profile that adopts a ``full`` profile's live connection must still be asked
+    before every write-capable call. *tools*: the adopted connection's, for the confirm card's descriptions."""
     with _core._lock:
         key = _server_key(server_name, scope, current=False)
         _core._server_trust_levels[key] = _normalize_server_trust((config or {}).get("trust"))
         _record_cost_policy(server_name, config, key)
+        _record_confirm_policy(server_name, config, key, tools)
 
 
 def _track_mcp_tool_server(tool_name: str, server_name: str) -> None:
@@ -180,6 +196,7 @@ def _remove_server_scope(key, scope: str) -> None:
             _core._server_tool_scopes.pop(key, None)
         _core._server_trust_levels.pop(_server_key(server_name, scope, current=False), None)
         _core._server_cost_policies.pop(_server_key(server_name, scope, current=False), None)
+        _core._server_confirm_tools.pop(_server_key(server_name, scope, current=False), None)
     _restore_server_toolset_alias(key)
 
 
@@ -613,7 +630,7 @@ def _register_connected_into_current_scope(servers: dict) -> int:
         # Visibility for this profile: the owner keeps teardown, this scope sees the connection.
         with _core._lock:
             _core._server_tool_scopes.setdefault(key, set()).add(scope)
-        _record_scope_trust(name, config, scope)
+        _record_scope_trust(name, config, scope, server._tools)
         if registry.get_tool_names_for_toolset(f"mcp-{name}"):
             continue
         candidates = _tool_candidates(name, server._tools, _make_tool_filter(name, config), server.tool_timeout)
