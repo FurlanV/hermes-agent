@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.15",
+  "catalog_version": "2026.11.16",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -438,6 +438,50 @@
       "id": "eagle-disease-evidence",
       "kind": "gateway",
       "owner": "eagle-team",
+      "parts": [
+        {
+          "id": "clingen",
+          "label": "ClinGen",
+          "summary": "ClinGen gene-disease validity and dosage sensitivity curations.",
+          "tools": [
+            "get_clingen_validity",
+            "get_clingen_dosage"
+          ]
+        },
+        {
+          "id": "gene2phenotype",
+          "label": "Gene2Phenotype",
+          "summary": "Gene2Phenotype's gene-disease records per panel, with confidence and allelic requirement.",
+          "tools": [
+            "get_gene2phenotype"
+          ]
+        },
+        {
+          "id": "panelapp",
+          "label": "PanelApp",
+          "summary": "Genomics England PanelApp panels that carry a gene, with its rating.",
+          "tools": [
+            "get_panelapp_panels"
+          ]
+        },
+        {
+          "id": "sfari",
+          "label": "SFARI Gene",
+          "summary": "SFARI Gene's autism score for a gene.",
+          "tools": [
+            "get_sfari_gene"
+          ]
+        },
+        {
+          "id": "mondo",
+          "label": "Mondo disease names",
+          "summary": "Disease names and identifiers from Mondo, searched through Monarch and read from EBI's Ontology Lookup Service.",
+          "tools": [
+            "resolve_disease",
+            "get_disease_ontology"
+          ]
+        }
+      ],
       "permissions": {
         "data": [
           "gene symbols and disease names or identifiers (MONDO, OMIM, Orphanet), to EAGLE through the Athena capability gateway, which asks ClinGen, PanelApp, SFARI Gene, Monarch or EBI's Ontology Lookup Service only for a value it does not hold yet"
@@ -484,7 +528,7 @@
           ]
         }
       ],
-      "sha256": "e6fdc9f315d7eb106ff1f6b04f08bd803d76c5ea4af43a3663c399e22a0e66ba",
+      "sha256": "3d1da92c1423b57a87914d4c49b40684b289244474e50553cda0e35bdab3c95c",
       "skill": {
         "path": "skills/eagle-disease-evidence",
         "sha256": "b069b4f4f36ac8754b4829fb23aef4d828fce78ad20cef03cd2ceb38a94247d9"
@@ -518,7 +562,7 @@
       "summary": "Gene-disease evidence from ClinGen, Gene2Phenotype, PanelApp and SFARI Gene, and disease names from Mondo, read through EAGLE.",
       "title": "Disease evidence",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "eagle-gene-biology": {
       "category": "database",
@@ -534,6 +578,56 @@
       "id": "eagle-gene-biology",
       "kind": "gateway",
       "owner": "eagle-team",
+      "parts": [
+        {
+          "id": "uniprot",
+          "label": "UniProt",
+          "summary": "UniProt protein features (domains, regions, motifs) and function.",
+          "tools": [
+            "get_protein_features"
+          ]
+        },
+        {
+          "id": "ensembl",
+          "label": "Ensembl",
+          "summary": "Ensembl's canonical transcript and exons of a gene, on GRCh38.",
+          "tools": [
+            "get_transcript"
+          ]
+        },
+        {
+          "id": "hgnc",
+          "label": "HGNC gene families",
+          "summary": "HGNC gene groups a gene belongs to, and their members.",
+          "tools": [
+            "get_gene_family"
+          ]
+        },
+        {
+          "id": "brainspan",
+          "label": "BrainSpan",
+          "summary": "BrainSpan brain expression of a gene across development (the 2013 release).",
+          "tools": [
+            "get_brain_expression"
+          ]
+        },
+        {
+          "id": "pathways",
+          "label": "Reactome and GO",
+          "summary": "Reactome pathways and Gene Ontology terms a gene is a member of.",
+          "tools": [
+            "get_pathways"
+          ]
+        },
+        {
+          "id": "string",
+          "label": "STRING",
+          "summary": "STRING interaction partners of a gene and the edges among them.",
+          "tools": [
+            "get_ppi_network"
+          ]
+        }
+      ],
       "permissions": {
         "data": [
           "gene symbols, to EAGLE through the Athena capability gateway, which asks UniProt, Ensembl, Reactome, EBI's QuickGO or STRING only for a value it does not hold yet"
@@ -579,7 +673,7 @@
           ]
         }
       ],
-      "sha256": "a27b864a8b2ec156c8f36f104708dfd88c17976a427c26517c5a4afb22bf3307",
+      "sha256": "6004b3aa9720622adfeaa799938b3e6f294de792ae30083f6f16c525bbedd41d",
       "skill": {
         "path": "skills/eagle-gene-biology",
         "sha256": "674fd792560b63fed456674839fd69dbabdc7a686412c52066ee523bc39bcb80"
@@ -611,7 +705,7 @@
       "summary": "Protein features, transcripts, gene families, brain expression, pathways and interaction partners of a gene, read through EAGLE.",
       "title": "Gene biology",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "eagle-variant-data": {
       "category": "database",
@@ -627,6 +721,33 @@
       "id": "eagle-variant-data",
       "kind": "gateway",
       "owner": "eagle-team",
+      "parts": [
+        {
+          "id": "gnomad",
+          "label": "gnomAD",
+          "summary": "gnomAD gene constraint and variant allele frequencies.",
+          "tools": [
+            "get_gnomad_constraint",
+            "get_variant_frequency"
+          ]
+        },
+        {
+          "id": "clinvar",
+          "label": "ClinVar",
+          "summary": "ClinVar's variant records for a gene, with clinical significance and review status.",
+          "tools": [
+            "get_clinvar_variants"
+          ]
+        },
+        {
+          "id": "variantvalidator",
+          "label": "VariantValidator",
+          "summary": "VariantValidator's normalisation of an HGVS variant description.",
+          "tools": [
+            "normalize_variant"
+          ]
+        }
+      ],
       "permissions": {
         "data": [
           "gene symbols, to EAGLE through the Athena capability gateway, which asks gnomAD or NCBI ClinVar only for a value it does not hold yet",
@@ -671,7 +792,7 @@
           ]
         }
       ],
-      "sha256": "36e5b5fa1d83c046c8a3f83b0578a5a1f730b4a499126b7afd8d35804d74d58a",
+      "sha256": "d8817307f104861e1cadf3007715d328f8d92d68dda1b80f92f80f60af914702",
       "skill": {
         "path": "skills/eagle-variant-data",
         "sha256": "8e7c12b3d3c52ce0dac3ad265b3d7ed9563b25a196e9f916cca45d9b53faa50c"
@@ -699,7 +820,7 @@
       "summary": "gnomAD constraint and allele frequencies, ClinVar records and VariantValidator normalisation, read through EAGLE.",
       "title": "Variant data",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "files": {
       "category": "built-in",
