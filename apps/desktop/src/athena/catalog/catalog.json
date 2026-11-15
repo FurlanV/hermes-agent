@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.18",
+  "catalog_version": "2026.11.19",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -1051,7 +1051,8 @@
         "data": [
           "search terms, filters and paper identifiers (PMID, PMCID, DOI), to papers-nexus through the Athena capability gateway, which asks Europe PMC, PubMed and Unpaywall",
           "paper identifiers, to EAGLE, to say whether it already holds a paper",
-          "with Include Elsevier on, search terms and filters, to Elsevier ScienceDirect through papers-nexus"
+          "with Include Elsevier on, search terms and filters, to Elsevier ScienceDirect through papers-nexus",
+          "where your role may ask EAGLE to add a paper, and only after you approve each request, the paper's identifier and title and your reason, to EAGLE through papers-nexus, which records them with your Athena identity, downloads the paper from its open-access locations, adds it to EAGLE and extracts it"
         ],
         "executes_code": false,
         "filesystem": "none",
@@ -1068,9 +1069,9 @@
       },
       "requires_hermes": ">=d667bd0da0",
       "review": {
-        "at": "2026-11-14",
+        "at": "2026-11-15",
         "by": "claude-code/implement-plan",
-        "notes": "F10 slice 09: seven read-only tools (readOnlyHint) over published literature: Europe PMC, PubMed and Unpaywall, read through papers-nexus, and EAGLE's exists check. Results are outside text, returned as data; the package is untrusted like every gateway package. Public, granted to every role (migration 0008). The ingest scope (literature.ingest) is left out until slice 16. F10 slice 10: the Elsevier toggle, off by default; papers-nexus also keeps Elsevier off on the server until a person confirms the API key's licence allows use by an agent. Awaiting human review and the EAGLE team's sign-off."
+        "notes": "F10 slice 09: seven read-only tools (readOnlyHint) over published literature: Europe PMC, PubMed and Unpaywall, read through papers-nexus, and EAGLE's exists check. Results are outside text, returned as data; the package is untrusted like every gateway package. Public, granted to every role (migration 0008). The ingest scope (literature.ingest) is left out until slice 16. F10 slice 10: the Elsevier toggle, off by default; papers-nexus also keeps Elsevier off on the server until a person confirms the API key's licence allows use by an agent. F10 slice 16: the ingest scope literature.ingest, granted to no role (an admin grants it per role): request_paper_ingestion (not read-only, confirmed by the user before every call through source.gateway.confirm) and get_ingestion_status (read-only, a request's state, the requester's own only). papers-nexus re-checks the Athena subject, a daily limit per user and EAGLE's holdings, and downloads through legal open-access channels only. Classified internal (the request records the requester and reason in EAGLE). Awaiting human review, the data owner's sign-off on the classification and the EAGLE team's sign-off."
       },
       "roles": [
         "researcher",
@@ -1092,6 +1093,15 @@
             "check_in_eagle",
             "list_literature_sources"
           ]
+        },
+        {
+          "classification": "internal",
+          "id": "literature.ingest",
+          "title": "Ask EAGLE to add a paper it does not hold (download, add and extract it), and follow the request",
+          "tools": [
+            "request_paper_ingestion",
+            "get_ingestion_status"
+          ]
         }
       ],
       "settings": [
@@ -1106,21 +1116,26 @@
           "type": "toggle"
         }
       ],
-      "sha256": "7ef619d857f9e7a5ca2de2bf7dedf2f8b785abc1b941b50eb786ab60afcfc712",
+      "sha256": "8e06d75f2a0201bfe43847b0da782c6861d0b3b54b9ec9c40bd8e50995ddb451",
       "skill": {
         "path": "skills/literature",
-        "sha256": "a24a7652798fe901b3bc0eacce591dd9485269f1d11fefbd03921b72dc985e88"
+        "sha256": "0f198d8f6c594f58323e21f4fb1be3287e85930c49e1dc5d247f17288879a16e"
       },
       "source": {
         "gateway": {
           "capability": "nexus",
+          "confirm": [
+            "request_paper_ingestion"
+          ],
           "surface": {
             "check_in_eagle": "358719f50cdc9c788533620ed3ede7700acdc3ca59005efca16cad6ffef5c1c8",
             "convert_ids": "3ebb889975e3f2d265f89eabcf86afedbcb0df7fbd4419caeaee53d508b86581",
             "find_open_access": "fc72aece06e7bbcbf4a72cfdaf8407847b3b96d66291bce49704950d21bfdc65",
             "get_abstracts": "6d025dbc1e9c75f13ebe9076ae5c9ec8aa0bb146a22fca7aeaac60a5ae6fede1",
             "get_full_text": "67b192648b326f3172299fab471912dfce800184cb5765075b02ab8eca6f7f07",
+            "get_ingestion_status": "7db538cdcadd43f37e9e2519698c98edeb9c7c02f9d180ba2a3bf8e92d36357f",
             "list_literature_sources": "3b423c87e41cd89679349cd882c50dd4bb83586f7e66066f46f83a6edb97c51e",
+            "request_paper_ingestion": "d196403c33c6a81e918bfdb38474059a1eb59727e04d6f63b8c5d949a47453ab",
             "search_literature": "a07d13b4e927681460f5300b62d69eb9e24bb0e0add11a1b4573d342a6611c68"
           },
           "timeout_seconds": 120,
@@ -1131,15 +1146,17 @@
             "find_open_access",
             "get_full_text",
             "check_in_eagle",
-            "list_literature_sources"
+            "list_literature_sources",
+            "request_paper_ingestion",
+            "get_ingestion_status"
           ]
         }
       },
       "status": "experimental",
-      "summary": "Search Europe PMC and PubMed, read abstracts and open-access full text, and see which papers EAGLE holds.",
+      "summary": "Search Europe PMC and PubMed, read abstracts and open-access full text, see which papers EAGLE holds, and, where your role allows it, ask EAGLE to add one.",
       "title": "Literature",
       "user_toggle": true,
-      "version": "2.0.0"
+      "version": "3.0.0"
     },
     "literature-search": {
       "category": "built-in",
