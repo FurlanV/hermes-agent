@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.16",
+  "catalog_version": "2026.11.17",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -706,6 +706,93 @@
       "title": "Gene biology",
       "user_toggle": true,
       "version": "1.1.0"
+    },
+    "eagle-manual-curation": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "What did the curators score for SHANK3 in the manual curation workbooks?",
+        "How did the curators score the cases of PMID 35982159?",
+        "Where do the curators and EAGLE's extraction differ for the paper behind SHANK3's first workbook row?",
+        "How does the EAGLE curation SOP score a de novo loss-of-function case?"
+      ],
+      "group": "Research",
+      "icon": "list-checks",
+      "id": "eagle-manual-curation",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols, PubMed ids and search phrases, to EAGLE through the Athena capability gateway"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F09 slice 10: five read-only tools (readOnlyHint) over the curators' gene workbooks as eagle-api stores them (215 gene workbooks in the folder today), paged, and the curation SOP in two pages. Every row is labelled origin: manual_workbook and cited by workbook file and row, with the PMID and EAGLE's paper_id (null when EAGLE holds no such paper). The justification notes are curators' free text, shown to every user who turns the package on (F09 decision 5); public, granted to every role (migration 0010). Nothing leaves the hospital: eagle-api answers from its own tables. Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "curation.manual",
+          "title": "Manual curation (the curators' gene workbooks and the curation SOP)",
+          "tools": [
+            "list_curated_genes",
+            "get_manual_curation",
+            "get_manual_curation_by_paper",
+            "search_manual_curation",
+            "get_curation_sop"
+          ]
+        }
+      ],
+      "sha256": "38408ed90fb925f6a192e2a5e08f24218258e446d11fc023b18427d6d95ccff8",
+      "skill": {
+        "path": "skills/eagle-manual-curation",
+        "sha256": "0bab3784ab1283deddfbfa032dc1785014b6e922863bee76749ba924d2ad654f"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_curation_sop": "217c92cefb086c03affec92a88c552889cc41576642e68ded1dc6597e2519759",
+            "get_manual_curation": "9a00e7b6a718bf5c657edcc5682745f2abbcf205c94d38f4e0f745b46434eda7",
+            "get_manual_curation_by_paper": "b5915b9a1fdeb8eba04c0260e2bf08cee9d88f0c6c8dff62918ac33448bbeca4",
+            "list_curated_genes": "29c0ab47c3564a09711bfa0d26fd7ab37211152de021101791a2905c3825fd05",
+            "search_manual_curation": "be9ec0ebc2d423f4153e37801cb8a8d3bd7cbc15c549a5de13157a1eba0bd091"
+          },
+          "tools": [
+            "list_curated_genes",
+            "get_manual_curation",
+            "get_manual_curation_by_paper",
+            "search_manual_curation",
+            "get_curation_sop"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "The SickKids curators' hand-scored gene workbooks and their scoring procedure, read through EAGLE.",
+      "title": "Manual curation",
+      "user_toggle": true,
+      "version": "1.0.0"
     },
     "eagle-variant-data": {
       "category": "database",
