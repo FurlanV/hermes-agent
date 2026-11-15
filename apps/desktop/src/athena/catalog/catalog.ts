@@ -11,6 +11,7 @@
 
 import type { PackageAccess } from '../../../electron/athena/tool-prefs-types'
 
+import { type PartCard, partCards } from './catalog-parts'
 import { BUNDLED_CATALOG, currentCatalog } from './catalog-source'
 
 export { BUNDLED_CATALOG }
@@ -20,6 +21,17 @@ export interface CatalogScope {
   classification: 'confidential' | 'internal' | 'public' | 'restricted'
   id: string
   title: string
+  tools: string[]
+}
+
+/**
+ * One source inside a gateway package (F11): a named set of its tools the user switches on and off while the package
+ * is on (`athena config tool <id>/<part> on|off`). A tool in no part is on whenever the package is on.
+ */
+export interface CatalogPart {
+  id: string
+  label: string
+  summary: string
   tools: string[]
 }
 
@@ -49,6 +61,8 @@ export interface CatalogEntry {
   id: string
   kind: 'gateway' | 'mcp' | 'plugin' | 'skill' | 'toolset'
   owner: string
+  /** F11: the package's sources, each with its own switch (catalog 2026.11.11 on). */
+  parts?: CatalogPart[]
   permissions: {
     data: string[]
     executes_code: boolean
@@ -265,6 +279,8 @@ export interface CatalogCard {
   managed: boolean
   /** On for the next new chat. */
   on: boolean
+  /** F11: the package's sources with their switches (empty for a package without parts). */
+  parts: PartCard[]
   /** Titles of the `works_best_with` entries that are off for the next new chat (or not offered to the role). */
   worksBestWith: string[]
 }
@@ -311,6 +327,7 @@ export function catalogCards(
 
     if (entry && (!role || !Array.isArray(entry.roles) || entry.roles.includes(role))) {
       const held = cardAccess(entry, access)
+      const on = entryIsOn(entry, tools, prefs) && !held?.blocked
 
       cards.push({
         access: held,
@@ -324,7 +341,8 @@ export function catalogCards(
           entryIsInstalled(entry, tools, prefs, installed),
         experimental: entry.status === 'experimental',
         managed: tools.locked_on.includes(id) || !entry.user_toggle || entry.status === 'withdrawn',
-        on: entryIsOn(entry, tools, prefs) && !held?.blocked,
+        on,
+        parts: partCards(entry, config, prefs, on),
         worksBestWith: missingCompanions(entry, tools, prefs, catalog)
       })
     }

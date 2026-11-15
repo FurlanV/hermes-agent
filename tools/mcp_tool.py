@@ -531,6 +531,10 @@ _tool_read_only_hints: dict[Any, dict[str, bool]] = {}
 # Declared per-tool costs + per-chat spend limit (``tools.mcp_tool_costs.CostPolicy``), keyed like
 # ``_server_trust_levels``: the consuming profile's policy. Absent = no costs, behaviour unchanged.
 _server_cost_policies: dict[Any, Any] = {}
+# ``tools.confirm``: tools asked about before EVERY call, whatever the trust tier, their readOnlyHint or a
+# remembered grant. Keyed like ``_server_trust_levels`` (the consuming profile's policy): ``(patterns,
+# {tool: the server's description, captured at discovery})``. Absent = no such tool, behaviour unchanged.
+_server_confirm_tools: dict[Any, tuple[frozenset[str], dict[str, str]]] = {}
 
 _TRUST_FULL, _TRUST_UNTRUSTED = "full", "untrusted"
 

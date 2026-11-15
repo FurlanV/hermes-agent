@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.10",
+  "catalog_version": "2026.11.19",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -222,9 +222,9 @@
       "requires_hermes": ">=d667bd0da0",
       "results": "live-only",
       "review": {
-        "at": "2026-11-11",
+        "at": "2026-11-14",
         "by": "claude-code/implement-plan",
-        "notes": "F03 slices 12 and 15: EAGLE holds published data only, so every evidence scope (gene, case, query, text) is public and granted to every role (plan decision 3; migration 0006). Read-only tools (readOnlyHint); list tools page with an opaque cursor and EAGLE caps every result. Paper passages are verbatim published text. Awaiting human review and the EAGLE team's sign-off (decision 6)."
+        "notes": "F03 slices 12 and 15: EAGLE holds published data only, so every evidence scope (gene, case, query, text) is public and granted to every role (plan decision 3; migration 0006). Read-only tools (readOnlyHint); list tools page with an opaque cursor and EAGLE caps every result. Paper passages are verbatim published text. F07 slice 11 adds eight read-only tools to the same scopes; curator rulings stay refused until eagle-api's switch for the gateway is turned on, and turning it on shows curator-level data to every role with the package on (an open question for the owner). Awaiting human review and the EAGLE team's sign-off (decision 6)."
       },
       "roles": [
         "researcher",
@@ -236,64 +236,80 @@
         {
           "classification": "public",
           "id": "evidence.gene",
-          "title": "Gene evidence (scores, counts, findings, paper metadata)",
+          "title": "Gene evidence (scores and their history, counts, findings, summaries, similar genes, paper records)",
           "tools": [
             "search_genes",
             "get_gene_details",
             "get_gene_score",
             "get_gene_level_findings",
+            "get_gene_score_history",
+            "get_gene_summary",
+            "get_similar_genes",
             "search_papers",
+            "get_paper",
             "describe"
           ]
         },
         {
           "classification": "public",
           "id": "evidence.case",
-          "title": "Cases and variants (published case rows, paged)",
+          "title": "Cases, variants and curator evidence (published case rows and curators' records, paged)",
           "tools": [
             "get_cases_by_gene",
             "get_cases_by_paper",
             "get_case_details",
             "get_variants_by_gene",
-            "find_variant_reports"
+            "find_variant_reports",
+            "get_curator_rulings",
+            "get_gene_curator_evidence"
           ]
         },
         {
           "classification": "public",
           "id": "evidence.query",
-          "title": "Queries over EAGLE's records (whitelisted filters, joins and counts)",
+          "title": "Queries over EAGLE's records (whitelisted filters, joins and counts, and the whitelist itself)",
           "tools": [
-            "query"
+            "query",
+            "describe_schema"
           ]
         },
         {
           "classification": "public",
           "id": "evidence.text",
-          "title": "Passages from published papers",
+          "title": "Passages and whole sections from published papers",
           "tools": [
-            "search_paper_passages"
+            "search_paper_passages",
+            "get_paper_section"
           ]
         }
       ],
-      "sha256": "3d95c955b865d0c88a1ae072fbe4cfa44a8e8fdfad6ce27976ac463ba8709f62",
+      "sha256": "04d86373be6f1671458971eff3f81a61b2727ba9299a837bf6d6c79131a60a20",
       "skill": {
         "path": "skills/eagle-asd-evidence",
-        "sha256": "9f7b2b1b272f4ac9862d7711bef974d51c5c29326e21ac71b96e8572427d6106"
+        "sha256": "d19ba124d8159a479f1e715e8c5df6679a357f8f1727255a89e319dd053f66d2"
       },
       "source": {
         "gateway": {
           "capability": "eagle",
           "surface": {
             "describe": "2c75a9b0cf817c6477820509402b081d26fb66f3999372947d79099aabea1e0f",
+            "describe_schema": "1f61867be117b4fc4c70f4956b41f05e3d061a0a22966387cbecf777b7f4a4eb",
             "find_variant_reports": "48948c37143a77644006b5e0565ddcd554f8893887a4841fb940423601996484",
             "get_case_details": "7a30f7d63885d262bdb42fc06c8e5626af7906c4e14b55dbfab78bc92d8da912",
             "get_cases_by_gene": "741ec194185c96f62d7e311c981c4e3677db83eca20e9c4a0d1375676b0cd897",
             "get_cases_by_paper": "9bf284dc53fb8773d0db2d46c7df1a682e9d761eea74337c50ae495008b010de",
+            "get_curator_rulings": "256717f46ea09256ae026f4247e01b619e8e3443f75d5ed5565ebcaeccf14dce",
+            "get_gene_curator_evidence": "498bd67e225e02c9f2a94cca817d0f8f2b8dd0f65077e1168e858e9400efb8b0",
             "get_gene_details": "c80334ef930d8e1205719ee0c3251dfbb5d047439f5530e468aa1b4711b27404",
             "get_gene_level_findings": "8d548f9ccf410cc3a7ba57232efc9aa27707b4458f02288caf2bb89d889ec27d",
             "get_gene_score": "9c96718f5ce51619d6466e2dad0e557e085e8c9fd10b194f595682fb58b36850",
+            "get_gene_score_history": "d0a89806f7ff6b1596b99e8dc6aacf8bd3fad10761ac4c6cf5b4b75193e710c5",
+            "get_gene_summary": "2f70b10583ed821507edbc858bf836ae449536afa0fa088636c0771b338a5535",
+            "get_paper": "c739c87ca26443bb247c3062976dd9f1b78b09c656176062cdd127752e9579b9",
+            "get_paper_section": "6a62c61e4ee3e133827cd4206444c96d49ad93ae9c31adbfeabc707ed76e5ea5",
+            "get_similar_genes": "305bac08710d015b8375d269cf7564633d4369b52e685051e40dd3e03080e1b1",
             "get_variants_by_gene": "34ec350aaa79ccdac5b6c407912d3aa5c67cd2f61d37cefd4390c93cec2a1685",
-            "query": "5793ffac88098b4d640416343cd407db59e035cd53c09d71ebcd8793987d8ddc",
+            "query": "05e7205aead9cb88863481c7bb585004f01e104acf771d08687f8d224a7517ec",
             "search_genes": "a840170df8cbebd326baf648ef864e3f2eb1b464b16e287a7bfd59677d6e0141",
             "search_paper_passages": "9ce6d8986d157d114e2c511bf636d46b70b42fa15aa925ae6ae26273b34db911",
             "search_papers": "e7f04d0efd2c76d402b5150c9358d4886b4e1eeaf440d969ced2672a0c85429d"
@@ -303,15 +319,23 @@
             "get_gene_details",
             "get_gene_score",
             "get_gene_level_findings",
+            "get_gene_score_history",
+            "get_gene_summary",
+            "get_similar_genes",
             "search_papers",
+            "get_paper",
             "describe",
             "get_cases_by_gene",
             "get_cases_by_paper",
             "get_case_details",
             "get_variants_by_gene",
             "find_variant_reports",
+            "get_curator_rulings",
+            "get_gene_curator_evidence",
             "query",
-            "search_paper_passages"
+            "describe_schema",
+            "search_paper_passages",
+            "get_paper_section"
           ]
         }
       },
@@ -319,7 +343,7 @@
       "summary": "Autism gene evidence from EAGLE, read live, with the papers, cases and variants behind it.",
       "title": "EAGLE ASD evidence",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "1.1.0"
     },
     "eagle-curator": {
       "category": "agent",
@@ -399,6 +423,521 @@
       "works_best_with": [
         "eagle-asd-evidence"
       ]
+    },
+    "eagle-disease-evidence": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "What is ClinGen's gene-disease validity for SCN2A, and for which diseases?",
+        "Is SHANK3 haploinsufficient according to ClinGen?",
+        "Which PanelApp panels rate CHD8 green?",
+        "Are the ClinGen and Gene2Phenotype diseases for SCN2A the same disease?"
+      ],
+      "group": "Research",
+      "icon": "file-search",
+      "id": "eagle-disease-evidence",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "parts": [
+        {
+          "id": "clingen",
+          "label": "ClinGen",
+          "summary": "ClinGen gene-disease validity and dosage sensitivity curations.",
+          "tools": [
+            "get_clingen_validity",
+            "get_clingen_dosage"
+          ]
+        },
+        {
+          "id": "gene2phenotype",
+          "label": "Gene2Phenotype",
+          "summary": "Gene2Phenotype's gene-disease records per panel, with confidence and allelic requirement.",
+          "tools": [
+            "get_gene2phenotype"
+          ]
+        },
+        {
+          "id": "panelapp",
+          "label": "PanelApp",
+          "summary": "Genomics England PanelApp panels that carry a gene, with its rating.",
+          "tools": [
+            "get_panelapp_panels"
+          ]
+        },
+        {
+          "id": "sfari",
+          "label": "SFARI Gene",
+          "summary": "SFARI Gene's autism score for a gene.",
+          "tools": [
+            "get_sfari_gene"
+          ]
+        },
+        {
+          "id": "mondo",
+          "label": "Mondo disease names",
+          "summary": "Disease names and identifiers from Mondo, searched through Monarch and read from EBI's Ontology Lookup Service.",
+          "tools": [
+            "resolve_disease",
+            "get_disease_ontology"
+          ]
+        }
+      ],
+      "permissions": {
+        "data": [
+          "gene symbols and disease names or identifiers (MONDO, OMIM, Orphanet), to EAGLE through the Athena capability gateway, which asks ClinGen, PanelApp, SFARI Gene, Monarch or EBI's Ontology Lookup Service only for a value it does not hold yet"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F08 slice 13: eight read-only tools (readOnlyHint) over public curations, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3, a cache fill, never curation data); eagle-api limits how many fills one user may cause and answers \"rate limited, retry in N seconds\" past it. Every result names its source, release and fetch date. Mondo as published in EBI OLS has no OMIM cross-references (F08 slice 12), so OMIM and MONDO diseases cannot be matched by identifier through it. Public, granted to every role (migration 0009). F08 slice 14: the genome_build setting (GRCh38 or GRCh37, GRCh38 by default) is the build get_clingen_dosage reads when the chat names none; a preference, never a secret, and it sends nothing new. Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "annotation.disease",
+          "title": "Gene-disease evidence and disease names from public sources (ClinGen, Gene2Phenotype, PanelApp, SFARI Gene, Monarch, Mondo)",
+          "tools": [
+            "get_clingen_validity",
+            "get_clingen_dosage",
+            "get_gene2phenotype",
+            "get_panelapp_panels",
+            "get_sfari_gene",
+            "resolve_disease",
+            "get_disease_ontology",
+            "list_disease_annotation_sources"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "choices": [
+            "GRCh38",
+            "GRCh37"
+          ],
+          "default": "GRCh38",
+          "description": "The build ClinGen dosage is read on unless you ask for the other one in the chat. GRCh38 and GRCh37 are ClinGen's two curation lists.",
+          "id": "genome_build",
+          "maximum": null,
+          "minimum": null,
+          "title": "Genome build",
+          "type": "choice"
+        }
+      ],
+      "sha256": "ea35b6d70ddbd86ddfbbb58edf98316d943b23fae0c1c2d748bd07139b852106",
+      "skill": {
+        "path": "skills/eagle-disease-evidence",
+        "sha256": "59c065a7a23106d0493b09eca64c3b86d2742c9d26a202d21223f33066f11789"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_clingen_dosage": "48a510fcdf61486c8cf0b73f4ba4d51a71461073e69f3e12d5506fb8c78969ed",
+            "get_clingen_validity": "992862c6ceda6ef167db8b470a89fefd73049973376b17b4fcd49d5fb0d262cb",
+            "get_disease_ontology": "4e53ff177c42c0fd18f06ec3393dcc22abddb060040f82531f83b741a1313ec2",
+            "get_gene2phenotype": "27dbd0b52f7d2f05791e9d4defa8d2b48194dde618d7772747a2e9e53a513c66",
+            "get_panelapp_panels": "7f3c8429f5bab3599e79770694c932df34a8c2c2a4727f71040b81f3b71ceb89",
+            "get_sfari_gene": "b893969b08e95f5c31180aec62db61017fda5edae1b083c1610f492cda06fa9c",
+            "list_disease_annotation_sources": "3e259bf530a6bd9edf7db3405a29b0f1d024ddb31561f40eb45d99037cd9e0a9",
+            "resolve_disease": "508d8fb98c3a3ecb90a948914da49d7c96f830e8221db15443b53d5edec6e74e"
+          },
+          "tools": [
+            "get_clingen_validity",
+            "get_clingen_dosage",
+            "get_gene2phenotype",
+            "get_panelapp_panels",
+            "get_sfari_gene",
+            "resolve_disease",
+            "get_disease_ontology",
+            "list_disease_annotation_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Gene-disease evidence from ClinGen, Gene2Phenotype, PanelApp and SFARI Gene, and disease names from Mondo, read through EAGLE.",
+      "title": "Disease evidence",
+      "user_toggle": true,
+      "version": "1.2.0"
+    },
+    "eagle-gene-biology": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "Which protein domains does SHANK3 have, and where?",
+        "When in brain development is CHD8 expressed most?",
+        "Which Reactome pathways is SCN2A in?",
+        "Who are SYNGAP1's interaction partners in STRING?"
+      ],
+      "group": "Research",
+      "icon": "brain",
+      "id": "eagle-gene-biology",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "parts": [
+        {
+          "id": "uniprot",
+          "label": "UniProt",
+          "summary": "UniProt protein features (domains, regions, motifs) and function.",
+          "tools": [
+            "get_protein_features"
+          ]
+        },
+        {
+          "id": "ensembl",
+          "label": "Ensembl",
+          "summary": "Ensembl's canonical transcript and exons of a gene, on GRCh38.",
+          "tools": [
+            "get_transcript"
+          ]
+        },
+        {
+          "id": "hgnc",
+          "label": "HGNC gene families",
+          "summary": "HGNC gene groups a gene belongs to, and their members.",
+          "tools": [
+            "get_gene_family"
+          ]
+        },
+        {
+          "id": "brainspan",
+          "label": "BrainSpan",
+          "summary": "BrainSpan brain expression of a gene across development (the 2013 release).",
+          "tools": [
+            "get_brain_expression"
+          ]
+        },
+        {
+          "id": "pathways",
+          "label": "Reactome and GO",
+          "summary": "Reactome pathways and Gene Ontology terms a gene is a member of.",
+          "tools": [
+            "get_pathways"
+          ]
+        },
+        {
+          "id": "string",
+          "label": "STRING",
+          "summary": "STRING interaction partners of a gene and the edges among them.",
+          "tools": [
+            "get_ppi_network"
+          ]
+        }
+      ],
+      "permissions": {
+        "data": [
+          "gene symbols, to EAGLE through the Athena capability gateway, which asks UniProt, Ensembl, Reactome, EBI's QuickGO or STRING only for a value it does not hold yet"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F08 slice 13: seven read-only tools (readOnlyHint) over public gene annotations, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3); eagle-api limits how many fills one user may cause and answers \"rate limited, retry in N seconds\" past it. Every result names its source, release and fetch date; BrainSpan and HGNC are vendored files, and the Ensembl transcript is on GRCh38 only. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "annotation.biology",
+          "title": "Gene biology from public sources (UniProt, Ensembl, HGNC, BrainSpan, Reactome, GO, STRING)",
+          "tools": [
+            "get_protein_features",
+            "get_transcript",
+            "get_gene_family",
+            "get_brain_expression",
+            "get_pathways",
+            "get_ppi_network",
+            "list_biology_annotation_sources"
+          ]
+        }
+      ],
+      "sha256": "6004b3aa9720622adfeaa799938b3e6f294de792ae30083f6f16c525bbedd41d",
+      "skill": {
+        "path": "skills/eagle-gene-biology",
+        "sha256": "674fd792560b63fed456674839fd69dbabdc7a686412c52066ee523bc39bcb80"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_brain_expression": "c0f1affa1ffa5af3907f5ece85593fb5d7b193f5374d539bb42db66e3fa934ac",
+            "get_gene_family": "ef594fccc1b53d7a908578a0aca7c26ccdde9b72316aad82cdbaf8e2748ca50d",
+            "get_pathways": "c81f290487dc558d1f0a7846cf6705aff6d96b6dc6e296b16a2c1df897bbf72a",
+            "get_ppi_network": "f0c683c897dbc9f3d0f9c3573e4afa831d24760eadf27dbd2ff0b184c381d00e",
+            "get_protein_features": "4aab446fa69893f3955c3a8d02a1bed594dd86912ee1e04166fc554813cd2898",
+            "get_transcript": "76e08340816eb15c150315a2f0bb36254046c5f1a75b61ff1bafb66dcd92b8f2",
+            "list_biology_annotation_sources": "89da62565023f95f9048a4ff1c7c17df34102a46d400b233658704e0d94b63ca"
+          },
+          "tools": [
+            "get_protein_features",
+            "get_transcript",
+            "get_gene_family",
+            "get_brain_expression",
+            "get_pathways",
+            "get_ppi_network",
+            "list_biology_annotation_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Protein features, transcripts, gene families, brain expression, pathways and interaction partners of a gene, read through EAGLE.",
+      "title": "Gene biology",
+      "user_toggle": true,
+      "version": "1.1.0"
+    },
+    "eagle-manual-curation": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "What did the curators score for SHANK3 in the manual curation workbooks?",
+        "How did the curators score the cases of PMID 35982159?",
+        "Where do the curators and EAGLE's extraction differ for the paper behind SHANK3's first workbook row?",
+        "How does the EAGLE curation SOP score a de novo loss-of-function case?"
+      ],
+      "group": "Research",
+      "icon": "list-checks",
+      "id": "eagle-manual-curation",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols, PubMed ids and search phrases, to EAGLE through the Athena capability gateway"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F09 slice 10: five read-only tools (readOnlyHint) over the curators' gene workbooks as eagle-api stores them (215 gene workbooks in the folder today), paged, and the curation SOP in two pages. Every row is labelled origin: manual_workbook and cited by workbook file and row, with the PMID and EAGLE's paper_id (null when EAGLE holds no such paper). The justification notes are curators' free text, shown to every user who turns the package on (F09 decision 5); public, granted to every role (migration 0010). Nothing leaves the hospital: eagle-api answers from its own tables. Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "curation.manual",
+          "title": "Manual curation (the curators' gene workbooks and the curation SOP)",
+          "tools": [
+            "list_curated_genes",
+            "get_manual_curation",
+            "get_manual_curation_by_paper",
+            "search_manual_curation",
+            "get_curation_sop"
+          ]
+        }
+      ],
+      "sha256": "38408ed90fb925f6a192e2a5e08f24218258e446d11fc023b18427d6d95ccff8",
+      "skill": {
+        "path": "skills/eagle-manual-curation",
+        "sha256": "0bab3784ab1283deddfbfa032dc1785014b6e922863bee76749ba924d2ad654f"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_curation_sop": "217c92cefb086c03affec92a88c552889cc41576642e68ded1dc6597e2519759",
+            "get_manual_curation": "9a00e7b6a718bf5c657edcc5682745f2abbcf205c94d38f4e0f745b46434eda7",
+            "get_manual_curation_by_paper": "b5915b9a1fdeb8eba04c0260e2bf08cee9d88f0c6c8dff62918ac33448bbeca4",
+            "list_curated_genes": "29c0ab47c3564a09711bfa0d26fd7ab37211152de021101791a2905c3825fd05",
+            "search_manual_curation": "be9ec0ebc2d423f4153e37801cb8a8d3bd7cbc15c549a5de13157a1eba0bd091"
+          },
+          "tools": [
+            "list_curated_genes",
+            "get_manual_curation",
+            "get_manual_curation_by_paper",
+            "search_manual_curation",
+            "get_curation_sop"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "The SickKids curators' hand-scored gene workbooks and their scoring procedure, read through EAGLE.",
+      "title": "Manual curation",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "eagle-variant-data": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "How constrained is SCN2A against loss of function in gnomAD?",
+        "What is the gnomAD allele frequency of 2-165310406-G-A?",
+        "Normalise NM_021007.3:c.2558G>A and give me its genomic form.",
+        "List the pathogenic ClinVar variants of CHD8."
+      ],
+      "group": "Research",
+      "icon": "table",
+      "id": "eagle-variant-data",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "parts": [
+        {
+          "id": "gnomad",
+          "label": "gnomAD",
+          "summary": "gnomAD gene constraint and variant allele frequencies.",
+          "tools": [
+            "get_gnomad_constraint",
+            "get_variant_frequency"
+          ]
+        },
+        {
+          "id": "clinvar",
+          "label": "ClinVar",
+          "summary": "ClinVar's variant records for a gene, with clinical significance and review status.",
+          "tools": [
+            "get_clinvar_variants"
+          ]
+        },
+        {
+          "id": "variantvalidator",
+          "label": "VariantValidator",
+          "summary": "VariantValidator's normalisation of an HGVS variant description.",
+          "tools": [
+            "normalize_variant"
+          ]
+        }
+      ],
+      "permissions": {
+        "data": [
+          "gene symbols, to EAGLE through the Athena capability gateway, which asks gnomAD or NCBI ClinVar only for a value it does not hold yet",
+          "variant coordinates and HGVS descriptions, to EAGLE through the Athena capability gateway, which asks gnomAD or VariantValidator for a variant it does not hold yet"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F08 slice 13: five read-only tools (readOnlyHint) over public variant data, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3); gnomAD and VariantValidator share one rate budget in eagle-api (F08 slice 10), and a spent budget is answered \"rate limited, retry in N seconds\", never as an empty result. The variants a user asks about leave the hospital for gnomAD and VariantValidator when EAGLE does not hold them yet; the companion skill tells the agent to send the variant only. Build-dependent tools take genome_build and name the build they used; since F08 slice 14 they default to the user's genome_build setting (GRCh38 or GRCh37, GRCh38 by default), a preference, never a secret, that sends nothing new. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "annotation.variant",
+          "title": "Variant data from public sources (gnomAD constraint and frequencies, ClinVar, VariantValidator)",
+          "tools": [
+            "get_gnomad_constraint",
+            "get_clinvar_variants",
+            "get_variant_frequency",
+            "normalize_variant",
+            "list_variant_annotation_sources"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "choices": [
+            "GRCh38",
+            "GRCh37"
+          ],
+          "default": "GRCh38",
+          "description": "The build gnomAD constraint, gnomAD frequencies and VariantValidator are read on unless you ask for the other one in the chat. GRCh38 reads gnomAD v4, GRCh37 gnomAD v2.1.1.",
+          "id": "genome_build",
+          "maximum": null,
+          "minimum": null,
+          "title": "Genome build",
+          "type": "choice"
+        }
+      ],
+      "sha256": "4b47532727460734788189323d81dd4aba19b987f91b43ad6ce8b8b202f10974",
+      "skill": {
+        "path": "skills/eagle-variant-data",
+        "sha256": "fc0e85592f6811bbc296d5f22a73a645b1788a11848afa04c7751077e55d839e"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_clinvar_variants": "87339b944f2e9ea0558d6178b62274409e73acbbd09ab76c344f3fc4c07985d0",
+            "get_gnomad_constraint": "8c2950dd1ab133191e83b1ee7b1161191751e9b605c316767f3dbae47d21bfc8",
+            "get_variant_frequency": "b4d69f500d1cfa45faac0dfc43ecd9fa6d6120f64ae7899509681511c08d27b5",
+            "list_variant_annotation_sources": "612215ca0b547f8748b64fda628d5e00df19bf86e0bc53cab83b6fa0785a7bad",
+            "normalize_variant": "fb3fad5046da95c361d9b64cd62b0f933f3f9dde175e57aa88f74d6baf66c200"
+          },
+          "tools": [
+            "get_gnomad_constraint",
+            "get_clinvar_variants",
+            "get_variant_frequency",
+            "normalize_variant",
+            "list_variant_annotation_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "gnomAD constraint and allele frequencies, ClinVar records and VariantValidator normalisation, read through EAGLE.",
+      "title": "Variant data",
+      "user_toggle": true,
+      "version": "1.2.0"
     },
     "files": {
       "category": "built-in",
@@ -495,11 +1034,135 @@
       "user_toggle": true,
       "version": "1.0.1"
     },
+    "literature": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "Find recent papers on SHANK3 and autism, and tell me which ones EAGLE already holds.",
+        "Read the Methods of PMC5307786 and summarise how the cohort was ascertained.",
+        "Is there a legal open-access copy of DOI 10.1038/ng1933?"
+      ],
+      "group": "Research",
+      "icon": "book-search",
+      "id": "literature",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "search terms, filters and paper identifiers (PMID, PMCID, DOI), to papers-nexus through the Athena capability gateway, which asks Europe PMC, PubMed and Unpaywall",
+          "paper identifiers, to EAGLE, to say whether it already holds a paper",
+          "with Include Elsevier on, search terms and filters, to Elsevier ScienceDirect through papers-nexus",
+          "where your role may ask EAGLE to add a paper, and only after you approve each request, the paper's identifier and title and your reason, to EAGLE through papers-nexus, which records them with your Athena identity, downloads the paper from its open-access locations, adds it to EAGLE and extracts it"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F10 slice 09: seven read-only tools (readOnlyHint) over published literature: Europe PMC, PubMed and Unpaywall, read through papers-nexus, and EAGLE's exists check. Results are outside text, returned as data; the package is untrusted like every gateway package. Public, granted to every role (migration 0008). The ingest scope (literature.ingest) is left out until slice 16. F10 slice 10: the Elsevier toggle, off by default; papers-nexus also keeps Elsevier off on the server until a person confirms the API key's licence allows use by an agent. F10 slice 16: the ingest scope literature.ingest, granted to no role (an admin grants it per role): request_paper_ingestion (not read-only, confirmed by the user before every call through source.gateway.confirm) and get_ingestion_status (read-only, a request's state, the requester's own only). papers-nexus re-checks the Athena subject, a daily limit per user and EAGLE's holdings, and downloads through legal open-access channels only. Classified internal (the request records the requester and reason in EAGLE). Awaiting human review, the data owner's sign-off on the classification and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "literature.search",
+          "title": "Search and read the published literature (Europe PMC, PubMed, Unpaywall), and check what EAGLE holds",
+          "tools": [
+            "search_literature",
+            "get_abstracts",
+            "convert_ids",
+            "find_open_access",
+            "get_full_text",
+            "check_in_eagle",
+            "list_literature_sources"
+          ]
+        },
+        {
+          "classification": "internal",
+          "id": "literature.ingest",
+          "title": "Ask EAGLE to add a paper it does not hold (download, add and extract it), and follow the request",
+          "tools": [
+            "request_paper_ingestion",
+            "get_ingestion_status"
+          ]
+        }
+      ],
+      "settings": [
+        {
+          "choices": [],
+          "default": false,
+          "description": "Also search Elsevier ScienceDirect. Your search terms and filters are then sent to Elsevier too.",
+          "id": "elsevier",
+          "maximum": null,
+          "minimum": null,
+          "title": "Include Elsevier",
+          "type": "toggle"
+        }
+      ],
+      "sha256": "8e06d75f2a0201bfe43847b0da782c6861d0b3b54b9ec9c40bd8e50995ddb451",
+      "skill": {
+        "path": "skills/literature",
+        "sha256": "0f198d8f6c594f58323e21f4fb1be3287e85930c49e1dc5d247f17288879a16e"
+      },
+      "source": {
+        "gateway": {
+          "capability": "nexus",
+          "confirm": [
+            "request_paper_ingestion"
+          ],
+          "surface": {
+            "check_in_eagle": "358719f50cdc9c788533620ed3ede7700acdc3ca59005efca16cad6ffef5c1c8",
+            "convert_ids": "3ebb889975e3f2d265f89eabcf86afedbcb0df7fbd4419caeaee53d508b86581",
+            "find_open_access": "fc72aece06e7bbcbf4a72cfdaf8407847b3b96d66291bce49704950d21bfdc65",
+            "get_abstracts": "6d025dbc1e9c75f13ebe9076ae5c9ec8aa0bb146a22fca7aeaac60a5ae6fede1",
+            "get_full_text": "67b192648b326f3172299fab471912dfce800184cb5765075b02ab8eca6f7f07",
+            "get_ingestion_status": "7db538cdcadd43f37e9e2519698c98edeb9c7c02f9d180ba2a3bf8e92d36357f",
+            "list_literature_sources": "3b423c87e41cd89679349cd882c50dd4bb83586f7e66066f46f83a6edb97c51e",
+            "request_paper_ingestion": "d196403c33c6a81e918bfdb38474059a1eb59727e04d6f63b8c5d949a47453ab",
+            "search_literature": "a07d13b4e927681460f5300b62d69eb9e24bb0e0add11a1b4573d342a6611c68"
+          },
+          "timeout_seconds": 120,
+          "tools": [
+            "search_literature",
+            "get_abstracts",
+            "convert_ids",
+            "find_open_access",
+            "get_full_text",
+            "check_in_eagle",
+            "list_literature_sources",
+            "request_paper_ingestion",
+            "get_ingestion_status"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Search Europe PMC and PubMed, read abstracts and open-access full text, see which papers EAGLE holds, and, where your role allows it, ask EAGLE to add one.",
+      "title": "Literature",
+      "user_toggle": true,
+      "version": "3.0.0"
+    },
     "literature-search": {
       "category": "built-in",
       "default_on": true,
       "group": "Research",
-      "icon": "book-search",
+      "icon": "globe",
       "id": "literature-search",
       "kind": "toolset",
       "owner": "athena-team",
@@ -526,7 +1189,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role. F10 slice 09: renamed Web search; its summary named PubMed and a hospital library index, which it never searched (it is SearXNG web search)."
       },
       "roles": [
         "researcher",
@@ -534,7 +1197,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "9b26d1c36522120654388ef05396a23d1782a1049145d5e12db14610404d4579",
+      "sha256": "87c35487096da835c3e7c9f167515694b9d760c7f02f93bb330486a8aefd712a",
       "source": {
         "config": {
           "web": {
@@ -544,10 +1207,10 @@
         "hermes_toolset": "web"
       },
       "status": "stable",
-      "summary": "Search PubMed and the hospital library index.",
-      "title": "Literature search",
+      "summary": "Search the web and read web pages, through Athena's own search service.",
+      "title": "Web search",
       "user_toggle": true,
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     "memory": {
       "category": "built-in",

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The Athena Capabilities page (F02 slice 28) through the real Capabilities route component: the researcher's and
-// the clinician's cards, Managed entries, experimental badges, the detail view, the Literature search switch (over
+// the clinician's cards, Managed entries, experimental badges, the detail view, the Web search switch (over
 // the Athena IPC bridge), learned skills (view and delete, never add or import), the "Ask Research IT" link and the
 // stock tabs with `managed.tools: off`.
 import { QueryClientProvider } from '@tanstack/react-query'
@@ -172,7 +172,7 @@ describe('the catalog model', () => {
   test('groups A–Z, search over title, summary and tool names', () => {
     const cards = catalogCards(config(RESEARCHER_TOOLS))
     expect(groupCards(cards).map(g => g.group)).toEqual(['Research', 'Workspace'])
-    expect(groupCards(cards, 'pubmed').flatMap(g => g.cards.map(c => c.entry.id))).toEqual(['literature-search'])
+    expect(groupCards(cards, 'web_extract').flatMap(g => g.cards.map(c => c.entry.id))).toEqual(['literature-search'])
     expect(groupCards(cards, 'execute_code').flatMap(g => g.cards.map(c => c.entry.id))).toEqual(['python'])
     expect(groupCards(cards, 'zzz')).toEqual([])
   })
@@ -204,15 +204,15 @@ describe('the Capabilities page', { timeout: 30_000 }, () => {
     expect(screen.getByText(/Tools approved by SickKids Research IT\. Changes apply to new chats\./)).toBeTruthy()
     expect(cardIds().sort()).toEqual([...RESEARCHER_TOOLS.available].sort())
     const research = screen.getByRole('region', { name: 'Research' })
-    expect(within(research).getByText('Literature search')).toBeTruthy()
+    expect(within(research).getByText('Web search')).toBeTruthy()
     expect(within(research).getByText('Browser')).toBeTruthy()
     expect(within(screen.getByRole('region', { name: 'Workspace' })).getByText('Files')).toBeTruthy()
 
     const literature = card('literature-search')!
     expect(within(literature).getByText(`v${BUNDLED_CATALOG.entries['literature-search'].version}`)).toBeTruthy()
-    expect(within(literature).getByText('Search PubMed and the hospital library index.')).toBeTruthy()
+    expect(within(literature).getByText("Search the web and read web pages, through Athena's own search service.")).toBeTruthy()
     expect(within(literature).getByText('Sends: search terms to the hospital search service')).toBeTruthy()
-    expect(within(literature).getByRole('switch', { name: 'Literature search' }).getAttribute('aria-checked')).toBe('true')
+    expect(within(literature).getByRole('switch', { name: 'Web search' }).getAttribute('aria-checked')).toBe('true')
     expect(within(card('browser')!).getByRole('switch', { name: 'Browser' }).getAttribute('aria-checked')).toBe('false')
 
     for (const tab of ['Plugins', 'Connectors']) {
@@ -267,21 +267,43 @@ describe('the Capabilities page', { timeout: 30_000 }, () => {
     expect(within(literature).getByText('searxng.athena.internal')).toBeTruthy()
   })
 
+  test('the Literature package and Web search are two cards with their own descriptions (F10 slice 09)', async () => {
+    fakeBridge()
+
+    const tools = { ...RESEARCHER_TOOLS, available: [...RESEARCHER_TOOLS.available, 'literature'],
+      experimental: [...RESEARCHER_TOOLS.experimental, 'literature'] }
+
+    await renderPage(config(tools))
+
+    const web = card('literature-search')!
+    expect(within(web).getByText('Web search')).toBeTruthy()
+    expect(within(web).queryByText(/PubMed|library/)).toBeNull()
+    // a package not installed yet is in Browse, with Install
+    await act(async () => fireEvent.click(screen.getByRole('tab', { name: 'Browse' })))
+    const literature = card('literature')!
+    expect(within(screen.getByRole('region', { name: 'Databases' })).getByText('Literature')).toBeTruthy()
+    expect(within(literature).getByText(BUNDLED_CATALOG.entries.literature.summary)).toBeTruthy()
+    expect(BUNDLED_CATALOG.entries.literature.summary).toMatch(/Europe PMC and PubMed/)
+    expect(within(literature).getByText('Experimental')).toBeTruthy()
+    expect(within(literature).getByText('EAGLE')).toBeTruthy()
+    expect(within(literature).getByRole('button', { name: 'Install Literature' })).toBeTruthy()
+  })
+
   test('search narrows the cards', async () => {
     fakeBridge()
     await renderPage(config(RESEARCHER_TOOLS))
 
-    fireEvent.change(screen.getByLabelText('Search tools'), { target: { value: 'pubmed' } })
+    fireEvent.change(screen.getByLabelText('Search tools'), { target: { value: 'web_extract' } })
     expect(cardIds()).toEqual(['literature-search'])
   })
 
-  test('toggling Literature search off goes to main over the Athena bridge and says it applies to new chats', async () => {
+  test('toggling Web search off goes to main over the Athena bridge and says it applies to new chats', async () => {
     const bridge = fakeBridge()
     await renderPage(config(RESEARCHER_TOOLS))
     const literature = card('literature-search')!
 
     await act(async () => {
-      fireEvent.click(within(literature).getByRole('switch', { name: 'Literature search' }))
+      fireEvent.click(within(literature).getByRole('switch', { name: 'Web search' }))
     })
 
     expect(bridge.set).toHaveBeenCalledWith('literature-search', false)

@@ -722,6 +722,16 @@ a real filter.
     was launched with (captured before the login-shell PATH merge). With no CLI,
     main writes the file in the CLI's format and the next sync applies it.
     `athena:tool-prefs:get` reads the file.
+  - Sources (F11, `catalog/part-switches.tsx`): a package whose catalog entry
+    declares `parts` expands ("Sources") to one row per part with its label,
+    summary and a switch → `tools.setPart(id, part, on)` →
+    `athena:tool-prefs:set-part` → `athena config tool <id>/<part> on|off`
+    (`enabled["<id>/<part>"]` in the same file). While the package is off its
+    source switches are disabled. A source the administrator locked for the
+    role (`tools.parts.locked_on`/`locked_off`, or the package in
+    `tools.locked_on`) shows its locked state, disabled, with "Set by your
+    administrator". On/off mirrors `tool_pins.part_on`
+    (`catalog/catalog-parts.ts`).
   - Learned skills (`catalog/learned-skills.tsx`): local skills that managed
     scope leaves on and the catalog did not install, viewed through
     `/api/skills/content` and deleted with the stock archive

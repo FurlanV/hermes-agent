@@ -121,6 +121,41 @@ def _format_trust_gate_arguments(args: dict) -> str:
     return rendered
 
 
+# The server's description of a ``tools.confirm`` tool, as the card quotes it.
+_CONFIRM_NOTE_MAX_CHARS = 400
+
+
+def _confirm_note(key, tool_name: str) -> Optional[str]:
+    """The server's description of *tool_name* when the profile's ``tools.confirm`` lists it (``""`` when the
+    server gave none), else None. A listed tool is asked about before every call."""
+    from tools.mcp_tool_schema import matches_name_filter
+    policy = _core._server_confirm_tools.get(key)
+    if policy is None or not matches_name_filter(tool_name, set(policy[0])):
+        return None
+    return policy[1].get(tool_name, "")
+
+
+def _confirm_card(server_name: str, tool_name: str, note: str, lead: list,
+                  args: Optional[dict]) -> tuple[str, str, str]:
+    """Message, description and title of the card for a ``tools.confirm`` tool, which covers this one call.
+    The server's description is quoted bounded, with format and control characters escaped as in the
+    arguments; *lead* is the spend-limit lines, which come first."""
+    import unicodedata
+    text = "".join(ch.encode("unicode_escape").decode() if unicodedata.category(ch) in ("Cc", "Cf") else ch
+                   for ch in " ".join(note.split()))
+    if len(text) > _CONFIRM_NOTE_MAX_CHARS:
+        text = text[:_CONFIRM_NOTE_MAX_CHARS - 1].rstrip() + "…"
+    parts = [f"MCP tool '{tool_name}' on server '{server_name}' needs your approval for every call.", *lead,
+             *([f"The server describes it: {text}"] if text else []),
+             "Run sends this one call; Reject sends nothing."]
+    message = " ".join(parts)
+    if args:
+        message += f"\n\nArguments:\n{_format_trust_gate_arguments(args)}"
+    description = (f"Server '{server_name}' requires approval of every '{tool_name}' call (tools.confirm). "
+                   f"Approve to run it once, or deny to block it.")
+    return message, description, f"MCP server '{server_name}' is asking"
+
+
 def _trust_gate_check(server_name: str, tool_name: str, booked: Optional[list] = None,
                       args: Optional[dict] = None) -> Optional[str]:
     """Approval gate for write-capable tools on ``trust: untrusted`` servers, plus the declared spend
@@ -132,25 +167,28 @@ def _trust_gate_check(server_name: str, tool_name: str, booked: Optional[list] =
     # Trust and costs are the calling profile's own policy (an adopter of a shared connection keeps its own).
     key = _server_key(server_name)
     trust = _core._server_trust_levels.get(key, _core._TRUST_FULL)
-    gated = (trust == _core._TRUST_UNTRUSTED and not _tool_is_read_only(server_name, tool_name)
-             and not _trust_granted(server_name, tool_name))
+    # ``tools.confirm``: asked every call, whatever the trust tier, readOnlyHint or a remembered grant.
+    confirm = _confirm_note(key, tool_name)
+    gated = confirm is not None or (trust == _core._TRUST_UNTRUSTED and not _tool_is_read_only(server_name, tool_name)
+                                    and not _trust_granted(server_name, tool_name))
     charge = None
     if key in _core._server_cost_policies:  # no table: not even a session lookup, main's path byte for byte
         from tools.approval_context import get_current_session_key
         charge = _costs.pending_charge(key, server_name, tool_name, get_current_session_key())
     if charge is None:
-        return _ask_for_call(server_name, tool_name, None, booked, args=args) if gated else None
+        return _ask_for_call(server_name, tool_name, None, booked, args=args, confirm=confirm) if gated else None
     if not gated and charge.reserve_within_limit()[0]:
         if booked is not None:
             booked.append(charge)
         return None
     with charge.asking():  # re-read under the slot: a call that asked first may have booked meanwhile
-        return _ask_for_call(server_name, tool_name, charge, booked, gated=gated, args=args)
+        return _ask_for_call(server_name, tool_name, charge, booked, gated=gated, args=args, confirm=confirm)
 
 
 def _ask_for_call(server_name: str, tool_name: str, charge, booked: Optional[list], *,
-                  gated: bool = True, args: Optional[dict] = None) -> Optional[str]:
-    """Ask the user about one gated and/or costed call; book the charge only on an explicit yes."""
+                  gated: bool = True, args: Optional[dict] = None, confirm: Optional[str] = None) -> Optional[str]:
+    """Ask the user about one gated and/or costed call; book the charge only on an explicit yes. *confirm*: the
+    tool is in ``tools.confirm`` (the server's description of it), so the answer covers this call only."""
     spent, over = 0.0, False
     if charge is not None:
         if gated:
@@ -164,7 +202,11 @@ def _ask_for_call(server_name: str, tool_name: str, charge, booked: Optional[lis
                 return None
             over = True
     extra = charge.lines(spent) if charge is not None else []
-    if gated:
+    if gated and confirm is not None:
+        lead = [*(["This call goes past the chat's spend limit."] if over else []), *extra]
+        message, description, title = _confirm_card(server_name, tool_name, confirm, lead, args)
+        remember_key = None
+    elif gated:
         head = f"MCP tool '{tool_name}' on UNTRUSTED server '{server_name}' wants to run."
         tail = "This tool is write-capable (no readOnlyHint=true annotation) and may modify external state."
         # The limit notice leads, and the arguments trail: a prompt cut to a platform's cap keeps the notice.
