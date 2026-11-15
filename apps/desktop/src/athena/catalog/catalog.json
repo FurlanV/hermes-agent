@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.14",
+  "catalog_version": "2026.11.15",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -423,6 +423,283 @@
       "works_best_with": [
         "eagle-asd-evidence"
       ]
+    },
+    "eagle-disease-evidence": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "What is ClinGen's gene-disease validity for SCN2A, and for which diseases?",
+        "Is SHANK3 haploinsufficient according to ClinGen?",
+        "Which PanelApp panels rate CHD8 green?",
+        "Are the ClinGen and Gene2Phenotype diseases for SCN2A the same disease?"
+      ],
+      "group": "Research",
+      "icon": "file-search",
+      "id": "eagle-disease-evidence",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols and disease names or identifiers (MONDO, OMIM, Orphanet), to EAGLE through the Athena capability gateway, which asks ClinGen, PanelApp, SFARI Gene, Monarch or EBI's Ontology Lookup Service only for a value it does not hold yet"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F08 slice 13: eight read-only tools (readOnlyHint) over public curations, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3, a cache fill, never curation data); eagle-api limits how many fills one user may cause and answers \"rate limited, retry in N seconds\" past it. Every result names its source, release and fetch date. Mondo as published in EBI OLS has no OMIM cross-references (F08 slice 12), so OMIM and MONDO diseases cannot be matched by identifier through it. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "annotation.disease",
+          "title": "Gene-disease evidence and disease names from public sources (ClinGen, Gene2Phenotype, PanelApp, SFARI Gene, Monarch, Mondo)",
+          "tools": [
+            "get_clingen_validity",
+            "get_clingen_dosage",
+            "get_gene2phenotype",
+            "get_panelapp_panels",
+            "get_sfari_gene",
+            "resolve_disease",
+            "get_disease_ontology",
+            "list_disease_annotation_sources"
+          ]
+        }
+      ],
+      "sha256": "e6fdc9f315d7eb106ff1f6b04f08bd803d76c5ea4af43a3663c399e22a0e66ba",
+      "skill": {
+        "path": "skills/eagle-disease-evidence",
+        "sha256": "b069b4f4f36ac8754b4829fb23aef4d828fce78ad20cef03cd2ceb38a94247d9"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_clingen_dosage": "d28fc2dd9a42c36938cc7d62bc17c06112b282209a8780b303ca949515f5e7e8",
+            "get_clingen_validity": "992862c6ceda6ef167db8b470a89fefd73049973376b17b4fcd49d5fb0d262cb",
+            "get_disease_ontology": "4e53ff177c42c0fd18f06ec3393dcc22abddb060040f82531f83b741a1313ec2",
+            "get_gene2phenotype": "27dbd0b52f7d2f05791e9d4defa8d2b48194dde618d7772747a2e9e53a513c66",
+            "get_panelapp_panels": "7f3c8429f5bab3599e79770694c932df34a8c2c2a4727f71040b81f3b71ceb89",
+            "get_sfari_gene": "b893969b08e95f5c31180aec62db61017fda5edae1b083c1610f492cda06fa9c",
+            "list_disease_annotation_sources": "3e259bf530a6bd9edf7db3405a29b0f1d024ddb31561f40eb45d99037cd9e0a9",
+            "resolve_disease": "508d8fb98c3a3ecb90a948914da49d7c96f830e8221db15443b53d5edec6e74e"
+          },
+          "tools": [
+            "get_clingen_validity",
+            "get_clingen_dosage",
+            "get_gene2phenotype",
+            "get_panelapp_panels",
+            "get_sfari_gene",
+            "resolve_disease",
+            "get_disease_ontology",
+            "list_disease_annotation_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Gene-disease evidence from ClinGen, Gene2Phenotype, PanelApp and SFARI Gene, and disease names from Mondo, read through EAGLE.",
+      "title": "Disease evidence",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "eagle-gene-biology": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "Which protein domains does SHANK3 have, and where?",
+        "When in brain development is CHD8 expressed most?",
+        "Which Reactome pathways is SCN2A in?",
+        "Who are SYNGAP1's interaction partners in STRING?"
+      ],
+      "group": "Research",
+      "icon": "brain",
+      "id": "eagle-gene-biology",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols, to EAGLE through the Athena capability gateway, which asks UniProt, Ensembl, Reactome, EBI's QuickGO or STRING only for a value it does not hold yet"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F08 slice 13: seven read-only tools (readOnlyHint) over public gene annotations, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3); eagle-api limits how many fills one user may cause and answers \"rate limited, retry in N seconds\" past it. Every result names its source, release and fetch date; BrainSpan and HGNC are vendored files, and the Ensembl transcript is on GRCh38 only. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "annotation.biology",
+          "title": "Gene biology from public sources (UniProt, Ensembl, HGNC, BrainSpan, Reactome, GO, STRING)",
+          "tools": [
+            "get_protein_features",
+            "get_transcript",
+            "get_gene_family",
+            "get_brain_expression",
+            "get_pathways",
+            "get_ppi_network",
+            "list_biology_annotation_sources"
+          ]
+        }
+      ],
+      "sha256": "a27b864a8b2ec156c8f36f104708dfd88c17976a427c26517c5a4afb22bf3307",
+      "skill": {
+        "path": "skills/eagle-gene-biology",
+        "sha256": "674fd792560b63fed456674839fd69dbabdc7a686412c52066ee523bc39bcb80"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_brain_expression": "c0f1affa1ffa5af3907f5ece85593fb5d7b193f5374d539bb42db66e3fa934ac",
+            "get_gene_family": "ef594fccc1b53d7a908578a0aca7c26ccdde9b72316aad82cdbaf8e2748ca50d",
+            "get_pathways": "c81f290487dc558d1f0a7846cf6705aff6d96b6dc6e296b16a2c1df897bbf72a",
+            "get_ppi_network": "f0c683c897dbc9f3d0f9c3573e4afa831d24760eadf27dbd2ff0b184c381d00e",
+            "get_protein_features": "4aab446fa69893f3955c3a8d02a1bed594dd86912ee1e04166fc554813cd2898",
+            "get_transcript": "76e08340816eb15c150315a2f0bb36254046c5f1a75b61ff1bafb66dcd92b8f2",
+            "list_biology_annotation_sources": "89da62565023f95f9048a4ff1c7c17df34102a46d400b233658704e0d94b63ca"
+          },
+          "tools": [
+            "get_protein_features",
+            "get_transcript",
+            "get_gene_family",
+            "get_brain_expression",
+            "get_pathways",
+            "get_ppi_network",
+            "list_biology_annotation_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Protein features, transcripts, gene families, brain expression, pathways and interaction partners of a gene, read through EAGLE.",
+      "title": "Gene biology",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
+    "eagle-variant-data": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "How constrained is SCN2A against loss of function in gnomAD?",
+        "What is the gnomAD allele frequency of 2-165310406-G-A?",
+        "Normalise NM_021007.3:c.2558G>A and give me its genomic form.",
+        "List the pathogenic ClinVar variants of CHD8."
+      ],
+      "group": "Research",
+      "icon": "table",
+      "id": "eagle-variant-data",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "gene symbols, to EAGLE through the Athena capability gateway, which asks gnomAD or NCBI ClinVar only for a value it does not hold yet",
+          "variant coordinates and HGVS descriptions, to EAGLE through the Athena capability gateway, which asks gnomAD or VariantValidator for a variant it does not hold yet"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-15",
+        "by": "claude-code/implement-plan",
+        "notes": "F08 slice 13: five read-only tools (readOnlyHint) over public variant data, one tool per source, read through eagle-api's annotation cache. A value eagle-api does not hold is fetched once from the public source (F08 decision 3); gnomAD and VariantValidator share one rate budget in eagle-api (F08 slice 10), and a spent budget is answered \"rate limited, retry in N seconds\", never as an empty result. The variants a user asks about leave the hospital for gnomAD and VariantValidator when EAGLE does not hold them yet; the companion skill tells the agent to send the variant only. Build-dependent tools take genome_build (GRCh38 by default) and name the build they used. Public, granted to every role (migration 0009). Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "annotation.variant",
+          "title": "Variant data from public sources (gnomAD constraint and frequencies, ClinVar, VariantValidator)",
+          "tools": [
+            "get_gnomad_constraint",
+            "get_clinvar_variants",
+            "get_variant_frequency",
+            "normalize_variant",
+            "list_variant_annotation_sources"
+          ]
+        }
+      ],
+      "sha256": "36e5b5fa1d83c046c8a3f83b0578a5a1f730b4a499126b7afd8d35804d74d58a",
+      "skill": {
+        "path": "skills/eagle-variant-data",
+        "sha256": "8e7c12b3d3c52ce0dac3ad265b3d7ed9563b25a196e9f916cca45d9b53faa50c"
+      },
+      "source": {
+        "gateway": {
+          "capability": "eagle",
+          "surface": {
+            "get_clinvar_variants": "87339b944f2e9ea0558d6178b62274409e73acbbd09ab76c344f3fc4c07985d0",
+            "get_gnomad_constraint": "37614d9c1cb396b6c429bcbec00b012cc1449714cc4542592701fc7893ea723e",
+            "get_variant_frequency": "cddc689cf369246687b319439e77b51963b70e43d6b79ed14f4c1ccee7658ad2",
+            "list_variant_annotation_sources": "612215ca0b547f8748b64fda628d5e00df19bf86e0bc53cab83b6fa0785a7bad",
+            "normalize_variant": "8ffb5e0455c9a8028f80f6f6687c59b438f71d1c593569c485d883c23a288624"
+          },
+          "tools": [
+            "get_gnomad_constraint",
+            "get_clinvar_variants",
+            "get_variant_frequency",
+            "normalize_variant",
+            "list_variant_annotation_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "gnomAD constraint and allele frequencies, ClinVar records and VariantValidator normalisation, read through EAGLE.",
+      "title": "Variant data",
+      "user_toggle": true,
+      "version": "1.0.0"
     },
     "files": {
       "category": "built-in",
