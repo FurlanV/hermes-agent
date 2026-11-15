@@ -727,7 +727,10 @@ a real filter.
     summary and a switch → `tools.setPart(id, part, on)` →
     `athena:tool-prefs:set-part` → `athena config tool <id>/<part> on|off`
     (`enabled["<id>/<part>"]` in the same file). While the package is off its
-    source switches are disabled. On/off mirrors `tool_pins.part_on`
+    source switches are disabled. A source the administrator locked for the
+    role (`tools.parts.locked_on`/`locked_off`, or the package in
+    `tools.locked_on`) shows its locked state, disabled, with "Set by your
+    administrator". On/off mirrors `tool_pins.part_on`
     (`catalog/catalog-parts.ts`).
   - Learned skills (`catalog/learned-skills.tsx`): local skills that managed
     scope leaves on and the catalog did not install, viewed through

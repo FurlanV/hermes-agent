@@ -211,3 +211,55 @@ describe('the Capabilities page', { timeout: 30_000 }, () => {
     expect(echo.querySelector('[data-slot="athena-catalog-parts"]')).toBeNull()
   })
 })
+
+// F11 slice 08: a source an administrator locked for the role (the client config's `tools.parts.locked_on` and
+// `locked_off`, or the package in `tools.locked_on`) shows its locked state, disabled, with "Set by your
+// administrator"; an unlocked source of the same package can still be switched.
+describe('a locked source', { timeout: 30_000 }, () => {
+  const LOCKED = { ...TOOLS, parts: { locked_off: ['disease-evidence/sfari'], locked_on: ['disease-evidence/panelapp'] } }
+  const lockText = (row: HTMLElement) => row.querySelector('[data-slot="athena-catalog-part-locked"]')?.textContent?.trim()
+
+  test('locked off shows off, disabled, with the administrator text; the same for locked on', async () => {
+    partsBridge({ 'disease-evidence/panelapp': false, 'disease-evidence/sfari': true }) // the user's own switches lose
+    const card = await renderPage(LOCKED)
+    const rows = await expandSources(card)
+    await waitFor(() => expect($toolPrefs.get()).toMatchObject({ 'disease-evidence/sfari': true }))
+
+    const sfari = rows.find(row => row.dataset.part === 'sfari')!
+    expect(partSwitch(card, 'SFARI').getAttribute('aria-checked')).toBe('false')
+    expect(partSwitch(card, 'SFARI').hasAttribute('disabled')).toBe(true)
+    expect(lockText(sfari)).toBe('Set by your administrator')
+
+    const panelapp = rows.find(row => row.dataset.part === 'panelapp')!
+    expect(partSwitch(card, 'PanelApp').getAttribute('aria-checked')).toBe('true')
+    expect(partSwitch(card, 'PanelApp').hasAttribute('disabled')).toBe(true)
+    expect(lockText(panelapp)).toBe('Set by your administrator')
+  })
+
+  test('an unlocked source in the same package can still be switched', async () => {
+    const bridge = partsBridge()
+    const card = await renderPage(LOCKED)
+    const rows = await expandSources(card)
+    const clingen = rows.find(row => row.dataset.part === 'clingen')!
+
+    expect(lockText(clingen)).toBeUndefined()
+    expect(partSwitch(card, 'ClinGen').hasAttribute('disabled')).toBe(false)
+    await act(async () => {
+      fireEvent.click(partSwitch(card, 'ClinGen'))
+    })
+    expect(bridge.setPart).toHaveBeenCalledWith('disease-evidence', 'clingen', false)
+    await waitFor(() => expect(partSwitch(card, 'ClinGen').getAttribute('aria-checked')).toBe('false'))
+  })
+
+  test('a package the administrator locked on locks its sources, except one locked off', () => {
+    const catalog = { catalog_version: '2026.11.11', entries: { 'disease-evidence': DISEASE }, hermes_commit: 'x' }
+    const config = { tools: { ...TOOLS, locked_on: ['disease-evidence'], parts: { locked_off: ['disease-evidence/sfari'] } } }
+    const [card] = catalogCards(config, { 'disease-evidence/clingen': false }, catalog)
+    expect(card.parts.map(p => [p.part.id, p.locked, p.on])).toEqual([
+      ['clingen', true, true],
+      ['panelapp', true, true],
+      ['sfari', false, false]
+    ])
+    expect(catalogCards({ tools: TOOLS }, {}, catalog)[0].parts.every(p => p.locked === null)).toBe(true)
+  })
+})

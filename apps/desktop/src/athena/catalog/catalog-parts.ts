@@ -6,6 +6,10 @@
  * its package is on; then, for a package with a user switch, the user's part switch decides, else the role default:
  * `tools.parts.default_on` in the client config (an entry none of whose parts it names starts with every part on).
  * A package without a user switch (`user_toggle: false`) follows the role defaults for its parts.
+ *
+ * An administrator's lock comes first (slice 08): `tools.parts.locked_off` keeps a part off and
+ * `tools.parts.locked_on` keeps it on, and a package in `tools.locked_on` locks its parts on, except one locked off.
+ * A locked part shows its locked state, disabled, with "Set by your administrator"; the CLI refuses to change it.
  */
 
 import type { CatalogEntry, CatalogPart } from './catalog'
@@ -20,6 +24,8 @@ export interface PartCard {
   packageOff: boolean
   /** No user switch here: the package is admin-decided (`user_toggle: false`). */
   managed: boolean
+  /** The state an administrator locked the part in for the role, or null when it is not locked. */
+  locked: boolean | null
 }
 
 export interface PartLists {
@@ -51,6 +57,22 @@ export function partDefault(entryId: string, partId: string, lists: PartLists): 
   return lists.default_on.includes(ref) || !lists.default_on.some(id => id.startsWith(`${entryId}/`))
 }
 
+/** The state an administrator locked one part in (`athena_shipper.tool_pins.part_lock`), or null. */
+export function partLock(
+  entryId: string,
+  partId: string,
+  lists: PartLists,
+  lockedPackages: readonly string[]
+): boolean | null {
+  const ref = partRef(entryId, partId)
+
+  if (lists.locked_off.includes(ref)) {
+    return false
+  }
+
+  return lists.locked_on.includes(ref) || lockedPackages.includes(entryId) ? true : null
+}
+
 /** The parts an entry declares that are well formed (a newer catalog may carry fields this build ignores). */
 export function entryParts(entry: CatalogEntry): CatalogPart[] {
   return (Array.isArray(entry.parts) ? entry.parts : []).filter(
@@ -66,12 +88,15 @@ export function partCards(
   packageOn: boolean
 ): PartCard[] {
   const lists = partLists(config)
+  const tools = isRecord(config) && isRecord(config.tools) ? config.tools : {}
+  const lockedPackages = ids(tools.locked_on)
 
   return entryParts(entry).map(part => {
     const ref = partRef(entry.id, part.id)
+    const locked = partLock(entry.id, part.id, lists, lockedPackages)
     const fallback = partDefault(entry.id, part.id, lists)
     const own = entry.user_toggle && typeof prefs[ref] === 'boolean' ? prefs[ref] : fallback
 
-    return { managed: !entry.user_toggle, on: own, packageOff: !packageOn, part, ref }
+    return { locked, managed: !entry.user_toggle, on: locked ?? own, packageOff: !packageOn, part, ref }
   })
 }
