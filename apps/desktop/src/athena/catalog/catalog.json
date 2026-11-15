@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.12",
+  "catalog_version": "2026.11.13",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -511,7 +511,8 @@
       "permissions": {
         "data": [
           "search terms, filters and paper identifiers (PMID, PMCID, DOI), to papers-nexus through the Athena capability gateway, which asks Europe PMC, PubMed and Unpaywall",
-          "paper identifiers, to EAGLE, to say whether it already holds a paper"
+          "paper identifiers, to EAGLE, to say whether it already holds a paper",
+          "with Include Elsevier on, search terms and filters, to Elsevier ScienceDirect through papers-nexus"
         ],
         "executes_code": false,
         "filesystem": "none",
@@ -530,7 +531,7 @@
       "review": {
         "at": "2026-11-14",
         "by": "claude-code/implement-plan",
-        "notes": "F10 slice 09: seven read-only tools (readOnlyHint) over published literature: Europe PMC, PubMed and Unpaywall, read through papers-nexus, and EAGLE's exists check. Results are outside text, returned as data; the package is untrusted like every gateway package. Public, granted to every role (migration 0008). The ingest scope (literature.ingest) is left out until slice 16. Awaiting human review and the EAGLE team's sign-off."
+        "notes": "F10 slice 09: seven read-only tools (readOnlyHint) over published literature: Europe PMC, PubMed and Unpaywall, read through papers-nexus, and EAGLE's exists check. Results are outside text, returned as data; the package is untrusted like every gateway package. Public, granted to every role (migration 0008). The ingest scope (literature.ingest) is left out until slice 16. F10 slice 10: the Elsevier toggle, off by default; papers-nexus also keeps Elsevier off on the server until a person confirms the API key's licence allows use by an agent. Awaiting human review and the EAGLE team's sign-off."
       },
       "roles": [
         "researcher",
@@ -554,7 +555,19 @@
           ]
         }
       ],
-      "sha256": "7adceda04eaca7bc7ec711897bb2228b118f946ab02840c31c52708bccc33413",
+      "settings": [
+        {
+          "choices": [],
+          "default": false,
+          "description": "Also search Elsevier ScienceDirect. Your search terms and filters are then sent to Elsevier too.",
+          "id": "elsevier",
+          "maximum": null,
+          "minimum": null,
+          "title": "Include Elsevier",
+          "type": "toggle"
+        }
+      ],
+      "sha256": "7ef619d857f9e7a5ca2de2bf7dedf2f8b785abc1b941b50eb786ab60afcfc712",
       "skill": {
         "path": "skills/literature",
         "sha256": "a24a7652798fe901b3bc0eacce591dd9485269f1d11fefbd03921b72dc985e88"
@@ -569,7 +582,7 @@
             "get_abstracts": "6d025dbc1e9c75f13ebe9076ae5c9ec8aa0bb146a22fca7aeaac60a5ae6fede1",
             "get_full_text": "67b192648b326f3172299fab471912dfce800184cb5765075b02ab8eca6f7f07",
             "list_literature_sources": "3b423c87e41cd89679349cd882c50dd4bb83586f7e66066f46f83a6edb97c51e",
-            "search_literature": "b0c089e8f6a387a0892820c194b9629262fc35fa7455bcccec1349e95b051e35"
+            "search_literature": "a07d13b4e927681460f5300b62d69eb9e24bb0e0add11a1b4573d342a6611c68"
           },
           "timeout_seconds": 120,
           "tools": [
@@ -587,7 +600,7 @@
       "summary": "Search Europe PMC and PubMed, read abstracts and open-access full text, and see which papers EAGLE holds.",
       "title": "Literature",
       "user_toggle": true,
-      "version": "1.0.0"
+      "version": "2.0.0"
     },
     "literature-search": {
       "category": "built-in",
