@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026.11.11",
+  "catalog_version": "2026.11.12",
   "entries": {
     "browser": {
       "category": "built-in",
@@ -495,11 +495,105 @@
       "user_toggle": true,
       "version": "1.0.1"
     },
+    "literature": {
+      "category": "database",
+      "default_on": false,
+      "examples": [
+        "Find recent papers on SHANK3 and autism, and tell me which ones EAGLE already holds.",
+        "Read the Methods of PMC5307786 and summarise how the cohort was ascertained.",
+        "Is there a legal open-access copy of DOI 10.1038/ng1933?"
+      ],
+      "group": "Research",
+      "icon": "book-search",
+      "id": "literature",
+      "kind": "gateway",
+      "owner": "eagle-team",
+      "permissions": {
+        "data": [
+          "search terms, filters and paper identifiers (PMID, PMCID, DOI), to papers-nexus through the Athena capability gateway, which asks Europe PMC, PubMed and Unpaywall",
+          "paper identifiers, to EAGLE, to say whether it already holds a paper"
+        ],
+        "executes_code": false,
+        "filesystem": "none",
+        "network": []
+      },
+      "provides": {
+        "tools": [],
+        "toolsets": []
+      },
+      "publisher": {
+        "contact": "eagle-team@example.org",
+        "name": "EAGLE",
+        "team": "EAGLE team (SickKids TCAG)"
+      },
+      "requires_hermes": ">=d667bd0da0",
+      "review": {
+        "at": "2026-11-14",
+        "by": "claude-code/implement-plan",
+        "notes": "F10 slice 09: seven read-only tools (readOnlyHint) over published literature: Europe PMC, PubMed and Unpaywall, read through papers-nexus, and EAGLE's exists check. Results are outside text, returned as data; the package is untrusted like every gateway package. Public, granted to every role (migration 0008). The ingest scope (literature.ingest) is left out until slice 16. Awaiting human review and the EAGLE team's sign-off."
+      },
+      "roles": [
+        "researcher",
+        "clinician",
+        "trainee",
+        "admin"
+      ],
+      "scopes": [
+        {
+          "classification": "public",
+          "id": "literature.search",
+          "title": "Search and read the published literature (Europe PMC, PubMed, Unpaywall), and check what EAGLE holds",
+          "tools": [
+            "search_literature",
+            "get_abstracts",
+            "convert_ids",
+            "find_open_access",
+            "get_full_text",
+            "check_in_eagle",
+            "list_literature_sources"
+          ]
+        }
+      ],
+      "sha256": "7adceda04eaca7bc7ec711897bb2228b118f946ab02840c31c52708bccc33413",
+      "skill": {
+        "path": "skills/literature",
+        "sha256": "a24a7652798fe901b3bc0eacce591dd9485269f1d11fefbd03921b72dc985e88"
+      },
+      "source": {
+        "gateway": {
+          "capability": "nexus",
+          "surface": {
+            "check_in_eagle": "358719f50cdc9c788533620ed3ede7700acdc3ca59005efca16cad6ffef5c1c8",
+            "convert_ids": "3ebb889975e3f2d265f89eabcf86afedbcb0df7fbd4419caeaee53d508b86581",
+            "find_open_access": "fc72aece06e7bbcbf4a72cfdaf8407847b3b96d66291bce49704950d21bfdc65",
+            "get_abstracts": "6d025dbc1e9c75f13ebe9076ae5c9ec8aa0bb146a22fca7aeaac60a5ae6fede1",
+            "get_full_text": "67b192648b326f3172299fab471912dfce800184cb5765075b02ab8eca6f7f07",
+            "list_literature_sources": "3b423c87e41cd89679349cd882c50dd4bb83586f7e66066f46f83a6edb97c51e",
+            "search_literature": "b0c089e8f6a387a0892820c194b9629262fc35fa7455bcccec1349e95b051e35"
+          },
+          "timeout_seconds": 120,
+          "tools": [
+            "search_literature",
+            "get_abstracts",
+            "convert_ids",
+            "find_open_access",
+            "get_full_text",
+            "check_in_eagle",
+            "list_literature_sources"
+          ]
+        }
+      },
+      "status": "experimental",
+      "summary": "Search Europe PMC and PubMed, read abstracts and open-access full text, and see which papers EAGLE holds.",
+      "title": "Literature",
+      "user_toggle": true,
+      "version": "1.0.0"
+    },
     "literature-search": {
       "category": "built-in",
       "default_on": true,
       "group": "Research",
-      "icon": "book-search",
+      "icon": "globe",
       "id": "literature-search",
       "kind": "toolset",
       "owner": "athena-team",
@@ -526,7 +620,7 @@
       "review": {
         "at": "2026-11-09",
         "by": "claude-code/implement-plan",
-        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role."
+        "notes": "Proposed from the F02 plan's first catalog (section D); awaiting human review (Q4). Egress limited to SearXNG. F03 slice 05 (decision 1, a testing default): on by default for every role, with a user switch; an admin can still lock it on (tools.locked_on) or take it away from a role. F10 slice 09: renamed Web search; its summary named PubMed and a hospital library index, which it never searched (it is SearXNG web search)."
       },
       "roles": [
         "researcher",
@@ -534,7 +628,7 @@
         "trainee",
         "admin"
       ],
-      "sha256": "9b26d1c36522120654388ef05396a23d1782a1049145d5e12db14610404d4579",
+      "sha256": "87c35487096da835c3e7c9f167515694b9d760c7f02f93bb330486a8aefd712a",
       "source": {
         "config": {
           "web": {
@@ -544,10 +638,10 @@
         "hermes_toolset": "web"
       },
       "status": "stable",
-      "summary": "Search PubMed and the hospital library index.",
-      "title": "Literature search",
+      "summary": "Search the web and read web pages, through Athena's own search service.",
+      "title": "Web search",
       "user_toggle": true,
-      "version": "1.1.0"
+      "version": "1.2.0"
     },
     "memory": {
       "category": "built-in",

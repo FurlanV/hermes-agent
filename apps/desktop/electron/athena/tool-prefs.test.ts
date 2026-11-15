@@ -295,7 +295,7 @@ describe.skipIf(!existsSync(realCli))('with the real athena CLI', () => {
     return block.split('\n').map(line => line.replace(/^ {2}- /, '').trim()).filter(Boolean)
   }
 
-  test('turning Literature search off writes tool-prefs.json and re-applies managed scope without web', { timeout: 60_000 }, async () => {
+  test('turning Web search off writes tool-prefs.json and re-applies managed scope without web', { timeout: 60_000 }, async () => {
     const env = { ...seedProfile(), ATHENA_CLI: realCli }
     const prefs = new AthenaToolPrefs({ env, hermesHome: home, log: () => {} })
 
@@ -305,7 +305,7 @@ describe.skipIf(!existsSync(realCli))('with the real athena CLI', () => {
 
     const off = await prefs.set('literature-search', false)
     expect(off).toMatchObject({ applied: true, enabled: { 'literature-search': false }, ok: true })
-    expect(off.message).toBe('Literature search: off. Applies to new chats.')
+    expect(off.message).toBe('Web search: off. Applies to new chats.')
     expect(readToolPrefs(prefsFile)).toEqual({ 'literature-search': false })
     expect(ceiling()).not.toContain('web')
     expect(ceiling()).toEqual(expect.arrayContaining(['file', 'memory', 'clarify', 'project']))
