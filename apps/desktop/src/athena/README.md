@@ -272,6 +272,30 @@ a real filter.
   leaves the model out and keeps the others.
   Tests: `electron/athena/model-gateway-chat.test.ts`; athena's
   `tests/hook_sequence/test_chat_only_model.py` runs the hermes turns.
+- A gateway model is listed once managed scope declares it (F13 slice 18).
+  The Shipper stores a new signed config, then rewrites hermes managed scope
+  after its catalog and package syncs, and hermes refuses a pick of a gateway
+  model its provider does not declare. So main also reads the managed
+  `config.yaml` (`electron/athena/managed-scope.ts`; the folder is
+  `HERMES_MANAGED_DIR`, else `$HERMES_HOME/athena/managed`) with the other
+  inputs, every second, into each snapshot as `managedScope`: the ids declared
+  on `providers.athena-gateway.models` and `providers.athena-gateway-chat.models`
+  (dict keys, or an older applier's list) and `model.default`. Under
+  `managed.models: enforce` the role's list is the config's list less the
+  `gateway` / `gateway-chat` entries not declared on their own provider, in
+  the renderer and at main's REST seam alike (`snapshotModelsState`). So a new
+  model appears from the first poll after the applier wrote the file, a
+  removed one leaves with the config, a pick of an undeclared one is refused
+  and recorded like any model off the list, and hidden entries and bridge
+  models are not filtered. While the config's new default is not declared,
+  the default is managed scope's `model.default` (what hermes starts on)
+  if it is still listed. Without the file (missing, unparseable) the config's
+  list stands; `report` and `off` are not narrowed. A new declaration also
+  drops the cached model options. Tests: `electron/athena/managed-scope.test.ts`
+  (fixtures in `electron/athena/fixtures/managed-scope/`, written by athena's
+  applier), `managed/model-declared.test.ts`; athena's
+  `tests/hook_sequence/test_model_metadata.py` shows hermes refusing the pick
+  before the declaration and taking it right after.
 - Local models (F05 slice 05): a bridge model (`models.allowed[].provider:
   bridge`) is a model on a server only the laptop reaches, through the HPC
   bridge, on hermes's second provider `custom:athena-vllm`.

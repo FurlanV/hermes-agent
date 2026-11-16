@@ -24,8 +24,14 @@
  * and be offered the connection. The gate does not change: `selectable` and
  * the JSON-RPC check accept it only while its server's forward is up.
  *
- * A new `config_version`, or the bridge coming or going, also drops the cached
- * model options, so no picker keeps an hour-old catalog.
+ * A gateway model is listed only once hermes managed scope declares it (F13
+ * slice 18): main reads the managed file into each snapshot (`managedScope`),
+ * and a model the config offers before the Shipper has declared it would be
+ * refused by hermes. Without the file the config's list stands.
+ *
+ * A new `config_version`, the bridge coming or going, or a new managed-scope
+ * declaration also drops the cached model options, so no picker keeps an
+ * hour-old catalog.
  */
 
 import type { ModelOptionProvider } from '@hermes/shared'
@@ -46,7 +52,8 @@ import {
   managedModels,
   managedPickerRows,
   modelUseDecision,
-  rpcModelChoice
+  rpcModelChoice,
+  snapshotModelsState
 } from '../../../electron/athena/model-policy'
 
 import { $clientConfig, type ClientConfigSnapshot } from './client-config'
@@ -67,7 +74,7 @@ import { recordModelDecision } from './policy-decisions'
 
 /** The `models` section for a snapshot, or null: no snapshot yet (no Electron bridge), or the stock variant. */
 export const managedModelsForSnapshot = (snapshot: ClientConfigSnapshot | null): ManagedModels | null =>
-  snapshot && snapshot.variant !== 'stock' ? managedModels(snapshot.config, bridgeState(snapshot.hpcBridge)) : null
+  snapshot && snapshot.variant !== 'stock' ? managedModels(snapshot.config, snapshotModelsState(snapshot)) : null
 
 export const $managedModels = computed($clientConfig, managedModelsForSnapshot)
 
@@ -187,9 +194,11 @@ export function installModelPolicy(): () => void {
   })
 
   const offVersion = $clientConfig.subscribe(snapshot => {
-    // The bridge coming or going changes what hermes offers too (managed scope pins its provider only while up).
+    // The bridge coming or going changes what hermes offers too (managed scope pins its provider only while up), and
+    // so does a model managed scope declares.
     const version = snapshot
-      ? `${snapshot.configVersion}:${bridgeState(snapshot.hpcBridge).serversUp?.join(',') ?? ''}`
+      ? `${snapshot.configVersion}:${bridgeState(snapshot.hpcBridge).serversUp?.join(',') ?? ''}:` +
+        JSON.stringify(snapshot.managedScope?.declared ?? null)
       : undefined
 
     if (lastVersion !== undefined && version !== lastVersion) {

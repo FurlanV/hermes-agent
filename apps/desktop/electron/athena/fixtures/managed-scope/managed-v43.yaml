@@ -1,0 +1,433 @@
+# Written by `athena config apply` from client config v43 (researcher).
+# Hermes managed scope: every leaf is pinned. Do not edit: the next sync undoes it and reports drift.
+nous:
+  guest: false
+  keepalive_interval_seconds: 0
+model_catalog:
+  enabled: false
+models_dev:
+  url: http://127.0.0.1:9/api.json
+telemetry:
+  shared_metrics:
+    enabled: false
+    send: false
+    offer_version: 2
+updates:
+  check: false
+  auto_switch_parked_branch: true
+  backup_keep: 5
+  non_interactive_local_changes: stash
+  parked_branch_strategy: switch
+  pre_update_backup: quick
+  refresh_cua_driver: true
+auth:
+  adopt_external_logins: false
+approvals:
+  mode: manual
+  timeout: 300
+  mcp_reload_confirm: true
+security:
+  redact_secrets: true
+  allow_private_urls: false
+  allow_lazy_installs: false
+terminal:
+  backend: local
+  persistent_shell: true
+  env_passthrough: []
+  timeout: 180
+  docker_image: nousresearch/hermes-sandbox:desktop
+  modal_image: nousresearch/hermes-sandbox:desktop
+  daytona_image: nousresearch/hermes-sandbox:desktop
+browser:
+  cloud_provider: local
+  use_real_profile: false
+  allow_private_urls: false
+  auto_local_for_private_urls: true
+memory:
+  provider: ''
+  memory_enabled: true
+  user_profile_enabled: true
+  memory_char_limit: 2200
+  user_char_limit: 1375
+web:
+  keyless_fallback: false
+  keyless_rescue: false
+  backend: searxng
+tts:
+  provider: piper
+  deepinfra:
+    model: ''
+    voice: default
+  edge:
+    voice: en-US-AriaNeural
+  elevenlabs:
+    model_id: eleven_multilingual_v2
+    voice_id: pNInz6obpgDQGcFmaJgB
+  gemini:
+    audio_tags: false
+    model: gemini-2.5-flash-preview-tts
+    persona_prompt_file: ''
+    voice: Kore
+  keep_warm_seconds: 60
+  kittentts:
+    model: KittenML/kitten-tts-nano-0.8-int8
+    voice: Jasper
+  minimax:
+    model: speech-02-hd
+    voice_id: English_expressive_narrator
+  mistral:
+    model: voxtral-mini-tts-2603
+    voice_id: c69964a6-ab8b-4f8a-9465-ec0925096ec8
+  neutts:
+    device: cpu
+    model: neuphonic/neutts-air-q4-gguf
+    ref_audio: ''
+    ref_text: ''
+  openai:
+    consent_attestation: ''
+    model: gpt-4o-mini-tts
+    pcm_sample_rate: 24000
+    voice: alloy
+  piper:
+    voice: en_US-lessac-medium
+  streaming:
+    min_len: 20
+  xai:
+    auto_speech_tags: false
+    bit_rate: 128000
+    language: en
+    optimize_streaming_latency: 0
+    sample_rate: 24000
+    speed: 1.0
+    voice_id: eve
+stt:
+  provider: local
+  cloud_trim_keep_ms: 300
+  cloud_trim_silence: true
+  cloud_trim_threshold_db: -40
+  deepinfra:
+    model: ''
+  echo_transcripts: true
+  elevenlabs:
+    diarize: false
+    language_code: ''
+    model_id: scribe_v2
+    tag_audio_events: false
+  enabled: true
+  groq:
+    language: ''
+    model: whisper-large-v3-turbo
+  language: en
+  local:
+    initial_prompt: ''
+    language: ''
+    logprob_threshold: -1.0
+    model: base
+    no_speech_prob_threshold: 0.6
+    unload_after_idle_seconds: 0
+    vad: true
+    vad_min_silence_ms: 500
+  mistral:
+    language: ''
+    model: voxtral-mini-latest
+  openai:
+    language: ''
+    max_retries: 1
+    model: whisper-1
+    streaming_model: gpt-live-transcribe
+    timeout: 60
+  streaming: false
+  xai:
+    language: ''
+    model: ''
+plugins:
+  isolation: in_process
+  auto_update_check_hours: 0
+  auto_apply: false
+  hook_callback_timeout: 10
+  enabled:
+  - athena_capture
+  - athena_guard
+  disabled: []
+platforms:
+  telegram:
+    enabled: false
+  discord:
+    enabled: false
+  slack:
+    enabled: false
+  whatsapp:
+    enabled: false
+  whatsapp_cloud:
+    enabled: false
+  signal:
+    enabled: false
+  bluebubbles:
+    enabled: false
+  email:
+    enabled: false
+  mattermost:
+    enabled: false
+  matrix:
+    enabled: false
+  dingtalk:
+    enabled: false
+  feishu:
+    enabled: false
+  wecom:
+    enabled: false
+  wecom_callback:
+    enabled: false
+  weixin:
+    enabled: false
+  qqbot:
+    enabled: false
+  webhook:
+    enabled: false
+  api_server:
+    enabled: false
+fallback_providers:
+- provider: custom:athena-gateway
+  model: gpt-6-sol
+- provider: custom:athena-gateway
+  model: gpt-6-luna
+- provider: custom:athena-gateway-chat
+  model: acme-chat-1
+- provider: custom:athena-gateway-chat
+  model: acme-chat-2
+moa:
+  active_preset: ''
+  default_preset: default
+  presets:
+    default:
+      aggregator:
+        model: anthropic/claude-opus-4.8
+        provider: openrouter
+      enabled: true
+      reference_models:
+      - model: gpt-5.5
+        provider: openai-codex
+      - model: deepseek/deepseek-v4-pro
+        provider: openrouter
+  privacy_filter: ''
+  save_traces: false
+  trace_dir: ''
+delegation:
+  api_key: ''
+  api_mode: ''
+  backend: default
+  backends: {}
+  base_url: ''
+  child_timeout_seconds: 0
+  compression_threshold_tokens: 0
+  fallback_providers: []
+  gateway_mode: auto
+  independent_completions: false
+  inherit_mcp_toolsets: true
+  max_concurrent_children: 10
+  max_iterations: 250
+  max_spawn_depth: 1
+  max_summary_chars: 24000
+  model: acme-next-1
+  oneshot_max_children: 2
+  orchestrator_enabled: true
+  prefix_stagger_seconds: 0
+  provider: custom:athena-gateway
+  reasoning_effort: ''
+  request_overrides: {}
+  subagent_auto_approve: false
+  surface_child_process_notifications: false
+code_execution:
+  mode: project
+file_read_max_chars: 100000
+command_allowlist: []
+context:
+  engine: compressor
+  memory_trim:
+    cooldown_seconds: 60.0
+    enabled: true
+    info_log_min_delta_mb: 0.0
+    log_every_n: 1
+compression:
+  abort_on_summary_failure: false
+  checkpoint_required: false
+  codex_app_server_auto: native
+  codex_gpt55_autoraise: true
+  codex_gpt55_autoraise_notice: true
+  codex_responses_compact_threshold: null
+  codex_responses_native: false
+  context_timeout_seconds: 120
+  context_total_ceiling_seconds: 600
+  enabled: true
+  hygiene_failure_cooldown_seconds: 300
+  hygiene_hard_message_limit: 5000
+  hygiene_max_turn_hold_seconds: 10
+  hygiene_timeout_seconds: 30
+  hygiene_total_ceiling_seconds: 600
+  idle_compact_after_seconds: 0
+  in_place: true
+  max_attempts: 3
+  micro_compact: false
+  micro_compact_defrag_threshold_tokens: 2000
+  micro_compact_every_n_turns: 1
+  min_tail_user_messages: 1
+  model_thresholds: {}
+  prepare_ahead: false
+  proactive_prune_min_reclaim_tokens: 4096
+  proactive_prune_min_result_chars: 8000
+  proactive_prune_tokens: 0
+  progress_notices: false
+  protect_first_n: 3
+  protect_last_n: 20
+  tail_mode: lean
+  target_ratio: 0.2
+  threshold: 0.5
+  threshold_tokens: null
+auxiliary:
+  compression:
+    api_key: ''
+    base_url: ''
+    extra_body: {}
+    model: acme-next-1
+    no_progress_timeout: null
+    provider: custom:athena-gateway
+    reasoning_effort: ''
+    timeout: 120
+  vision:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  approval:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  review:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  mcp:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  title_generation:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  memory_query_rewrite:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  tts_audio_tags:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  voice_chat:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  triage_specifier:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  kanban_decomposer:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  profile_describer:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  goal_judge:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  group_router:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  curator:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  monitor:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  background_review:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  moa_reference:
+    provider: custom:athena-gateway
+    model: acme-next-1
+  moa_aggregator:
+    provider: custom:athena-gateway
+    model: acme-next-1
+voice:
+  voice_chat_mode: chained
+  gpt_live:
+    instructions: ''
+    model: gpt-live-1
+    voice: marin
+  auto_tts: false
+  max_recording_seconds: 120
+  client_direct: true
+agent:
+  api_max_retries: 3
+  service_tier: ''
+  tool_use_enforcement: auto
+  disabled_toolsets:
+  - catalog
+  - bot_room
+  - computer_use
+  - connections
+  - context_engine
+  - cronjob
+  - discord
+  - discord_admin
+  - feishu_doc
+  - feishu_drive
+  - image_gen
+  - kanban
+  - onboarding
+  - session_search
+  - tts
+  - video
+  - video_gen
+  - vision
+  - x_search
+  coding_context: auto
+  max_turns: 90
+toolsets:
+- hermes-cli
+tool_output:
+  max_bytes: 50000
+  max_line_length: 2000
+  max_lines: 2000
+checkpoints:
+  max_snapshots: 20
+model:
+  provider: custom:athena-gateway
+  default: acme-next-1
+providers:
+  athena-gateway:
+    models:
+      gpt-6-sol:
+        context_length: 111111
+      gpt-6-luna: {}
+      acme-next-1:
+        context_length: 200000
+        supports_vision: true
+    discover_models: false
+  athena-gateway-chat:
+    base_url: http://127.0.0.1:8080/v1
+    key_cmd: athena token
+    api_mode: chat_completions
+    models:
+      acme-chat-1:
+        context_length: 64000
+      acme-chat-2: {}
+    discover_models: false
+platform_toolsets:
+  cli:
+  - file
+  - code_execution
+  - terminal
+  - web
+  - browser
+  - memory
+  - skills
+  - todo
+  - delegation
+  - clarify
+  - project
+  - no_mcp
+skills:
+  disabled: []
+  external_dirs: []
+  project_discovery: false
+hooks_auto_accept: false

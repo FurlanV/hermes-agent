@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.0",
+  "catalog": {
+    "min_version": null,
+    "remote": false
+  },
+  "managed": {
+    "features": "enforce",
+    "models": "enforce",
+    "tools": "enforce"
+  },
+  "features": {},
+  "models": {
+    "allowed": [
+      {
+        "id": "gpt-6-sol",
+        "label": "GPT-6 Sol",
+        "note": "Most capable",
+        "reasoning": {
+          "levels": [
+            "none",
+            "low",
+            "medium",
+            "high"
+          ],
+          "default": "medium"
+        },
+        "hidden": false,
+        "context_length": 111111
+      },
+      {
+        "id": "gpt-6-luna",
+        "label": "GPT-6 Luna",
+        "note": "Faster",
+        "reasoning": {
+          "levels": [
+            "none",
+            "low",
+            "medium"
+          ],
+          "default": "low"
+        },
+        "hidden": false
+      },
+      {
+        "id": "acme-chat-1",
+        "label": "Acme Chat",
+        "provider": "gateway-chat",
+        "context_length": 64000,
+        "reasoning": {
+          "levels": [
+            "none"
+          ],
+          "default": "none"
+        }
+      },
+      {
+        "id": "mock",
+        "label": "Mock (dev)",
+        "note": "The compose mock LLM, for tests",
+        "reasoning": {
+          "levels": [
+            "none"
+          ],
+          "default": "none"
+        },
+        "hidden": true
+      }
+    ],
+    "default": "gpt-6-sol",
+    "max_turns_limit": 90
+  },
+  "tools": {
+    "available": [
+      "files",
+      "python",
+      "terminal",
+      "literature-search",
+      "browser",
+      "memory",
+      "learned-skills",
+      "todo",
+      "subagents",
+      "summarise-paper",
+      "data-cleaning-pandas",
+      "clarify",
+      "desktop-projects",
+      "stub-echo",
+      "eagle-asd-evidence",
+      "eagle-curator",
+      "literature",
+      "eagle-disease-evidence",
+      "eagle-variant-data",
+      "eagle-gene-biology",
+      "eagle-manual-curation"
+    ],
+    "default_on": [
+      "files",
+      "python",
+      "terminal",
+      "literature-search",
+      "browser",
+      "memory",
+      "learned-skills",
+      "todo",
+      "subagents",
+      "summarise-paper",
+      "data-cleaning-pandas",
+      "clarify",
+      "desktop-projects"
+    ],
+    "locked_on": [],
+    "experimental": [
+      "browser",
+      "summarise-paper",
+      "data-cleaning-pandas",
+      "stub-echo",
+      "eagle-asd-evidence",
+      "eagle-curator",
+      "literature",
+      "eagle-disease-evidence",
+      "eagle-variant-data",
+      "eagle-gene-biology",
+      "eagle-manual-curation"
+    ]
+  },
+  "config_version": 42,
+  "issued_at": "2026-11-09T20:00:00Z",
+  "expires_at": "2026-11-10T20:00:00Z",
+  "aud": "athena-desktop",
+  "sub": "demo-researcher",
+  "role": "researcher"
+}
