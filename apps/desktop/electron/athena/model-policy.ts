@@ -12,6 +12,12 @@
 //   the Model gateway, unless the config says otherwise. `MODEL_PROVIDERS`
 //   maps that name to the hermes provider; an entry whose provider this build
 //   does not know is not on the list.
+// - A chat-only model (`provider: gateway-chat`, F13 slice 17) is a Model gateway
+//   model whose upstream serves no Responses API. Hermes fixes the API mode per
+//   provider, so it is on a second provider, `custom:athena-gateway-chat` (the
+//   gateway's address and token command on Chat Completions; athena's applier
+//   writes it). It is listed, picked, refused and recorded like any gateway model
+//   on its own provider, and it may be the default. A build before it leaves it out.
 // - A bridge model (`provider: bridge`, F05 slice 05) is a local model reached
 //   through the HPC bridge. The config may name several model servers (F05
 //   slice 12): the default one (`local_models.target_host`) and each entry of
@@ -38,6 +44,8 @@
 import { featureStates, managedMode } from './feature-registry'
 
 export const ATHENA_GATEWAY_PROVIDER = 'custom:athena-gateway'
+/** The Model gateway on its Chat Completions route, for chat-only models (athena's `managed.GATEWAY_CHAT_PROVIDER`). */
+export const ATHENA_GATEWAY_CHAT_PROVIDER = 'custom:athena-gateway-chat'
 /** The hermes provider of the default model server's bridge models (athena's `local_models.BRIDGE_PROVIDER`). */
 export const ATHENA_BRIDGE_PROVIDER = 'custom:athena-vllm'
 /** The hermes provider of any other model server is this plus the server's id (athena's `bridge_provider`). */
@@ -64,13 +72,16 @@ export interface ModelProviderInfo {
 export const DEFAULT_MODEL_PROVIDER = 'gateway'
 /** The client config's name for the provider of a bridge model. */
 export const BRIDGE_MODEL_PROVIDER = 'bridge'
+/** The client config's name for the provider of a chat-only Model gateway model (F13 slice 17). */
+export const GATEWAY_CHAT_MODEL_PROVIDER = 'gateway-chat'
 /** The feature row that, with the config's `local_models.enabled`, turns local models on. */
 export const LOCAL_MODELS_FEATURE = 'F05'
 
 /** The hermes provider behind each `models.allowed[].provider` name of the client config. */
 export const MODEL_PROVIDERS: Readonly<Record<string, ModelProviderInfo>> = Object.freeze({
   [DEFAULT_MODEL_PROVIDER]: { name: 'Athena gateway', slug: ATHENA_GATEWAY_PROVIDER },
-  [BRIDGE_MODEL_PROVIDER]: { name: 'Local models', slug: ATHENA_BRIDGE_PROVIDER }
+  [BRIDGE_MODEL_PROVIDER]: { name: 'Local models', slug: ATHENA_BRIDGE_PROVIDER },
+  [GATEWAY_CHAT_MODEL_PROVIDER]: { name: 'Athena gateway (chat)', slug: ATHENA_GATEWAY_CHAT_PROVIDER }
 })
 
 /** Hermes's reasoning ladder (`hermes_constants.VALID_REASONING_EFFORTS` plus `none`), weakest first. */
@@ -96,7 +107,10 @@ export interface ManagedModelEntry {
   /** The efforts users may pick for this model, in ladder order as the config lists them. */
   levels: readonly string[]
   note: null | string
-  /** The hermes provider that serves the model (`custom:athena-gateway` unless the config names another). */
+  /**
+   * The hermes provider that serves the model (`custom:athena-gateway` unless the config names another:
+   * `custom:athena-gateway-chat` for a chat-only model, a model server's provider for a bridge model).
+   */
   provider: string
   /** For a bridge model: the id of the model server it is on (`default` when the config names none). */
   server?: string
@@ -335,7 +349,10 @@ export const sameProvider = (a: string, b: string): boolean => providerKey(a) ==
 
 export const isGatewayProvider = (provider: string): boolean => sameProvider(provider, ATHENA_GATEWAY_PROVIDER)
 
-/** The Athena providers a Profile configures: the Model gateway's and the model servers' (`athena-vllm`, `athena-local-<id>`). */
+/**
+ * The Athena providers a Profile configures: the Model gateway's two (`athena-gateway`, `athena-gateway-chat`) and the
+ * model servers' (`athena-vllm`, `athena-local-<id>`).
+ */
 export const isAthenaProvider = (provider: string): boolean =>
   Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug)) || isBridgeProvider(provider)
 
