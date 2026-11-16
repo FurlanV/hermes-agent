@@ -4,6 +4,8 @@
 //   BUNDLED_DEFAULT_CONFIG  ← shared/athena_schemas/src/athena_schemas/data/client-config.default.json
 // client-config.test.ts fails when they drift (with an athena checkout present). The demo key is the compose
 // signing key (`GET /client-config/jwks.json` on ingest); a new compose `clientconfigkey` volume means a new kid.
+// The bundled default names no model (F13 slice 19): "no model until the server is reached", so the composer shows
+// "No model available. Contact your administrator." until a signed config arrives.
 
 export const TRUSTED_KEYS = {
   "keys": [
@@ -38,23 +40,7 @@ export const BUNDLED_DEFAULT_CONFIG = {
     "tools": "enforce"
   },
   "models": {
-    "allowed": [
-      {
-        "hidden": false,
-        "id": "gpt-6-luna",
-        "label": "GPT-6 Luna",
-        "note": "Faster",
-        "reasoning": {
-          "default": "low",
-          "levels": [
-            "none",
-            "low",
-            "medium"
-          ]
-        }
-      }
-    ],
-    "default": "gpt-6-luna",
+    "allowed": [],
     "max_turns_limit": 90
   },
   "schema_version": "1.0",
