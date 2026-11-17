@@ -1112,6 +1112,14 @@
       "area": "Local models",
       "title": "Local models over the HPC bridge",
       "config_keys": []
+    },
+    {
+      "id": "F15",
+      "mark": "keep",
+      "default": "on",
+      "area": "Chat",
+      "title": "Athena chat layout",
+      "config_keys": []
     }
   ]
 }

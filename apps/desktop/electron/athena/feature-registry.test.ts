@@ -28,7 +28,7 @@ const PLAN = path.join(
 )
 
 /** Rows added after the F02 audit, in registry order (the audit table does not list them). */
-const LATER_ROWS = ['F05']
+const LATER_ROWS = ['F05', 'F15']
 const AUDIT_ROWS = FEATURE_ROWS.filter(row => !LATER_ROWS.includes(row.id))
 
 const exported = () => `${JSON.stringify(exportedFeatureRegistry(), null, 2)}\n`
@@ -62,6 +62,18 @@ describe('the feature registry', () => {
     expect(allowed({ features: { F05: 'on' } })).toBe(true)
   })
 
+  test('F15, the Athena chat layout: on by default, and an admin can turn it off', () => {
+    const f15 = FEATURE_ROWS.find(row => row.id === 'F15')
+
+    expect(f15).toMatchObject({ area: 'Chat', entries: ['chat:athena-layout'], mark: 'keep' })
+    expect(rowsForEntry('chat:athena-layout')).toEqual(['F15'])
+
+    const allowed = (config: unknown) => featureEntryFilter(config)('chat:athena-layout')
+
+    expect(allowed({})).toBe(true)
+    expect(allowed({ features: { F15: 'off' } })).toBe(false)
+  })
+
   // The plan's table is the source; this keeps the registry from drifting from it.
   test.skipIf(!existsSync(PLAN))('matches the marks in the plan audit (section A)', () => {
     const audit = new Map<string, string>()
@@ -90,7 +102,7 @@ describe('the feature registry', () => {
 
       for (const entry of row.entries) {
         expect(entry, row.id).toMatch(
-          /^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog|rest|rpc|ipc|env|devtools):[^*]*\*?$/
+          /^(settings|settings-control|config-field|setting|credential|keybind|route|command-center|palette|statusbar|nav|slash|error-action|deep-link|plugin|pane|dialog|rest|rpc|ipc|env|devtools|chat):[^*]*\*?$/
         )
       }
     }

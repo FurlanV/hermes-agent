@@ -1,7 +1,8 @@
 // Athena feature registry (F02 slice 15): one row per line of the plan's
 // feature audit (overview.md, section A, S01–S124 with the a/b splits), each
 // with its mark, its build default and every entry id that reaches it. Rows
-// added by later plans follow the audit rows, named after their plan (F05).
+// added by later plans follow the audit rows, named after their plan (F05,
+// F15).
 //
 // Pure data plus pure functions, no imports: Electron main (deep links, IPC)
 // and the renderer (Settings, palette, shortcuts…) read the same table.
@@ -30,7 +31,8 @@
 // - `slash:<command>`: answered "Not available in Athena";
 // - `error-action:<action id>`: chat error-card buttons;
 // - `deep-link:<kind>[/<name>]`: OS deep links other than `open`;
-// - `plugin:<bundled plugin id>`, `pane:<id>`, `dialog:<name>`.
+// - `plugin:<bundled plugin id>`, `pane:<id>`, `dialog:<name>`;
+// - `chat:<name>`: a renderer chat layout switch (F15, `chat:athena-layout`).
 // An id ending in `*` covers every id with that prefix (the longest match
 // wins; an exact id beats any prefix). `*` anywhere else is literal.
 //
@@ -623,7 +625,10 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   // F05: local models on a server the Athena server cannot reach, through an SSH forward the Desktop opens from the
   // user's own HPC account. Off by default; an admin turns it on per role, together with the client config's
   // `local_models.enabled`. While it is off the bridge's IPC channels are not registered.
-  row('F05', 'disable', 'Local models', 'Local models over the HPC bridge', [...ipc('athena:hpc-bridge:*')])
+  row('F05', 'disable', 'Local models', 'Local models over the HPC bridge', [...ipc('athena:hpc-bridge:*')]),
+  // F15: the Athena chat layout (labelled user and agent messages, the chat colour tokens, one state look). On by
+  // default in the Athena variant; an admin turns it off per role and the upstream chat layout returns, no rebuild.
+  row('F15', 'keep', 'Chat', 'Athena chat layout', ['chat:athena-layout'])
 ])
 
 export const FEATURE_ROW_BY_ID: ReadonlyMap<string, FeatureRow> = new Map(FEATURE_ROWS.map(r => [r.id, r]))

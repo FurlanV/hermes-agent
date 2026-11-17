@@ -672,7 +672,8 @@ a real filter.
   shared by main and the renderer (no imports). One row per line of the
   plan's audit (S01–S124 with the a/b splits), then the rows later plans
   added (`F05`, local models over the HPC bridge, off by default; its entries
-  are the `athena:hpc-bridge:*` IPC channels): its mark (`keep`, `disable`,
+  are the `athena:hpc-bridge:*` IPC channels; `F15`, the Athena chat layout,
+  on by default; its entry is `chat:athena-layout`): its mark (`keep`, `disable`,
   `remove`), its build default (keep → on, disable → off, remove → no flag,
   always off) and the entry ids that reach it: `settings:<view>[/<page>]`,
   `config-field:<key>`, `setting:<view>.<kebab>`, `credential:<KEY>`,
@@ -1141,3 +1142,4 @@ Every row is reviewed by a person before merge (hermes change policy).
 
 | File | Change |
 |---|---|
+| `src/components/assistant-ui/thread/index.tsx` | Choke point: the message-component map goes through `athenaMessageComponents` (`src/athena/chat/layout.ts`) with the layout switch (`useAthenaChatLayout`: Athena variant and row `F15` on) as its one extra memo dep, and the `data-slot="thread"` root spreads `useAthenaThreadRootProps` (the `data-athena-chat` marker while active). Both sides still return the upstream components (F15 slice 02) |

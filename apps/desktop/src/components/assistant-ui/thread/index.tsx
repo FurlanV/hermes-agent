@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { createContext, memo, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
+import { athenaMessageComponents, useAthenaChatLayout, useAthenaThreadRootProps } from '@/athena/chat/layout'
 import { ChatEmptySlot } from '@/components/assistant-ui/chat-empty-slot'
 import { AssistantMessage } from '@/components/assistant-ui/thread/assistant-message'
 import { ThreadMessageList } from '@/components/assistant-ui/thread/list'
@@ -138,7 +139,7 @@ export const Thread = memo(function Thread({
   const hasDismissError = Boolean(onDismissError)
   const hasRestoreToMessage = Boolean(onRestoreToMessage)
 
-  const messageComponents = useMemo(
+  const upstreamMessageComponents = useMemo(
     () => ({
       AssistantMessage: () => (
         <AssistantMessage
@@ -162,6 +163,15 @@ export const Thread = memo(function Thread({
       )
     }),
     [hasBranchInNewChat, hasCancel, hasDismissError, hasRestoreToMessage, requestRestoreConfirm]
+  )
+
+  // Athena (F15): the layout switch picks the message components (same identity until the layout flips) and marks the root.
+  const athenaChat = useAthenaChatLayout()
+  const athenaRootProps = useAthenaThreadRootProps(athenaChat)
+
+  const messageComponents = useMemo(
+    () => athenaMessageComponents(athenaChat, upstreamMessageComponents),
+    [athenaChat, upstreamMessageComponents]
   )
 
   // Core's splash belongs to a fresh draft; a session that exists but has
@@ -189,6 +199,7 @@ export const Thread = memo(function Thread({
       <div
         className="relative grid h-full min-h-0 max-w-full grid-rows-[minmax(0,1fr)] overflow-hidden bg-transparent contain-[layout_paint]"
         data-slot="thread"
+        {...athenaRootProps}
       >
         {!signedOut && (
           <>
