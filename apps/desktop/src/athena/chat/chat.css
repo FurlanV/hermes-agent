@@ -27,3 +27,41 @@
   border-radius: 16px;
   border-end-end-radius: 4px;
 }
+
+/* Slice 05: the agent message (athena-assistant-message.tsx). Left-aligned and full width on the page background,
+   no bubble; labelled "Athena" with the mark, once per response group, in the agent label token. */
+[data-athena-chat] [data-slot='athena_assistant-message'] {
+  align-self: stretch;
+  inline-size: 100%;
+  background: transparent;
+}
+
+[data-athena-chat] [data-slot='athena_assistant-label'] {
+  color: var(--chat-agent-label);
+}
+
+/* Upstream hides a tool-only bubble while the approval row stands in for it (styles.css); its label goes with it. */
+[data-athena-chat]
+  [data-slot='athena_assistant-message']:has(> [data-approval-activity-only]:not(:has([data-tool-open]))) {
+  display: none;
+}
+
+/* Slice 05: turn spacing, Athena layout only: 24px between turns, 8px between the blocks of one turn. Upstream
+   spaces both with --conversation-turn-gap (0.375rem): the gap inside a list row and a turn pair, and the bottom
+   pad of the user, note and system messages. Here it is the 8px step inside a turn, and a list row (one turn, or
+   one message outside a turn) ends on 24px. Consecutive agent blocks of one turn, 4px apart upstream (the response
+   group's scaffold gap), take the same 8px. The sticky user message keeps its own bottom pad (the area the sticky
+   clip spares), so its bubble sits that pad plus the 8px gap above the reply. The HUD keeps its compact rhythm
+   (styles.css, [data-hud-shell]). */
+[data-athena-chat]:not([data-hud-shell] *) {
+  --conversation-turn-gap: 0.5rem;
+  --athena-turn-spacing: 1.5rem;
+}
+
+[data-athena-chat]:not([data-hud-shell] *) [data-slot='aui_message-group'] {
+  padding-block-end: var(--athena-turn-spacing);
+}
+
+[data-athena-chat]:not([data-hud-shell] *) [data-slot='aui_response-group'] {
+  row-gap: var(--conversation-turn-gap);
+}

@@ -14,6 +14,7 @@ import type { ClientConfigSnapshot } from '../managed/client-config'
 import { $clientConfig } from '../managed/client-config'
 import { installFeaturePolicy } from '../managed/feature-policy'
 
+import { AthenaAssistantMessage } from './athena-assistant-message'
 import { AthenaUserMessage } from './athena-user-message'
 import type * as layout from './layout'
 import { ATHENA_CHAT_ATTR, athenaMessageComponents, athenaMessageType, useAthenaChatLayout } from './layout'
@@ -173,6 +174,13 @@ describe('athenaMessageType', () => {
 
     expect(athenaMessageType(true, 'UserMessage', upstream)).toBe(AthenaUserMessage)
     expect(athenaMessageType(false, 'UserMessage', upstream)).toBe(upstream)
+  })
+
+  test("picks Athena's agent message while active and the given upstream type otherwise", () => {
+    const upstream = () => null
+
+    expect(athenaMessageType(true, 'AssistantMessage', upstream)).toBe(AthenaAssistantMessage)
+    expect(athenaMessageType(false, 'AssistantMessage', upstream)).toBe(upstream)
   })
 })
 

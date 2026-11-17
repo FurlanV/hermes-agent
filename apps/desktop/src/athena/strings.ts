@@ -19,7 +19,9 @@ export const athenaStrings = {
   hideNousServices: true,
   /** F15: who said it, above each message in the Athena chat layout (English only; plan open question 3). */
   chat: {
-    userLabel: 'You'
+    userLabel: 'You',
+    /** The agent is the product: its name from branding.json. */
+    agentLabel: branding.display
   }
 } as const
 

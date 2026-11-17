@@ -145,15 +145,16 @@ export const Thread = memo(function Thread({
   const hasRestoreToMessage = Boolean(onRestoreToMessage)
 
   // Athena (F15): the layout switch picks the message components (same identity until the layout flips) and marks the root.
-  // The user message type is picked here so the closure below keeps routing its callbacks through callbacksRef.
+  // The user and assistant types are picked here so the closures below keep routing callbacks through callbacksRef.
   const athenaChat = useAthenaChatLayout()
   const athenaRootProps = useAthenaThreadRootProps(athenaChat)
+  const AssistantMessageView = athenaMessageType(athenaChat, 'AssistantMessage', AssistantMessage)
   const UserMessageView = athenaMessageType(athenaChat, 'UserMessage', UserMessage)
 
   const upstreamMessageComponents = useMemo(
     () => ({
       AssistantMessage: () => (
-        <AssistantMessage
+        <AssistantMessageView
           onBranchInNewChat={
             hasBranchInNewChat ? messageId => callbacksRef.current.onBranchInNewChat?.(messageId) : undefined
           }
@@ -173,7 +174,15 @@ export const Thread = memo(function Thread({
         />
       )
     }),
-    [UserMessageView, hasBranchInNewChat, hasCancel, hasDismissError, hasRestoreToMessage, requestRestoreConfirm]
+    [
+      AssistantMessageView,
+      UserMessageView,
+      hasBranchInNewChat,
+      hasCancel,
+      hasDismissError,
+      hasRestoreToMessage,
+      requestRestoreConfirm
+    ]
   )
 
   const messageComponents = useMemo(
