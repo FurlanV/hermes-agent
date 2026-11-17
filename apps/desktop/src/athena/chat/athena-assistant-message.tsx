@@ -58,9 +58,12 @@ const RESPONSE_ROLES: ReadonlySet<string> = new Set(['assistant', 'background'])
 
 // Hoisted: one element object for every agent message, so a re-render of the wrapper never descends into it.
 // The logo is the brand's (branding.json `logo`, the splash's wordmark): the square app mark is that wordmark on a
-// tile, unreadable at label size. Decorative next to the name, so hidden from assistive tech.
+// tile, unreadable at label size. Decorative next to the name, so hidden from assistive tech. The whole row is
+// hidden from it too (slice 13): the block is a group named "Athena" (`SPEAKER`), so the name is read once, also on
+// the blocks of a turn that show no label.
 const AGENT_LABEL = (
   <div
+    aria-hidden="true"
     className="flex select-none items-center gap-1.5 px-(--message-text-indent) pb-1 text-[0.75rem] leading-4 font-medium"
     data-slot="athena_assistant-label"
   >
@@ -122,6 +125,9 @@ const UpstreamAssistantMessage: FC<AthenaAssistantMessageProps> = props => (
 const AGENT_REPLY_NOTE: AthenaNoteKind = 'agent-reply'
 const BLOCK_CLASS = 'flex w-full min-w-0 max-w-full flex-col self-start'
 
+/** Who is speaking, for assistive tech (slice 13): every agent block is a group named "Athena". */
+const SPEAKER = Object.freeze({ 'aria-label': athenaStrings.chat.agentLabel, role: 'group' })
+
 /** The thread's `AssistantMessage` entry while the Athena layout is active; same props as upstream's. */
 export const AthenaAssistantMessage: FC<AthenaAssistantMessageProps> = props => {
   // Booleans, so stream flushes bail out here.
@@ -132,7 +138,7 @@ export const AthenaAssistantMessage: FC<AthenaAssistantMessageProps> = props => 
   return agentReply ? (
     <AthenaAgentReply {...props} leads={leads} />
   ) : (
-    <div className={BLOCK_CLASS} data-slot="athena_assistant-message">
+    <div className={BLOCK_CLASS} data-slot="athena_assistant-message" {...SPEAKER}>
       {leads && AGENT_LABEL}
       <UpstreamAssistantMessage {...props} />
     </div>
@@ -142,7 +148,7 @@ export const AthenaAssistantMessage: FC<AthenaAssistantMessageProps> = props => 
 /**
  * A reply to an inter-agent delivery. While it streams it is the agent speaking: a labelled block like any other.
  * Once settled upstream collapses it under "Replied to …", an event in the transcript rather than speech, so it
- * drops the label and reads as a note (`data-athena-note`). Like upstream's `InterAgentAssistantMessage`, this is the
+ * drops the label and the speaker name and reads as a note (`data-athena-note`). Like upstream's `InterAgentAssistantMessage`, this is the
  * only place that subscribes to the running status, and only for this rare case; the root stays the wrapper's last
  * child either way, so settling never remounts it.
  */
@@ -154,6 +160,7 @@ const AthenaAgentReply: FC<AthenaAssistantMessageProps & { leads: boolean }> = (
       className={BLOCK_CLASS}
       data-athena-note={collapsed ? AGENT_REPLY_NOTE : undefined}
       data-slot="athena_assistant-message"
+      {...(collapsed ? null : SPEAKER)}
     >
       {leads && !collapsed && AGENT_LABEL}
       <UpstreamAssistantMessage {...props} />

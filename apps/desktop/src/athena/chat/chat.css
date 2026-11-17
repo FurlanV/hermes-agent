@@ -3,6 +3,20 @@
    The --chat-* tokens are painted on the same element (tokens.ts). Logical properties throughout, so the
    layout mirrors under dir="rtl". */
 
+/* Slice 13: one focus ring for every action in a message (the user bubble and its Stop / Restore / checkpoint
+   steps, the agent footer's copy, read aloud, branch, refresh and reaction, Copy on code, the tool row and group
+   toggles and dismiss, the error card's actions, a note's disclosures, links): 2px in the agent label colour, 2px
+   off the control. The label colour passes 3:1 on every surface a ring sits on (the page, the user surface, the code
+   surface, the error surface: tokens.ts). Only inside the Athena messages, so the thread outside them and the
+   upstream layout keep upstream's rings. Declared first and kept at a low specificity (:where), so a part that needs
+   the ring set differently (inset in a clipping row, tighter in the code header) overrides it further down. */
+[data-athena-chat]
+  :is([data-slot='athena_user-message'], [data-slot='athena_assistant-message'], [data-athena-note])
+  :where(a[href], button, summary, [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 2px solid var(--chat-agent-label);
+  outline-offset: 2px;
+}
+
 /* Slice 04: the user message (athena-user-message.tsx). Right-aligned, labelled "You" above. */
 [data-athena-chat] [data-slot='athena_user-message'] {
   align-items: flex-end;
@@ -148,15 +162,13 @@
   filter: none;
 }
 
-/* The show message / show reply disclosures: brighter on hover, and a visible focus ring. */
+/* The show message / show reply disclosures: brighter on hover, and the ring (slice 13) on rounded corners. */
 [data-athena-chat] [data-athena-note] summary:is(:hover, :focus-visible) {
   color: var(--ui-text-primary);
 }
 
 [data-athena-chat] [data-athena-note] summary:focus-visible {
   border-radius: 4px;
-  outline: 2px solid var(--chat-agent-label);
-  outline-offset: 2px;
 }
 
 /* Upstream's full-width roots (a background result, a delivery, the collapsed reply) size to the note instead. */
@@ -507,6 +519,7 @@
   border-radius: calc(0.5rem - 1px);
 }
 
+/* The ring (slice 13) inside the control: a row clips what overflows its box, and an outer ring would be cut off. */
 [data-athena-chat]
   :is(
     [data-slot='athena_tool-toggle'],
@@ -514,7 +527,7 @@
     [data-slot='athena_tool-group-toggle']
   ):focus-visible {
   outline: 2px solid var(--chat-agent-label);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 /* The muted parts of a header, in the note text (4.5:1 on the page). */

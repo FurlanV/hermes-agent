@@ -222,7 +222,11 @@ describe('athena chat colour tokens', () => {
       // The error card (slice 12): its text, details links and focus ring on the error surface.
       ['error card text on the error surface', colors.foreground, tokens['chat-state-error-surface'], 4.5],
       ['error card links on the error surface', tokens['chat-note-text'], tokens['chat-state-error-surface'], 4.5],
-      ['error card focus ring on the error surface', tokens['chat-agent-label'], tokens['chat-state-error-surface'], 3]
+      ['error card focus ring on the error surface', tokens['chat-agent-label'], tokens['chat-state-error-surface'], 3],
+      // The one focus ring (slice 13) on the other surfaces a control sits on.
+      ['focus ring against the page', tokens['chat-agent-label'], page, 3],
+      ['focus ring on the user surface', tokens['chat-agent-label'], tokens['chat-user-surface'], 3],
+      ['focus ring on the code surface', tokens['chat-agent-label'], tokens['chat-code-surface'], 3]
     ]
 
     for (const [name, ink, surface, min] of pairs) {

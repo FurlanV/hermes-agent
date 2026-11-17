@@ -220,8 +220,19 @@ function AthenaUserBubble({ onCancel, onRequestRestoreConfirm }: AthenaUserMessa
         messageId={messageId}
       >
         <ActionBarPrimitive.Root className="relative w-full max-w-full" data-slot="aui_user-bubble-actions">
-          <div className="human-message-with-todos-wrapper flex w-full flex-col gap-0" data-slot="athena_user-message">
-            <span className="select-none px-1 pb-1 text-[0.75rem] leading-4 font-medium" data-slot="athena_user-label">
+          {/* Who is speaking, for assistive tech (slice 13): the message is a group named "You", announced when
+              focus or the reading cursor enters it; the visible label is hidden from the tree so it is not read twice. */}
+          <div
+            aria-label={athenaStrings.chat.userLabel}
+            className="human-message-with-todos-wrapper flex w-full flex-col gap-0"
+            data-slot="athena_user-message"
+            role="group"
+          >
+            <span
+              aria-hidden="true"
+              className="select-none px-1 pb-1 text-[0.75rem] leading-4 font-medium"
+              data-slot="athena_user-label"
+            >
               {athenaStrings.chat.userLabel}
             </span>
             <ReactionPicker

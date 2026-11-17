@@ -24,6 +24,10 @@
  * that surface, its icon and its button edge are the error text (the chip text check), and the focus ring (the agent
  * label) to 3:1 on it. A degraded card sits on the page, so its pairs are the page checks above.
  *
+ * Every action in a message has the same focus ring, in the agent label colour (slice 13, `chat.css`); it is held to
+ * 3:1 on each surface a control sits on: the page, the user surface (Stop and Restore), the code surface (Copy on a
+ * code block, a tool call's Copy) and the error surface.
+ *
  * The plan's starting point for the user border (accent 25% / 35%) gives about 1.5:1 / 2:1 against the page, so it
  * was raised to the least that passes. The note rule (slice 06) is held to the same 3:1, at the least amount (in 5%
  * steps) that passes. A state hue is the same in light and dark and clears 3:1 on both Athena pages (4.5:1 on both
@@ -179,6 +183,23 @@ export function chatContrastChecks(tokens: ChatTokens, colors: Pick<DesktopTheme
       name: 'error card focus ring (chat-agent-label) on chat-state-error-surface',
       ink: tokens['chat-agent-label'],
       on: errorCard,
+      min: 3
+    }
+  )
+
+  // Slice 13: the one focus ring (the agent label) on every other surface a control sits on.
+  checks.push(
+    { name: 'focus ring (chat-agent-label) against the page', ink: tokens['chat-agent-label'], on: page, min: 3 },
+    {
+      name: 'focus ring (chat-agent-label) on chat-user-surface',
+      ink: tokens['chat-agent-label'],
+      on: tokens['chat-user-surface'],
+      min: 3
+    },
+    {
+      name: 'focus ring (chat-agent-label) on chat-code-surface',
+      ink: tokens['chat-agent-label'],
+      on: tokens['chat-code-surface'],
       min: 3
     }
   )

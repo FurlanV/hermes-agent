@@ -20,7 +20,9 @@
  * previewable artifact reaches the composer (`useRecordToolPreview`).
  *
  * The chip says its state in text and with its own icon (spinner, check, alert), never in colour alone; its colours
- * are the state tokens (`tokens.ts`, checked in `branding.test.ts`).
+ * are the state tokens (`tokens.ts`, checked in `branding.test.ts`). The row's and a group's toggle are named from
+ * their visible words through `aria-labelledby` (slice 13), so the state is part of what a screen reader announces
+ * and the words stay apart (the spans are flex items, which an accessible-name pass would otherwise run together).
  */
 import { useAuiState } from '@assistant-ui/react'
 import { useStore } from '@nanostores/react'
@@ -85,11 +87,15 @@ export function athenaToolState(part: ToolCallState, messageRunning: boolean): C
 const STATE_ICON = { done: CheckCircle2, error: AlertCircle, running: Loader2 } as const
 
 /** The state chip: an icon and a word, on the state's fill with its edge (chat.css). */
-export const AthenaToolStateChip: FC<{ className?: string; state: ChatState }> = ({ className, state }) => {
+export const AthenaToolStateChip: FC<{ className?: string; id?: string; state: ChatState }> = ({
+  className,
+  id,
+  state
+}) => {
   const Icon = STATE_ICON[state]
 
   return (
-    <span className={className} data-athena-tool-state={state} data-slot="athena_tool-chip">
+    <span className={className} data-athena-tool-state={state} data-slot="athena_tool-chip" id={id}>
       <Icon aria-hidden="true" className={cn('size-3 shrink-0', state === 'running' && 'motion-safe:animate-spin')} />
       <span>{copy.state[state]}</span>
     </span>
@@ -108,6 +114,7 @@ export const AthenaToolRow: FC<{ part: ToolPart }> = ({ part }) => {
   const messageRunning = useAuiState(selectMessageRunning)
   const hideCodeDiffs = useStore($hideCodeDiffs)
   const bodyId = useId()
+  const labelId = useId()
   const { t } = useI18n()
 
   const {
@@ -197,12 +204,17 @@ export const AthenaToolRow: FC<{ part: ToolPart }> = ({ part }) => {
           <ToolIcon name={view.icon ?? 'tools'} size="0.875rem" />
         )}
       </span>
-      <span className="min-w-0 shrink-0 truncate font-medium" data-slot="athena_tool-name">
+      <span className="min-w-0 shrink-0 truncate font-medium" data-slot="athena_tool-name" id={`${labelId}-name`}>
         {view.title}
       </span>
       {/* On a failed call the summary is the error, which an open row shows in full as its output. */}
       {view.subtitle && !(open && view.status === 'error') && (
-        <span className="min-w-0 flex-1 truncate" data-slot="athena_tool-summary" title={view.subtitle}>
+        <span
+          className="min-w-0 flex-1 truncate"
+          data-slot="athena_tool-summary"
+          id={`${labelId}-summary`}
+          title={view.subtitle}
+        >
           {view.subtitle}
         </span>
       )}
@@ -213,7 +225,7 @@ export const AthenaToolRow: FC<{ part: ToolPart }> = ({ part }) => {
         </span>
       )}
       <TimelineTimestamp className="ms-auto shrink-0" completedAt={completedAt} timestamp={timestamp} />
-      <AthenaToolStateChip className="ms-auto" state={state} />
+      <AthenaToolStateChip className="ms-auto" id={`${labelId}-state`} state={state} />
     </>
   )
 
@@ -233,6 +245,8 @@ export const AthenaToolRow: FC<{ part: ToolPart }> = ({ part }) => {
           <button
             aria-controls={bodyId}
             aria-expanded={open}
+            // The name, the summary and the state, as separate words (slice 13): an absent summary is skipped.
+            aria-labelledby={`${labelId}-name ${labelId}-summary ${labelId}-state`}
             className={HEADER_CLASS}
             data-slot="athena_tool-toggle"
             onClick={() => setToolDisclosureOpen(disclosureId, !open)}
@@ -388,6 +402,7 @@ export const AthenaToolRun: FC<PropsWithChildren<{ endIndex: number; startIndex:
 }) => {
   const { locale } = useI18n()
   const bodyId = useId()
+  const labelId = useId()
 
   const snapshot = useAuiState(state => {
     const parts = state.message.parts
@@ -442,6 +457,8 @@ export const AthenaToolRun: FC<PropsWithChildren<{ endIndex: number; startIndex:
           <button
             aria-controls={bodyId}
             aria-expanded={expanded}
+            // The summary, the count and the state, as separate words (slice 13).
+            aria-labelledby={`${labelId}-summary ${labelId}-count ${labelId}-state`}
             className={HEADER_CLASS}
             data-slot="athena_tool-group-toggle"
             onClick={() => setToolDisclosureOpen(disclosureId, !expanded)}
@@ -450,14 +467,18 @@ export const AthenaToolRun: FC<PropsWithChildren<{ endIndex: number; startIndex:
             <span aria-hidden="true" className="flex shrink-0 items-center" data-slot="athena_tool-icon">
               <ToolIcon name="tools" size="0.875rem" />
             </span>
-            <span className="min-w-0 truncate font-medium" data-slot="athena_tool-group-summary">
+            <span
+              className="min-w-0 truncate font-medium"
+              data-slot="athena_tool-group-summary"
+              id={`${labelId}-summary`}
+            >
               {run.summary}
             </span>
-            <span className="shrink-0" data-slot="athena_tool-group-count">
+            <span className="shrink-0" data-slot="athena_tool-group-count" id={`${labelId}-count`}>
               {copy.calls(run.count)}
             </span>
             <TimelineTimestamp className="ms-auto shrink-0" completedAt={run.completedAt} timestamp={run.startedAt} />
-            <AthenaToolStateChip className="ms-auto" state={run.state} />
+            <AthenaToolStateChip className="ms-auto" id={`${labelId}-state`} state={run.state} />
             <DisclosureCaret aria-hidden="true" className="shrink-0" open={expanded} size="0.625rem" />
           </button>
         </div>
