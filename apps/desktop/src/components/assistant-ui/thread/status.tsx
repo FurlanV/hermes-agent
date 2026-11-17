@@ -1,6 +1,6 @@
 import { useAuiState } from '@assistant-ui/react'
 import { useStore } from '@nanostores/react'
-import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { createContext, type FC, type ReactNode, useContext, useEffect, useMemo, useState } from 'react'
 
 import { useSessionView } from '@/app/chat/session-view'
 import { brandText } from '@/athena/brand-text'
@@ -49,6 +49,19 @@ const StatusRow: FC<{ children: ReactNode; label: string } & React.ComponentProp
     {children}
   </div>
 )
+
+/**
+ * F15 seam: a chat layout's own status line. None provided (the default): the
+ * rows below are upstream's, unchanged. A layout that provides one (the Athena
+ * chat layout, src/athena/chat, as a module constant) gets a steady line: the
+ * activity row skips the quiet window (it is up whenever the turn works, save
+ * the same two exemptions: a question the user is answering, a tool row
+ * narrating its own wait), it times the whole turn, and both rows show `lead`
+ * after the pulse.
+ */
+export type TurnStatusLine = Readonly<{ lead: ReactNode }>
+
+export const TurnStatusLineContext = createContext<TurnStatusLine | null>(null)
 
 // Fixed label while auto-compaction runs — decoupled from backend status text.
 const COMPACTION_LABEL = 'Summarizing thread'
@@ -249,6 +262,7 @@ export const CenteredThreadSpinner: FC = () => {
 
 export const ResponseLoadingIndicator: FC = () => {
   const { t } = useI18n()
+  const line = useContext(TurnStatusLineContext)
   const { compacting, drafting, providerWait, turnStartedAt } = useThreadSessionStatus()
   const elapsed = useElapsedSeconds(true, undefined, turnStartedAt)
   const hint = useStatusHint(compacting, drafting, providerWait)
@@ -264,6 +278,7 @@ export const ResponseLoadingIndicator: FC = () => {
         className="dither inline-block size-3 rounded-[2px] text-midground/80"
         kind="opacity"
       />
+      {line?.lead}
       {hint ? (
         <WaitHint hint={hint} />
       ) : localLoad ? (
@@ -320,10 +335,11 @@ interface TurnActivityRowProps {
   active: boolean
   elapsed: number
   hint: string
+  lead?: ReactNode
   localLoad: ReturnType<typeof useLocalModelLoad>
 }
 
-const TurnActivityRow: FC<TurnActivityRowProps> = ({ active, elapsed, hint, localLoad }) => {
+const TurnActivityRow: FC<TurnActivityRowProps> = ({ active, elapsed, hint, lead, localLoad }) => {
   const { t } = useI18n()
 
   return (
@@ -340,6 +356,7 @@ const TurnActivityRow: FC<TurnActivityRowProps> = ({ active, elapsed, hint, loca
             className="dither inline-block size-3 rounded-[2px] text-midground/80"
             kind="opacity"
           />
+          {lead}
           {hint ? (
             <WaitHint hint={hint} />
           ) : localLoad ? (
@@ -371,6 +388,8 @@ export const TurnActivityIndicator: FC<{ thinking?: boolean }> = ({ thinking = f
   // Same rule the reasoning disclosure renders by (message-parts.tsx).
   const showReasoning = useStore($showReasoning)
   const activity = useAuiState(s => activitySignature(s.message.content, showReasoning))
+  // A layout's steady status line (TurnStatusLineContext), or null.
+  const line = useContext(TurnStatusLineContext)
 
   // Timestamp of the last visible progress, held from the moment the quiet
   // spell qualifies. Holding the timestamp (not a boolean) is what lets the
@@ -418,8 +437,13 @@ export const TurnActivityIndicator: FC<{ thinking?: boolean }> = ({ thinking = f
   // question the user is answering, and a tool call carrying its own timer.
   // A live local-model load is a named wait too — it must not wait out the
   // quiet window (the load IS the story from second one).
+  // A layout's steady line (F15) skips the quiet window: it is up whenever
+  // the turn works, with the same two exemptions.
   const active =
-    working && !awaitingInput && !toolNarrating && (Boolean(hint) || localLoad !== null || quietSince !== undefined)
+    working &&
+    !awaitingInput &&
+    !toolNarrating &&
+    (line !== null || Boolean(hint) || localLoad !== null || quietSince !== undefined)
 
   // Compaction owns the whole turn, so it keeps counting from the turn's start;
   // anything else counts from the moment the turn last produced something — the
@@ -427,7 +451,7 @@ export const TurnActivityIndicator: FC<{ thinking?: boolean }> = ({ thinking = f
   const elapsed = useElapsedSeconds(
     active,
     undefined,
-    compacting ? turnStartedAt : (quietSince ?? drafting?.since ?? turnStartedAt)
+    compacting || line !== null ? turnStartedAt : (quietSince ?? drafting?.since ?? turnStartedAt)
   )
 
   // Once the row has been shown, keep its live region mounted across
@@ -452,5 +476,5 @@ export const TurnActivityIndicator: FC<{ thinking?: boolean }> = ({ thinking = f
     return null
   }
 
-  return <TurnActivityRow active={active} elapsed={elapsed} hint={hint} localLoad={localLoad} />
+  return <TurnActivityRow active={active} elapsed={elapsed} hint={hint} lead={line?.lead} localLoad={localLoad} />
 }

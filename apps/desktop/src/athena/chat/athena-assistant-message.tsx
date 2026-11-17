@@ -18,7 +18,8 @@
  *
  * Fenced code inside the message renders in the Athena code block shell (slice 07, `athena-code-block.tsx`): the
  * wrapper provides it to upstream's highlighter through `CodeBlockShellContext`, a module constant, so the provider
- * never re-renders what it wraps.
+ * never re-renders what it wraps. The turn's status rows take the Athena status line the same way (slice 09,
+ * `athena-status.tsx`, through upstream's `TurnStatusLineContext`).
  *
  * Later slices that restyle a leaf inside the body (status, tool rows, errors) can do it in `chat.css` under the
  * marker; one that needs a different leaf component has the seam upstream already has: `AssistantMessage` spreads its
@@ -36,6 +37,7 @@ import type { ComponentProps, FC } from 'react'
 
 import { AssistantMessage, interAgentReplySender } from '@/components/assistant-ui/thread/assistant-message'
 import { responseMessageRole } from '@/components/assistant-ui/thread/response-group'
+import { TurnStatusLineContext } from '@/components/assistant-ui/thread/status'
 import { threadMessageIndex } from '@/components/assistant-ui/thread/thread-message-index'
 import { CodeBlockShellContext } from '@/components/chat/shiki-highlighter'
 
@@ -43,6 +45,7 @@ import logoUrl from '../assets/source/sickkids-logo.svg'
 import { athenaStrings } from '../strings'
 
 import { AthenaCodeBlock } from './athena-code-block'
+import { ATHENA_STATUS_LINE } from './athena-status'
 import type { AthenaNoteKind } from './athena-system-message'
 
 export type AthenaAssistantMessageProps = ComponentProps<typeof AssistantMessage>
@@ -98,6 +101,19 @@ function leadsResponse(messages: readonly ThreadRow[], id: string): boolean {
   return true
 }
 
+/**
+ * Upstream's `AssistantMessage`, with the Athena leaves its seams take: the code block shell (slice 07) and the
+ * steady status line (slice 09, `athena-status.tsx`). Both values are module constants, so the providers never
+ * re-render what they wrap.
+ */
+const UpstreamAssistantMessage: FC<AthenaAssistantMessageProps> = props => (
+  <CodeBlockShellContext.Provider value={AthenaCodeBlock}>
+    <TurnStatusLineContext.Provider value={ATHENA_STATUS_LINE}>
+      <AssistantMessage {...props} />
+    </TurnStatusLineContext.Provider>
+  </CodeBlockShellContext.Provider>
+)
+
 const AGENT_REPLY_NOTE: AthenaNoteKind = 'agent-reply'
 const BLOCK_CLASS = 'flex w-full min-w-0 max-w-full flex-col self-start'
 
@@ -113,9 +129,7 @@ export const AthenaAssistantMessage: FC<AthenaAssistantMessageProps> = props => 
   ) : (
     <div className={BLOCK_CLASS} data-slot="athena_assistant-message">
       {leads && AGENT_LABEL}
-      <CodeBlockShellContext.Provider value={AthenaCodeBlock}>
-        <AssistantMessage {...props} />
-      </CodeBlockShellContext.Provider>
+      <UpstreamAssistantMessage {...props} />
     </div>
   )
 }
@@ -137,9 +151,7 @@ const AthenaAgentReply: FC<AthenaAssistantMessageProps & { leads: boolean }> = (
       data-slot="athena_assistant-message"
     >
       {leads && !collapsed && AGENT_LABEL}
-      <CodeBlockShellContext.Provider value={AthenaCodeBlock}>
-        <AssistantMessage {...props} />
-      </CodeBlockShellContext.Provider>
+      <UpstreamAssistantMessage {...props} />
     </div>
   )
 }

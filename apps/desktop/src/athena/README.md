@@ -1221,6 +1221,29 @@ is upstream's.
   (`.aui-md-table`, `markdown-table.tsx`), with `--chat-code-border` rules and
   the header row on `--chat-code-surface` in `--chat-code-label`. No upstream
   file changed for this.
+- The running turn (`chat/athena-status.tsx`, styles in `chat/chat.css`,
+  slice 09): one status line and one caret while the turn works, both gone
+  when it ends. The line is upstream's tail row (`AssistantStatusSlot` keeps
+  its tail-only rule and picks `ResponseLoadingIndicator` before the first
+  token, `TurnActivityIndicator` after), so the step text, wait hints, local
+  model load bar, compaction label, timer and polite live region (announced
+  when the hint changes, timer hidden) are upstream's. The Athena agent
+  message provides `ATHENA_STATUS_LINE` through `TurnStatusLineContext`
+  (`thread/status.tsx`, a module constant): the activity row is then steady
+  (up whenever the turn works rather than after a 2s quiet spell, timed from
+  the turn's start; upstream's exemptions stay: a pending question, and a
+  running tool, whose row narrates the wait itself) and both rows show the
+  visible lead "Athena is working" (`brandText`, hidden from assistive tech:
+  the row's label says it). It stays at the end of the tail message, not under
+  the "Athena" label: the label rides the first block of a response group,
+  the status the thread's tail. In `--chat-note-text` at the small step, not
+  faded. The caret is CSS: after the last paragraph, heading, list item or
+  quote of the running text part (`.aui-md[data-status='running']`) of a
+  message whose activity row is active, else on its own line; it pulses
+  through `--athena-caret-animation`, paused with the window like upstream's
+  animations. `prefers-reduced-motion: reduce` clears that variable and stops
+  the step's shimmer; upstream's `StatusPulse` already skips its beat. The
+  stopped notice (`StoppedNotice`) takes the note text at the small step.
 - Upstream behaviour tests run unchanged against the Athena components:
   `chat/upstream-<name>.test.tsx` imports upstream's `thread/<name>.test.tsx`
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which
@@ -1237,6 +1260,7 @@ Every row is reviewed by a person before merge (hermes change policy).
 |---|---|
 | `src/components/assistant-ui/thread/assistant-message.tsx` | Behaviour-preserving move: the inter-agent reply detection in `AssistantMessage`'s selector moved unchanged into an exported function `interAgentReplySender(messages, messageId)`, which the selector now calls, so the Athena agent message reads the same rule (F15 slice 06) |
 | `src/components/assistant-ui/thread/index.tsx` | Choke point: the message-component map goes through `athenaMessageComponents` (`src/athena/chat/layout.ts`) with the layout switch (`useAthenaChatLayout`: Athena variant and row `F15` on) as its one extra memo dep, and the `data-slot="thread"` root spreads `useAthenaThreadRootProps` (the `data-athena-chat` marker while active). Both sides still return the upstream components (F15 slice 02). The `UserMessage` closure renders the type `athenaMessageType(athenaChat, 'UserMessage', UserMessage)` picks (`AthenaUserMessage` while active), listed as a memo dep, so its callbacks still go through `callbacksRef` and the map changes only when the layout flips; the switch's two lines moved above that memo (F15 slice 04). The `AssistantMessage` closure does the same with `athenaMessageType(athenaChat, 'AssistantMessage', AssistantMessage)` (`AthenaAssistantMessage` while active), also a memo dep (F15 slice 05). No edit for slice 06: `athenaMessageComponents` now swaps the callback-free `SystemMessage` entry for `AthenaSystemMessage` while active, inside the existing memo |
+| `src/components/assistant-ui/thread/status.tsx` | Behaviour-preserving seam: new exported `TurnStatusLineContext` (default none) and `TurnStatusLine` (`{ lead }`). With a line provided (the Athena agent message, slice 09), `TurnActivityIndicator` skips the quiet window (active when `working && !awaitingInput && !toolNarrating`) and times the whole turn from its start, and `ResponseLoadingIndicator` and `TurnActivityRow` render `lead` after the pulse. No provider: the rows, their rules and their DOM are unchanged (F15 slice 09) |
 | `src/components/assistant-ui/thread/user-message.tsx` | Export-only: `isChipOnlyTurn`, `UserBubbleActions`, `TouchUserBubble`, `useUserBubbleClamp`, for the Athena user message (F15 slice 04) |
 | `src/components/assistant-ui/thread/user-message-text.tsx` | Behaviour-preserving seam: `UserMessageText` reads `CodeBlockShellContext` (from `components/chat/shiki-highlighter.tsx`) and, when a shell is provided, wraps each fence's unchanged `<pre>` in it (with the fence's text and language). No provider: the same `<pre>` as before (F15 slice 07) |
 | `src/components/chat/shiki-highlighter.tsx` | Behaviour-preserving seam: new exported `CodeBlockShellContext` (default none) and `CodeBlockShellProps`. `SyntaxHighlighter` reads it; when a shell is provided it renders the shell around its unchanged body (`CodeCardBody` > `ExpandableBlock` > highlighter) instead of its own `CodeCard` and corner `CopyButton`. The body JSX moved into a local `body` constant; with no provider the DOM is identical (F15 slice 07) |
