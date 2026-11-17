@@ -1,7 +1,7 @@
 # Hermes inventory (generated)
 
 Every "Hermes" a user can read in the desktop app, classified under F14 decision 3
-(`src/athena/hermes-names.ts`): **replace** with Athena, **keep** (names the engine, a
+(`electron/athena/hermes-names.ts`): **replace** with Athena, **keep** (names the engine, a
 literal command, licence text, or is not text a user reads), **flag** (a pending name the
 owner decides in F14 slice 07). Comments, tests, fixtures, identifiers and the Athena folders
 are not listed.
@@ -26,7 +26,7 @@ left as written for now (Bot Mode code, see the F14 open questions). Status: **o
 | Translations, English (keys) | 315 | 6 | 21 |
 | Translations, other languages (keys × languages) | 2438 | 45 | 139 |
 | Renderer source (lines) | 96 | 19 | 7 |
-| Main-process source (lines) | 151 | 30 | 12 |
+| Main-process source (lines) | 146 | 36 | 12 |
 | Plugin translations (lines) | 248 | 0 | 4 |
 
 ## Translations (English)
@@ -541,34 +541,34 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 
 | File | Text | Kind | Action | Route | Status |
 |---|---|---|---|---|---|
-| electron/api-transport.ts | `Expected JSON from ${url} but got HTML (status ${statusCode}). The endpoint is likely missing on the Hermes … | UI text | replace | direct | open |
+| electron/api-transport.ts | `Expected JSON from ${url} but got HTML (status ${statusCode}). The endpoint is likely missing on the Hermes … | UI text | replace | direct | done |
 | electron/backend-connection-state.ts | throw new Error('Hermes backend start was superseded by a newer connection attempt.') | error message | replace | error | pass |
-| electron/backend-health.ts | 'Remote Hermes gateway uses OAuth, but you are not signed in. ' + | UI text | replace | direct | open |
+| electron/backend-health.ts | brandText('Remote Hermes gateway uses OAuth, but you are not signed in. ') + | UI text | replace | direct | done |
 | electron/backend-health.ts | throw new Error(`Hermes backend did not become ready: ${(error as Error).message}`) | error message | replace | error | pass |
 | electron/backend-health.ts | throw new Error(`Hermes backend did not become ready: ${detail}`) | error message | replace | error | pass |
 | electron/backend-ready.ts | `Timed out waiting for Hermes backend port announcement (${timeoutMs}ms)${deadline ? ' while an update comple… | error message | replace | error | pass |
 | electron/backend-ready.ts | reject(new Error(`Hermes backend: exited before port announcement (${signal \|\| code})${describeOutputTail()}`… (×2) | error message | replace | error | pass |
 | electron/backend-ready.ts | reject(new Error(`Timed out waiting for Hermes backend port announcement (${timeoutMs}ms)`)) | error message | replace | error | pass |
-| electron/bootstrap-failure-copy.ts | ['repository', 'Hermes source code'], | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | ['path', 'Hermes command'], | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | ['gateway', 'Hermes service'], | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | 'Common causes: no internet connection, antivirus blocking the installer, or another copy of Hermes running. … | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | 'Close other Hermes windows and choose Reload and retry; if it fails again, open the logs and send them to su… | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | ? `Setting up Hermes stopped during the '${label}' step.` | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | : 'Setting up Hermes stopped before it could finish.' | UI text | replace | direct | open |
-| electron/bootstrap-failure-copy.ts | "Part of Hermes' installation is missing (it may have been deleted or quarantined by antivirus). " + | UI text | replace | direct | open |
-| electron/connection-config.ts | 'Could not reach the remote Hermes gateway while refreshing its WebSocket ticket: ' + (×2) | UI text | replace | direct | open |
-| electron/connection-config.ts | return 'Could not reach the remote Hermes gateway while refreshing its WebSocket ticket. Try reconnecting.' | UI text | replace | direct | open |
+| electron/bootstrap-failure-copy.ts | ['repository', brandText('Hermes source code')], | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | ['path', brandText('Hermes command')], | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | ['gateway', brandText('Hermes service')], | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | 'Common causes: no internet connection, antivirus blocking the installer, or another copy of Hermes running. ' | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | 'Close other Hermes windows and choose Reload and retry; if it fails again, open the logs and send them to su… | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | ? brandText(`Setting up Hermes stopped during the '${label}' step.`) | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | : brandText('Setting up Hermes stopped before it could finish.') | UI text | replace | direct | done |
+| electron/bootstrap-failure-copy.ts | brandText("Part of Hermes' installation is missing (it may have been deleted or quarantined by antivirus). ")… | UI text | replace | direct | done |
+| electron/connection-config.ts | brandText('Could not reach the remote Hermes gateway while refreshing its WebSocket ticket: ') + (×2) | UI text | replace | direct | done |
+| electron/connection-config.ts | return brandText('Could not reach the remote Hermes gateway while refreshing its WebSocket ticket. Try reconn… | UI text | replace | direct | done |
 | electron/connection-registry.ts | hostLabelFromBaseUrl(url) \|\| (kind === 'cloud' ? 'Hermes Cloud' : 'Remote gateway'), | UI text | flag | - | n/a |
 | electron/connection-registry.ts | const hostLabel = hostLabelFromBaseUrl(url) \|\| (kind === 'cloud' ? 'Hermes Cloud' : 'Remote gateway') | UI text | flag | - | n/a |
 | electron/dashboard-token.ts | throw new Error(`Unsupported Hermes backend URL protocol: ${protocol}`) | error message | replace | error | pass |
 | electron/dashboard-token.ts | throw new Error(`Timed out connecting to Hermes backend after ${timeoutMs}ms`) | error message | replace | error | pass |
-| electron/dashboard-token.ts | async function adoptServedDashboardToken(baseUrl, spawnToken, { childAlive, label = 'Hermes backend', ...opti… | UI text | replace | direct | open |
-| electron/desktop-remote-route.ts | 'Both must be provided to connect to a remote Hermes backend.' | UI text | replace | direct | open |
-| electron/desktop-uninstall.ts | 'This Hermes desktop app was installed by Nix. Uninstall it the same way you installed it: ' + | UI text | replace | direct | open |
-| electron/desktop-uninstall.ts | 'Another package manager installed this Hermes desktop app. ' + | UI text | replace | direct | open |
-| electron/desktop-uninstall.ts | const bundle = appPath ? path.posix.basename(String(appPath)) : 'the Hermes app' | UI text | replace | direct | open |
-| electron/desktop-uninstall.ts | return 'Delete the Hermes AppImage (or app directory) from wherever you saved it.' | UI text | replace | direct | open |
+| electron/dashboard-token.ts | { childAlive, label = brandText('Hermes backend'), ...options } | UI text | replace | direct | done |
+| electron/desktop-remote-route.ts | brandText('Both must be provided to connect to a remote Hermes backend.') | UI text | replace | direct | done |
+| electron/desktop-uninstall.ts | brandText('This Hermes desktop app was installed by Nix. Uninstall it the same way you installed it: ') + | UI text | replace | direct | done |
+| electron/desktop-uninstall.ts | brandText('Another package manager installed this Hermes desktop app. ') + | UI text | replace | direct | done |
+| electron/desktop-uninstall.ts | const bundle = appPath ? path.posix.basename(String(appPath)) : brandText('the Hermes app') | UI text | replace | direct | done |
+| electron/desktop-uninstall.ts | return brandText('Delete the Hermes AppImage (or app directory) from wherever you saved it.') | UI text | replace | direct | done |
 | electron/desktop-uninstall.ts | if (/[\\/]Hermes$/i.test(dir) \|\| /[\\/]hermes-desktop$/i.test(dir)) { | pattern | keep | - | n/a |
 | electron/gateway-download-transport.ts | throw new Error(`Unsupported Hermes backend URL protocol: ${parsed.protocol}`) | error message | replace | error | pass |
 | electron/gateway-download-transport.ts | : options.bearer ? { Authorization: `Bearer ${options.bearer}` } : { 'X-Hermes-Session-Token': token } | identifier | keep | - | n/a |
@@ -579,8 +579,8 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/gateway-file-download-transport.ts | reject(new Error(`Timed out connecting to Hermes backend after ${timeoutMs}ms`)) | error message | replace | error | pass |
 | electron/gateway-file-download.ts | timer = setTimeout(() => res.destroy(new Error(`Hermes backend download stalled: no data for ${idleMs}ms`)), … | error message | replace | error | pass |
 | electron/git-worktree-ops.ts | 'user.name=Hermes', | identifier | keep | - | n/a |
-| electron/hardening.ts | 'Secure token storage is unavailable (no OS keyring service was found), so Hermes Desktop cannot save remote … | UI text | replace | direct | open |
-| electron/host-backend-singleton.ts | `Refusing to start a second local Hermes backend for "${poolKey}": one backend serves every profile on this h… | UI text | replace | direct | open |
+| electron/hardening.ts | 'Secure token storage is unavailable (no OS keyring service was found), so Hermes Desktop cannot save remote … | UI text | replace | direct | done |
+| electron/host-backend-singleton.ts | `Refusing to start a second local Hermes backend for "${poolKey}": one backend serves every profile on this h… | UI text | replace | direct | done |
 | electron/local-backend-lifecycle.ts | controller.abort(markExpectedTransition(new Error('Hermes Desktop is quitting.'))) | error message | replace | error | pass |
 | electron/local-gateway-python.ts | const fail = (detail: string) => reject(new Error(`Gateway ticket bootstrap could not resolve the installed H… | error message | replace | error | pass |
 | electron/local-gateway-python.ts | throw new Error('Gateway ticket bootstrap requires the installed Hermes Python runtime') | error message | replace | error | pass |
@@ -592,25 +592,25 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/local-runtime-version.ts | const match = output.match(/^\s*Hermes Agent\s+([^\s(]+)/m) | pattern | keep | - | n/a |
 | electron/main.ts | console.error('[hermes] another Hermes Desktop instance holds the single-instance lock; exiting') | developer log | keep | - | n/a |
 | electron/main.ts | const APP_NAME: string = IDENTITY_APP_NAME \|\| process.env.HERMES_DESKTOP_APP_NAME \|\| 'Hermes' | stock fallback | keep | - | n/a |
-| electron/main.ts | `Hermes backend for profile ${label} failed to start: ${error instanceof Error ? error.message : String(error… | UI text | replace | direct | open |
-| electron/main.ts | message: 'Waiting to start Hermes backend', | UI text | replace | direct | open |
-| electron/main.ts | 'An update is still running — Hermes will start automatically when it finishes. Its progress is in logs/updat… | UI text | replace | direct | open |
-| electron/main.ts | 'An update is finishing — Hermes will start automatically when it completes…', | UI text | replace | direct | open |
-| electron/main.ts | await advanceBootProgress('backend.update-restart', 'Restarting Hermes to load the updated app…', 14) | UI text | replace | direct | open |
+| electron/main.ts | brandText(`Hermes backend for profile ${label} failed to start: ${error instanceof Error ? error.message : St… | UI text | replace | direct | done |
+| electron/main.ts | message: brandText('Waiting to start Hermes backend'), | UI text | replace | direct | done |
+| electron/main.ts | brandText('An update is still running — Hermes will start automatically when it finishes. Its progress is in … | UI text | replace | direct | done |
+| electron/main.ts | brandText('An update is finishing — Hermes will start automatically when it completes…'), | UI text | replace | direct | done |
+| electron/main.ts | await advanceBootProgress('backend.update-restart', brandText('Restarting Hermes to load the updated app…'), … | UI text | replace | direct | done |
 | electron/main.ts | rememberLog(`[updates] stopping Hermes-owned venv daemon (hindsight) PID ${pid} before hand-off`) | developer log | keep | - | n/a |
 | electron/main.ts | `[updates] stopping external Hermes venv holder (autostart gateway/dashboard) PID ${pid} before hand-off` | developer log | keep | - | n/a |
 | electron/main.ts | rememberLog(`Ignoring Windows Hermes override under WSL: ${hermesOverride}`) | developer log | keep | - | n/a |
 | electron/main.ts | rememberLog(`Ignoring desktop app executable on PATH while resolving Hermes CLI: ${hermesCommand}`) | developer log | keep | - | n/a |
-| electron/main.ts | label: `existing Hermes CLI at ${hermesCommand}`, | UI text | replace | direct | open |
-| electron/main.ts | `Ignoring existing Hermes CLI at ${hermesCommand}: --version probe failed; falling through to bootstrap.` | UI text | replace | direct | open |
+| electron/main.ts | label: brandText(`existing Hermes CLI at ${hermesCommand}`), | UI text | replace | direct | done |
+| electron/main.ts | brandText(`Ignoring existing Hermes CLI at ${hermesCommand}: --version probe failed; falling through to boots… | UI text | replace | direct | done |
 | electron/main.ts | `[bootstrap] Active Hermes runtime at ${ACTIVE_HERMES_ROOT} is usable but the bootstrap marker is missing or … | developer log | keep | - | n/a |
 | electron/main.ts | rememberLog(`[boot] Using Hermes install at ${userInstall.root} (published launcher ${userInstall.launcher})`) | developer log | keep | - | n/a |
 | electron/main.ts | rememberLog(`[bootstrap] Hermes install at ${userInstall.root} (from ${userInstall.launcher}) is not usable`) | developer log | keep | - | n/a |
 | electron/main.ts | rememberLog(`[bootstrap] no usable Hermes install at ${ACTIVE_HERMES_ROOT} and no published user-bin launcher… | developer log | keep | - | n/a |
 | electron/main.ts | label: 'Hermes Agent not installed yet; bootstrap required', | UI text | keep | - | n/a |
-| electron/main.ts | 'This app bundles its own Hermes runtime, but the runtime files are missing or damaged. Reinstall Hermes Desk… | UI text | replace | direct | open |
+| electron/main.ts | brandText('This app bundles its own Hermes runtime, but the runtime files are missing or damaged. Reinstall H… | UI text | replace | direct | done |
 | electron/main.ts | rememberLog('[bootstrap] no Hermes install found; starting first-launch bootstrap') | developer log | keep | - | n/a |
-| electron/main.ts | 'Hermes recovery was handed off to Hermes Setup. The desktop will restart when recovery completes.' | UI text | replace | direct | open |
+| electron/main.ts | brandText('Hermes recovery was handed off to Hermes Setup. The desktop will restart when recovery completes.') | UI text | replace | direct | done |
 | electron/main.ts | const cancelledError = new Error('Hermes install was cancelled.') as any | error message | replace | error | pass |
 | electron/main.ts | reject(new Error(`Unsupported Hermes backend URL protocol: ${parsed.protocol}`)) (×3) | error message | replace | error | pass |
 | electron/main.ts | ...(nativeHeaders \|\| { 'X-Hermes-Session-Token': token }), | identifier | keep | - | n/a |
@@ -619,29 +619,29 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/main.ts | 'You are not signed in to Hermes Cloud. Open Settings → Gateway, choose Hermes Cloud, and sign in.' | UI text | flag | - | n/a |
 | electron/main.ts | 'Your Hermes Cloud session has expired. Open Settings → Gateway and sign in again.' | UI text | flag | - | n/a |
 | electron/main.ts | const err = new Error('Your Hermes Cloud session has expired. Sign in to Hermes Cloud again.') as any | error message | flag | - | n/a |
-| electron/main.ts | 'Remote Hermes gateway is selected, but no session token is saved. ' + | UI text | replace | direct | open |
+| electron/main.ts | brandText('Remote Hermes gateway is selected, but no session token is saved. ') + | UI text | replace | direct | done |
 | electron/main.ts | error: 'Update Hermes on the remote host before connecting with Desktop SSH.' | error message | replace | error | pass |
 | electron/main.ts | throw new Error('Hermes Desktop is already running in another window.') | error message | replace | error | pass |
-| electron/main.ts | await advanceBootProgress('backend.resolve', 'Resolving Hermes backend', 8) (×2) | UI text | replace | direct | open |
-| electron/main.ts | await advanceBootProgress('backend.runtime', 'Resolving Hermes runtime', 28) | UI text | replace | direct | open |
+| electron/main.ts | await advanceBootProgress('backend.resolve', brandText('Resolving Hermes backend'), 8) (×2) | UI text | replace | direct | done |
+| electron/main.ts | await advanceBootProgress('backend.runtime', brandText('Resolving Hermes runtime'), 28) | UI text | replace | direct | done |
 | electron/main.ts | rememberLog('[backend] Hermes gateway is ready') | developer log | keep | - | n/a |
 | electron/main.ts | updateBootProgress({ phase: 'backend.ready', message: 'Hermes gateway is ready', progress: 94, running: true,… | error message | replace | error | pass |
-| electron/main.ts | title: 'Hermes desktop UI was terminated', | UI text | replace | direct | open |
+| electron/main.ts | title: brandText('Hermes desktop UI was terminated'), | UI text | replace | direct | done |
 | electron/main.ts | return { ok: false, error: 'Hermes is not installed yet' } | error message | replace | error | pass |
-| electron/main.ts | return { code: 'no-primary', message: 'The primary Hermes window is unavailable.', ok: false, retryable: true… | UI text | replace | direct | open |
-| electron/main.ts | message: `Can't run the uninstaller: no Hermes agent venv at ${VENV_ROOT}.` | UI text | replace | direct | open |
-| electron/managed-ssh-update.ts | const home = validateRemoteValue(target.hermesHome, 'Hermes home') (×3) | UI text | replace | direct | open |
-| electron/managed-ssh-update.ts | ? 'Remote Hermes updated' | UI text | replace | direct | open |
-| electron/managed-ssh-update.ts | `Skipped: Desktop cannot safely stop its running Hermes serve on this macOS remote (${blocked.join(', ')}). `… | UI text | replace | direct | open |
-| electron/mcp-oauth-callback-ipc.ts | '<p>You can close this window and return to Hermes.</p>' + | UI text | replace | direct | open |
+| electron/main.ts | return { code: 'no-primary', message: brandText('The primary Hermes window is unavailable.'), ok: false, retr… | UI text | replace | direct | done |
+| electron/main.ts | message: brandText(`Can't run the uninstaller: no Hermes agent venv at ${VENV_ROOT}.`) | UI text | replace | direct | done |
+| electron/managed-ssh-update.ts | const home = validateRemoteValue(target.hermesHome, brandText('Hermes home')) (×3) | UI text | replace | direct | done |
+| electron/managed-ssh-update.ts | ? brandText('Remote Hermes updated') | UI text | replace | direct | done |
+| electron/managed-ssh-update.ts | `Skipped: Desktop cannot safely stop its running Hermes serve on this macOS remote (${blocked.join(', ')}). ` | UI text | replace | direct | done |
+| electron/mcp-oauth-callback-ipc.ts | brandText('<p>You can close this window and return to Hermes.</p>') + | UI text | replace | direct | done |
 | electron/media-protocol.ts | throw new Error(`Unsupported Hermes backend URL protocol: ${url.protocol}`) | error message | replace | error | pass |
-| electron/minimize-to-tray.ts | tray.setToolTip('Hermes') | UI text | replace | direct | open |
-| electron/minimize-to-tray.ts | { label: 'Show Hermes', click: restore }, | UI text | replace | direct | open |
-| electron/minimize-to-tray.ts | { label: 'Quit Hermes', click: () => app.quit() } | UI text | replace | direct | open |
-| electron/native-auth-decisions.ts | 'Remote Hermes gateway uses OAuth, but you are not signed in. ' + | UI text | replace | direct | open |
-| electron/native-oauth-login.ts | '<h2>&#10003; Signed in to Hermes</h2>' + | UI text | replace | direct | open |
-| electron/notification-ipc.ts | title: payload?.title \|\| 'Hermes', | UI text | replace | direct | open |
-| electron/notification-linux.ts | 'Hermes', | UI text | replace | direct | open |
+| electron/minimize-to-tray.ts | tray.setToolTip(brandText('Hermes')) | UI text | replace | direct | done |
+| electron/minimize-to-tray.ts | { label: brandText('Show Hermes'), click: restore }, | UI text | replace | direct | done |
+| electron/minimize-to-tray.ts | { label: brandText('Quit Hermes'), click: () => app.quit() } | UI text | replace | direct | done |
+| electron/native-auth-decisions.ts | brandText('Remote Hermes gateway uses OAuth, but you are not signed in. ') + | UI text | replace | direct | done |
+| electron/native-oauth-login.ts | brandText('<h2>&#10003; Signed in to Hermes</h2>') + | UI text | replace | direct | done |
+| electron/notification-ipc.ts | title: payload?.title \|\| brandText('Hermes'), | UI text | replace | direct | done |
+| electron/notification-linux.ts | brandText('Hermes'), | UI text | replace | direct | done |
 | electron/oauth-login-window.ts | title: silent ? 'Connecting to Hermes Cloud agent…' : 'Sign in to Hermes gateway', | UI text | flag | - | n/a |
 | electron/plugin-files.ts | return refuse('protected', 'That folder overlaps Hermes data and cannot be used by a plugin.') | error message | replace | error | pass |
 | electron/plugin-files.ts | refuse('protected', 'That path is Hermes data and cannot be used by a plugin.') | error message | replace | error | pass |
@@ -652,77 +652,78 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/portal-session.ts | title: 'Sign in to Hermes Cloud', | UI text | flag | - | n/a |
 | electron/preview-signins.ts | resolve({ status: 'error', error: 'Hermes runtime is not available' }) | error message | replace | error | pass |
 | electron/preview-signins.ts | resolve({ status: 'error', error: 'could not run the Hermes sign-in export' }) | error message | replace | error | pass |
-| electron/primary-remote-startup.ts | await options.advanceBootProgress('backend.remote', `Connecting to remote Hermes backend at ${remote.baseUrl}… | UI text | replace | direct | open |
-| electron/primary-remote-startup.ts | message: 'Remote Hermes backend is ready', | UI text | replace | direct | open |
-| electron/quick-entry.ts | message: 'Hermes has not confirmed the prompt yet — it may still be delivered.', | UI text | replace | direct | open |
-| electron/quit-guard.ts | : 'The agent keeps running on the gateway. Quitting only closes Hermes on this computer; reconnect later to s… | UI text | replace | direct | open |
-| electron/quit-guard.ts | message: work.count === 1 ? 'Hermes is still working on 1 chat.' : `Hermes is still working on ${work.count} … | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | `The Hermes path you set is not an executable on the remote host: "${remoteHermesPath}". ` + | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | 'Hermes is not installed on the remote host (could not find a `hermes` executable). ' + | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | '— or set the Hermes path explicitly in the SSH connection settings.' | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | `Unsupported remote platform "${osName \|\| 'unknown'}". Hermes Desktop SSH mode supports Linux, macOS, and Win… | UI text | replace | direct | open |
+| electron/primary-remote-startup.ts | brandText(`Connecting to remote Hermes backend at ${remote.baseUrl}`), | UI text | replace | direct | done |
+| electron/primary-remote-startup.ts | message: brandText('Remote Hermes backend is ready'), | UI text | replace | direct | done |
+| electron/quick-entry.ts | message: brandText('Hermes has not confirmed the prompt yet — it may still be delivered.'), | UI text | replace | direct | done |
+| electron/quit-guard.ts | 'The agent keeps running on the gateway. Quitting only closes Hermes on this computer; reconnect later to see… | UI text | replace | direct | done |
+| electron/quit-guard.ts | ? brandText('Hermes is still working on 1 chat.') | UI text | replace | direct | done |
+| electron/quit-guard.ts | : brandText(`Hermes is still working on ${work.count} chats.`) | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | brandText(`The Hermes path you set is not an executable on the remote host: "${remoteHermesPath}". `) + | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | brandText('Hermes is not installed on the remote host (could not find a `hermes` executable). ') + | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | brandText('— or set the Hermes path explicitly in the SSH connection settings.') | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | `Unsupported remote platform "${osName \|\| 'unknown'}". Hermes Desktop SSH mode supports Linux, macOS, and Win… | UI text | replace | direct | done |
 | electron/remote-lifecycle.ts | const error: any = new Error('Could not resolve the remote Hermes home.') | error message | replace | error | pass |
 | electron/remote-lifecycle.ts | const error: any = new Error('Could not prove that the remote Hermes install is clear for SSH startup.') | error message | replace | error | pass |
-| electron/remote-lifecycle.ts | ? `Remote Hermes update process ${live[1]} is still running; SSH startup is paused.` | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | ? 'A process the remote Hermes update started still holds the install; SSH startup is paused.' | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | : 'The remote Hermes update marker is unreadable, malformed, or locked; refusing SSH startup.' | UI text | replace | direct | open |
+| electron/remote-lifecycle.ts | ? brandText(`Remote Hermes update process ${live[1]} is still running; SSH startup is paused.`) | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | ? brandText('A process the remote Hermes update started still holds the install; SSH startup is paused.') | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | : brandText('The remote Hermes update marker is unreadable, malformed, or locked; refusing SSH startup.') | UI text | replace | direct | done |
 | electron/remote-lifecycle.ts | const error: any = new Error('Could not list remote Hermes profiles.') | error message | flag | - | n/a |
 | electron/remote-lifecycle.ts | const error: any = new Error('Could not read the remote Hermes install id.') | error message | replace | error | pass |
 | electron/remote-lifecycle.ts | const error: any = new Error('Unsafe remote Hermes home.') | error message | replace | error | pass |
 | electron/remote-lifecycle.ts | `The remote Hermes profile '${profile}' does not exist. ` + | UI text | flag | - | n/a |
-| electron/remote-lifecycle.ts | 'The remote Hermes install does not support --ssh-session-token-file and --ssh-owner-nonce. ' + | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | 'Update Hermes on the remote host to continue using Desktop SSH mode.' | UI text | replace | direct | open |
-| electron/remote-lifecycle.ts | `The remote ownership record ${lpath} does not match this Hermes Desktop build (${lock.reason}). ` + | UI text | replace | direct | open |
-| electron/remote-liveness.ts | `Cached remote Hermes backend failed liveness probe (${failure.failures}/${REMOTE_LIVENESS_FAILURE_LIMIT}); k… | UI text | replace | direct | open |
+| electron/remote-lifecycle.ts | brandText('The remote Hermes install does not support --ssh-session-token-file and --ssh-owner-nonce. ') + | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | brandText('Update Hermes on the remote host to continue using Desktop SSH mode.') | UI text | replace | direct | done |
+| electron/remote-lifecycle.ts | brandText(`The remote ownership record ${lpath} does not match this Hermes Desktop build (${lock.reason}). `)… | UI text | replace | direct | done |
+| electron/remote-liveness.ts | `Cached remote Hermes backend failed liveness probe (${failure.failures}/${REMOTE_LIVENESS_FAILURE_LIMIT}); k… | UI text | replace | direct | done |
 | electron/remote-liveness.ts | log('Cached remote Hermes backend failed liveness probe; dropping stale connection.') | developer log | keep | - | n/a |
-| electron/renderer-load-error-page.ts | const title = escapeHtml(details.title \|\| 'Hermes couldn\u2019t start the desktop UI') | UI text | replace | direct | open |
-| electron/source-backend.ts | label: `Hermes at ${root}`, | UI text | replace | direct | open |
-| electron/source-backend.ts | label: `Hermes source at ${root}`, | UI text | replace | direct | open |
+| electron/renderer-load-error-page.ts | const title = escapeHtml(details.title \|\| brandText('Hermes couldn\u2019t start the desktop UI')) | UI text | replace | direct | done |
+| electron/source-backend.ts | label: brandText(`Hermes at ${root}`), | UI text | replace | direct | done |
+| electron/source-backend.ts | label: brandText(`Hermes source at ${root}`), | UI text | replace | direct | done |
 | electron/ssh-connection.ts | [/(X-Hermes-Session-Token["']?\s*[:=]\s*["']?)([^\s"'&]+)/gi, '$1<redacted>'], | identifier | keep | - | n/a |
-| electron/ssh-connection.ts | `Hermes Desktop runs SSH non-interactively. In Terminal, run ` + | UI text | replace | direct | open |
+| electron/ssh-connection.ts | brandText(`Hermes Desktop runs SSH non-interactively. In Terminal, run `) + | UI text | replace | direct | done |
 | electron/ssh-shared-profile-backend.ts | new Error(`The remote Hermes profile '${profile}' does not exist. Select an existing remote profile.`), | error message | flag | - | n/a |
 | electron/terminal-ipc.ts | env.TERM_PROGRAM = 'Hermes' | identifier | keep | - | n/a |
-| electron/update-handoff-report.ts | title: 'Hermes update', (×4) | UI text | replace | direct | open |
-| electron/update-handoff-report.ts | message: 'Hermes updated, but some follow-up steps need another try', | UI text | replace | direct | open |
-| electron/update-handoff-report.ts | message: explained?.message ?? "Hermes couldn't finish updating", | UI text | replace | direct | open |
-| electron/update-handoff-report.ts | ? 'Hermes did not close it. Close it and retry the update now, or keep using the current app and update later… | UI text | replace | direct | open |
-| electron/update-handoff-report.ts | : 'Hermes cannot close it. Close it yourself (Task Manager), then run the update again.' | UI text | replace | direct | open |
+| electron/update-handoff-report.ts | title: brandText('Hermes update'), (×4) | UI text | replace | direct | done |
+| electron/update-handoff-report.ts | message: brandText('Hermes updated, but some follow-up steps need another try'), | UI text | replace | direct | done |
+| electron/update-handoff-report.ts | message: explained?.message ?? brandText("Hermes couldn't finish updating"), | UI text | replace | direct | done |
+| electron/update-handoff-report.ts | 'Hermes did not close it. Close it and retry the update now, or keep using the current app and update later.' | UI text | replace | direct | done |
+| electron/update-handoff-report.ts | : brandText('Hermes cannot close it. Close it yourself (Task Manager), then run the update again.') | UI text | replace | direct | done |
 | electron/update-handoff-report.ts | host.log(`[updates] Desktop app swap blocked by programs outside Hermes: ${names}`) | developer log | keep | - | n/a |
-| electron/update-handoff-report.ts | `Hermes updated, but Windows would not replace the Desktop app because this program, which is not part of Her… | UI text | replace | direct | open |
+| electron/update-handoff-report.ts | `Hermes updated, but Windows would not replace the Desktop app because this program, which is not part of Her… | UI text | replace | direct | done |
 | electron/update-hold-wiring.ts | host.log(`[updates] user quit Hermes from the update-hold screen${hold ? ` (hold ${hold.holdId})` : ''}`) | developer log | keep | - | n/a |
-| electron/update-marker-gate.ts | return 'Hermes could not verify update ownership yet — startup is paused while it retries. Details are in log… | UI text | replace | direct | open |
-| electron/update-marker-gate.ts | return `An update is still finishing (process ${state.livePid}) — Hermes will start automatically when it com… | UI text | replace | direct | open |
-| electron/update-marker-gate.ts | return `An update is still finishing: ${who} it started still holds the Hermes install. Hermes will start whe… | UI text | replace | direct | open |
-| electron/update-stop-remedy.ts | message: 'Hermes kept your install: the offered release is older than it', | UI text | replace | direct | open |
-| electron/updater-process.ts | "The updater couldn't start, so nothing was changed and Hermes keeps running as before. " + | UI text | replace | direct | open |
-| electron/updater/app-installer.ts | message: 'Applying the Hermes update — the window will close and the App Installer will finish.', | UI text | replace | direct | open |
-| electron/updater/app-installer.ts | message: 'Automatic relaunch could not be registered. Reopen Hermes after App Installer finishes.' | UI text | replace | direct | open |
-| electron/updater/checkout.ts | 'The updater could not take the update lock, so nothing was changed. Hermes keeps running on the previous ver… | UI text | replace | direct | open |
-| electron/updater/checkout.ts | 'The updater did not start, so nothing was changed. Hermes keeps running on the previous version — try the up… | UI text | replace | direct | open |
-| electron/updater/checkout.ts | 'Updating Hermes — this window will close and the updater will open. Don’t reopen Hermes yourself; it restart… | UI text | replace | direct | open |
-| electron/updater/checkout.ts | 'Updating Hermes — this window will close. Don’t reopen Hermes yourself; it restarts automatically when the u… | UI text | replace | direct | open |
-| electron/updater/mac.ts | this.deps.emitProgress({ stage: 'fetch', message: 'Downloading the Hermes update.', percent }) | UI text | replace | direct | open |
-| electron/updater/mac.ts | message: 'Restarting Hermes to install the update.', | UI text | replace | direct | open |
-| electron/updater/store.ts | message: 'Microsoft Store is installing the update. Hermes will reopen.', | UI text | replace | direct | open |
+| electron/update-marker-gate.ts | 'Hermes could not verify update ownership yet — startup is paused while it retries. Details are in logs/updat… | UI text | replace | direct | done |
+| electron/update-marker-gate.ts | `An update is still finishing (process ${state.livePid}) — Hermes will start automatically when it completes…` | UI text | replace | direct | done |
+| electron/update-marker-gate.ts | `An update is still finishing: ${who} it started still holds the Hermes install. Hermes will start when it le… | UI text | replace | direct | done |
+| electron/update-stop-remedy.ts | message: brandText('Hermes kept your install: the offered release is older than it'), | UI text | replace | direct | done |
+| electron/updater-process.ts | brandText("The updater couldn't start, so nothing was changed and Hermes keeps running as before. ") + | UI text | replace | direct | done |
+| electron/updater/app-installer.ts | message: brandText('Applying the Hermes update — the window will close and the App Installer will finish.'), | UI text | replace | direct | done |
+| electron/updater/app-installer.ts | 'Automatic relaunch could not be registered. Reopen Hermes after App Installer finishes.' | UI text | replace | direct | done |
+| electron/updater/checkout.ts | 'The updater could not take the update lock, so nothing was changed. Hermes keeps running on the previous ver… | UI text | replace | direct | done |
+| electron/updater/checkout.ts | 'The updater did not start, so nothing was changed. Hermes keeps running on the previous version — try the up… | UI text | replace | direct | done |
+| electron/updater/checkout.ts | 'Updating Hermes — this window will close and the updater will open. Don’t reopen Hermes yourself; it restart… | UI text | replace | direct | done |
+| electron/updater/checkout.ts | 'Updating Hermes — this window will close. Don’t reopen Hermes yourself; it restarts automatically when the u… | UI text | replace | direct | done |
+| electron/updater/mac.ts | this.deps.emitProgress({ stage: 'fetch', message: brandText('Downloading the Hermes update.'), percent }) | UI text | replace | direct | done |
+| electron/updater/mac.ts | message: brandText('Restarting Hermes to install the update.'), | UI text | replace | direct | done |
+| electron/updater/store.ts | message: brandText('Microsoft Store is installing the update. Hermes will reopen.'), | UI text | replace | direct | done |
 | electron/vscode-marketplace.ts | 'User-Agent': 'Hermes-Desktop' | identifier | keep | - | n/a |
 | electron/vscode-marketplace.ts | const vsix = await request(vsixUrl, { headers: { 'User-Agent': 'Hermes-Desktop' } }) | identifier | keep | - | n/a |
-| electron/window-below.ts | 'Check that `hyprctl clients` works from the same session Hermes is ' + | UI text | replace | direct | open |
-| electron/window-below.ts | 'X11/Xorg session, or run Hermes under XWayland with DISPLAY set.' | UI text | replace | direct | open |
-| electron/window-below.ts | 'Screen Recording permission, which Hermes does not request for this.' | UI text | replace | direct | open |
-| electron/windows-hermes-path.ts | `Ignoring venv Hermes at ${python}: runtime import probe failed (broken/partial venv); falling through to boo… | UI text | replace | direct | open |
-| electron/windows-hermes-path.ts | label: `existing Hermes Python at ${python}`, | UI text | replace | direct | open |
-| electron/windows-remote-lifecycle.ts | 'if(-not $hermes){throw "Hermes is not installed on the remote Windows host."}', | error message | replace | error | pass |
-| electron/windows-remote-lifecycle.ts | 'if($explicit -and $hermes -ne $explicit){throw "The configured Hermes path is not an executable file."}', | error message | replace | error | pass |
-| electron/windows-remote-lifecycle.ts | 'if($code -ne 0){throw "The Hermes launcher does not support --print-runtime-command; refresh the Windows ins… | error message | replace | error | pass |
-| electron/windows-remote-lifecycle.ts | 'if($command -isnot [array] -or $command.Count -lt 2 -or -not [IO.Path]::IsPathRooted([string]$command[0])){t… | error message | replace | error | pass |
-| electron/windows-remote-lifecycle.ts | 'foreach($part in $command){if($part -isnot [string] -or $part.Contains([char]0)){throw "Invalid Hermes runti… | error message | replace | error | pass |
+| electron/window-below.ts | brandText('Check that `hyprctl clients` works from the same session Hermes is ') + | UI text | replace | direct | done |
+| electron/window-below.ts | brandText('X11/Xorg session, or run Hermes under XWayland with DISPLAY set.') | UI text | replace | direct | done |
+| electron/window-below.ts | brandText('Screen Recording permission, which Hermes does not request for this.') | UI text | replace | direct | done |
+| electron/windows-hermes-path.ts | `Ignoring venv Hermes at ${python}: runtime import probe failed (broken/partial venv); falling through to boo… | UI text | replace | direct | done |
+| electron/windows-hermes-path.ts | label: brandText(`existing Hermes Python at ${python}`), | UI text | replace | direct | done |
+| electron/windows-remote-lifecycle.ts | 'if(-not $hermes){throw "Hermes is not installed on the remote Windows host."}', | remote host script | keep | - | n/a |
+| electron/windows-remote-lifecycle.ts | 'if($explicit -and $hermes -ne $explicit){throw "The configured Hermes path is not an executable file."}', | remote host script | keep | - | n/a |
+| electron/windows-remote-lifecycle.ts | 'if($code -ne 0){throw "The Hermes launcher does not support --print-runtime-command; refresh the Windows ins… | remote host script | keep | - | n/a |
+| electron/windows-remote-lifecycle.ts | 'if($command -isnot [array] -or $command.Count -lt 2 -or -not [IO.Path]::IsPathRooted([string]$command[0])){t… | remote host script | keep | - | n/a |
+| electron/windows-remote-lifecycle.ts | 'foreach($part in $command){if($part -isnot [string] -or $part.Contains([char]0)){throw "Invalid Hermes runti… | remote host script | keep | - | n/a |
 | electron/windows-remote-lifecycle.ts | const error: any = new Error('Refresh the remote Windows Hermes launcher: its boot-selecting runtime could no… | error message | replace | error | pass |
 | electron/windows-remote-lifecycle.ts | const error: any = new Error('Could not prove that the remote Hermes install is clear for SSH startup.') | error message | replace | error | pass |
-| electron/windows-remote-lifecycle.ts | ? `Remote Hermes update process ${live[1]} is still running; SSH startup is paused.` | UI text | replace | direct | open |
-| electron/windows-remote-lifecycle.ts | ? 'A process the remote Hermes update started still holds the install; SSH startup is paused.' | UI text | replace | direct | open |
-| electron/windows-remote-lifecycle.ts | : 'The remote Hermes update marker is unreadable or malformed; refusing SSH startup.' | UI text | replace | direct | open |
+| electron/windows-remote-lifecycle.ts | ? brandText(`Remote Hermes update process ${live[1]} is still running; SSH startup is paused.`) | UI text | replace | direct | done |
+| electron/windows-remote-lifecycle.ts | ? brandText('A process the remote Hermes update started still holds the install; SSH startup is paused.') | UI text | replace | direct | done |
+| electron/windows-remote-lifecycle.ts | : brandText('The remote Hermes update marker is unreadable or malformed; refusing SSH startup.') | UI text | replace | direct | done |
 | electron/windows-remote-lifecycle.ts | const error: any = new Error('Update Hermes on the remote Windows host before connecting with Desktop SSH.') | error message | replace | error | pass |
-| electron/windows-remote-lifecycle.ts | script.push('$host.UI.RawUI.WindowTitle="Hermes SSH"', 'powershell.exe -NoLogo') | UI text | replace | direct | open |
+| electron/windows-remote-lifecycle.ts | script.push('$host.UI.RawUI.WindowTitle="Hermes SSH"', 'powershell.exe -NoLogo') | remote host script | keep | - | n/a |
 
 ## Plugin translations
 

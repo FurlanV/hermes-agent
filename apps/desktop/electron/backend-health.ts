@@ -1,6 +1,8 @@
 // Relative, not `@hermes/shared`: esbuild bundles electron/ without tsconfig paths.
 import { isHermesCloudUrl } from '../../shared/src/hermes-cloud'
 
+import { brandText } from './athena/brand-text'
+
 // A cold backend boot (plugin discovery + route mounting at web_server import
 // time) can take 45-60s on slower hardware. A 45s deadline makes first-boot
 // readiness a coin flip: every lost race tears down a healthy-but-slow backend
@@ -61,7 +63,7 @@ export const REMOTE_SESSION_EXPIRED_MESSAGE =
   'Your remote gateway session has expired. Open Settings → Gateway and click "Sign in" again.'
 
 export const REMOTE_UNSIGNED_OAUTH_MESSAGE =
-  'Remote Hermes gateway uses OAuth, but you are not signed in. ' +
+  brandText('Remote Hermes gateway uses OAuth, but you are not signed in. ') +
   'Open Settings → Gateway and click "Sign in", or switch back to Local.'
 
 /**

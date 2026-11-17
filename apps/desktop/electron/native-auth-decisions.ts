@@ -47,6 +47,7 @@
  * pin that contract at the one seam that got it wrong.
  */
 import { readStatusCode } from './api-transport'
+import { brandText } from './athena/brand-text'
 
 export function resolveJsonBody<T>(body: T): T {
   return body
@@ -144,7 +145,7 @@ export interface AdvertisedAuthProvider {
 const PASSWORD_PROVIDER_NAMES = new Set(['basic'])
 
 const OAUTH_NOT_SIGNED_IN_MESSAGE =
-  'Remote Hermes gateway uses OAuth, but you are not signed in. ' +
+  brandText('Remote Hermes gateway uses OAuth, but you are not signed in. ') +
   'Open Settings → Gateway and click "Sign in", or switch back to Local.'
 
 const OAUTH_SESSION_EXPIRED_MESSAGE =

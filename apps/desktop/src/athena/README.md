@@ -1088,3 +1088,39 @@ Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
 | `src/store/notifications.ts` | `showNotification` brands a toast's title, message and detail, so error messages reach the user as Athena (F14 slice 05) |
 | `src/store/onboarding.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
 | `src/store/quick-entry.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `electron/api-transport.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/backend-health.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/bootstrap-failure-copy.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/connection-config.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/dashboard-token.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/desktop-remote-route.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/desktop-uninstall.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/hardening.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/host-backend-singleton.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/main.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/managed-ssh-update.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/mcp-oauth-callback-ipc.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/minimize-to-tray.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/native-auth-decisions.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/native-oauth-login.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/notification-ipc.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/notification-linux.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/primary-remote-startup.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/quick-entry.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/quit-guard.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/remote-lifecycle.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/remote-liveness.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/renderer-load-error-page.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/source-backend.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/ssh-connection.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/update-handoff-report.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/update-marker-gate.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/update-stop-remedy.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater-process.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/app-installer.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/checkout.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/mac.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/store.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/window-below.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/windows-hermes-path.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/windows-remote-lifecycle.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |

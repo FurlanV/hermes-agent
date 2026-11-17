@@ -5,7 +5,7 @@
  * A row is one non-comment source line that mentions the bare word. Comments, tests, fixtures, the translation
  * catalogs (`src/i18n/`, listed separately) and the Athena folders are skipped. Each row gets:
  * - `kind` and `why`: what the text is;
- * - `action`: `replace`, `keep` or `flag` (F14 decision 3, `../hermes-names.ts`);
+ * - `action`: `replace`, `keep` or `flag` (F14 decision 3, `electron/athena/hermes-names.ts`);
  * - `route`: how a `replace` row reaches Athena: `direct` (the line itself is wrapped in `brandText`),
  *   `error` (an error message, branded where the app shows errors), `plugin` (a plugin's translations, branded
  *   by the plugin i18n pass) or `deferred` (Bot Mode code, left as written for now: see the F14 open questions).
@@ -15,7 +15,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { classifyMentions, type MentionAction } from '../hermes-names'
+import { classifyMentions, type MentionAction } from '../../../electron/athena/hermes-names'
 
 export type Surface = 'main' | 'renderer'
 export type Route = '-' | 'deferred' | 'direct' | 'error' | 'plugin'
@@ -87,6 +87,14 @@ const RULES: Rule[] = [
     'keep',
     '-',
     'shown only when the UI is served to a browser, not in the desktop app'
+  ],
+  [
+    /^electron\/windows-remote-lifecycle\.ts$/,
+    /\$\w|throw "/,
+    'remote host script',
+    'keep',
+    '-',
+    'PowerShell run on the remote host; its output is read back'
   ],
   // ── text a user reads ─────────────────────────────────────────────────────
   [

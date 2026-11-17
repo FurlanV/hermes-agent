@@ -1,3 +1,5 @@
+import { brandText } from '../athena/brand-text'
+
 import { applyPackagedHandoff } from './packaged-handoff'
 import type { RelaunchRegistration } from './relaunch'
 
@@ -72,7 +74,7 @@ export class StoreStrategy implements UpdaterStrategy {
         await stop()
         this.deps.emitProgress({
           stage: 'restart',
-          message: 'Microsoft Store is installing the update. Hermes will reopen.',
+          message: brandText('Microsoft Store is installing the update. Hermes will reopen.'),
           percent: null
         })
         const installed = await this.deps.run('install')

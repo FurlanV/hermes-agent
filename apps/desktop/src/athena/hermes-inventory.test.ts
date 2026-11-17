@@ -2,7 +2,8 @@
 // F14 slice 01: the Hermes inventory is current, and its rules sort mentions the way decision 3 says.
 import { describe, expect, test } from 'vitest'
 
-import { classifyMentions } from './hermes-names'
+import { classifyMentions } from '../../electron/athena/hermes-names'
+
 import { inventoryProblem, translationRows } from './scripts/hermes-inventory'
 import { codeOf, scanText } from './scripts/hermes-scan'
 

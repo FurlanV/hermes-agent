@@ -36,6 +36,8 @@
 import http from 'node:http'
 import https from 'node:https'
 
+import { brandText } from './athena/brand-text'
+
 // JSON pool: many small concurrent calls (session lists, config, prompts).
 const HTTP_JSON_AGENT = new http.Agent({ keepAlive: true, maxSockets: 50 })
 const HTTPS_JSON_AGENT = new https.Agent({ keepAlive: true, maxSockets: 50 })
@@ -243,7 +245,9 @@ function htmlResponseError(url: string, statusCode: unknown, location?: unknown)
   }
 
   return new Error(
-    `Expected JSON from ${url} but got HTML (status ${statusCode}). The endpoint is likely missing on the Hermes backend.`
+    brandText(
+      `Expected JSON from ${url} but got HTML (status ${statusCode}). The endpoint is likely missing on the Hermes backend.`
+    )
   )
 }
 

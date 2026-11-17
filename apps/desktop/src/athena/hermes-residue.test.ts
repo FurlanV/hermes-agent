@@ -9,8 +9,9 @@ import { BOTS_LOCALES } from '@/plugins/hermes-bots/i18n'
 import { KANBAN_LOCALES } from '@/plugins/kanban/i18n'
 import { $notifications, clearNotifications, notify } from '@/store/notifications'
 
+import { classifyMentions, KEEP_KEYS, renameHermes, sampleMessage } from '../../electron/athena/hermes-names'
+
 import { brandCatalog, brandText, setAthenaBrandForTests } from './brand-text'
-import { classifyMentions, KEEP_KEYS, renameHermes, sampleMessage } from './hermes-names'
 import { DESKTOP } from './scripts/hermes-inventory'
 import { scanSources } from './scripts/hermes-scan'
 
@@ -182,10 +183,8 @@ describe('other languages, language packs and plugins in the Athena build (F14 s
 })
 
 describe('hard-coded renderer text (F14 slice 05)', () => {
-  test('every renderer line marked replace is wrapped in brandText or left to the error pass', () => {
-    const open = scanSources(DESKTOP).filter(
-      row => row.surface === 'renderer' && row.action === 'replace' && row.route === 'direct' && !row.done
-    )
+  test('every renderer and main-process line marked replace is wrapped in brandText or left to a pass', () => {
+    const open = scanSources(DESKTOP).filter(row => row.action === 'replace' && row.route === 'direct' && !row.done)
 
     expect(open.map(row => `${row.file}:${row.line} ${row.text}`)).toEqual([])
   }, 60_000)

@@ -5,7 +5,7 @@
  * "Hermes Agent" stays where it truthfully names the engine. A name the rule does not settle is pending: it is
  * left as written until the owner decides (F14 slice 07), and the inventory lists it as `flag`.
  *
- * The inventory (`scripts/hermes-inventory.ts`) classifies every mention with these lists. Pure data and pure
+ * The inventory (`src/athena/scripts/hermes-inventory.ts`) classifies every mention with these lists. Pure data and pure
  * functions only: the main process, the renderer and the build scripts all read this file.
  */
 

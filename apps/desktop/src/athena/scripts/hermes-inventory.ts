@@ -1,6 +1,6 @@
 /**
  * F14: write `src/athena/hermes-inventory.md`, every "Hermes" a user can read in the desktop app, each marked
- * replace, keep or flag under the naming rules in `../hermes-names.ts`.
+ * replace, keep or flag under the naming rules in `electron/athena/hermes-names.ts`.
  *
  *   pnpm exec tsx --tsconfig tsconfig.json src/athena/scripts/hermes-inventory.ts           rewrite the inventory
  *   pnpm exec tsx --tsconfig tsconfig.json src/athena/scripts/hermes-inventory.ts --check   fail if it is stale
@@ -11,8 +11,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { classifyMentions, KEEP_KEYS, type MentionAction, sampleMessage } from '../../../electron/athena/hermes-names'
 import { TRANSLATIONS } from '../../i18n/catalog'
-import { classifyMentions, KEEP_KEYS, type MentionAction, sampleMessage } from '../hermes-names'
 
 import { scanSources, type SourceRow } from './hermes-scan'
 
@@ -195,7 +195,7 @@ export function renderInventory(): string {
     '# Hermes inventory (generated)',
     '',
     'Every "Hermes" a user can read in the desktop app, classified under F14 decision 3',
-    '(`src/athena/hermes-names.ts`): **replace** with Athena, **keep** (names the engine, a',
+    '(`electron/athena/hermes-names.ts`): **replace** with Athena, **keep** (names the engine, a',
     'literal command, licence text, or is not text a user reads), **flag** (a pending name the',
     'owner decides in F14 slice 07). Comments, tests, fixtures, identifiers and the Athena folders',
     'are not listed.',

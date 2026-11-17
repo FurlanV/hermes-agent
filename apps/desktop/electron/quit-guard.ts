@@ -10,6 +10,8 @@
 // running after the app quits, exactly like a remote URL or Hermes Cloud
 // backend, so those prompts say so instead of warning about lost work (#79579).
 
+import { brandText } from './athena/brand-text'
+
 const MAX_LISTED = 4
 
 export interface ActiveWork {
@@ -120,12 +122,17 @@ export function quitPromptFor(
       lines.length > 0 ? '' : null,
       backendOwned
         ? 'Quitting stops the agent mid-turn. Any work it has not finished writing is lost.'
-        : 'The agent keeps running on the gateway. Quitting only closes Hermes on this computer; reconnect later to see the results.'
+        : brandText(
+            'The agent keeps running on the gateway. Quitting only closes Hermes on this computer; reconnect later to see the results.'
+          )
     ]
       .filter(line => line !== null)
       .join('\n')
       .trim(),
-    message: work.count === 1 ? 'Hermes is still working on 1 chat.' : `Hermes is still working on ${work.count} chats.`
+    message:
+      work.count === 1
+        ? brandText('Hermes is still working on 1 chat.')
+        : brandText(`Hermes is still working on ${work.count} chats.`)
   }
 }
 

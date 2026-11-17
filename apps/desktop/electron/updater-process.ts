@@ -12,6 +12,8 @@ import { existsSync, realpathSync, statSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import { brandText } from './athena/brand-text'
+
 /** Historical layouts still matter when uninstalling or migrating a source install. */
 export function resolveVenvDir(updateRoot: string): string {
   for (const name of ['venv', '.venv']) {
@@ -756,7 +758,7 @@ export interface ObserveUpdaterHandoffDeps {
  */
 export function describeUpdaterHandoffFailure(outcome: Pick<UpdaterHandoffOutcome, 'message'>): string {
   const lead =
-    "The updater couldn't start, so nothing was changed and Hermes keeps running as before. " +
+    brandText("The updater couldn't start, so nothing was changed and Hermes keeps running as before. ") +
     'Try again; if it keeps failing, open the logs and send them to support.'
 
   return outcome.message ? `${lead}\n\nDetails: ${outcome.message}` : lead

@@ -1,13 +1,14 @@
 /**
  * F14: the renderer's brand pass. In the Athena build, text a user reads names Athena instead of Hermes, under the
- * naming rules in `hermes-names.ts`. In a stock build (and wherever no Athena client-config snapshot exists, such
+ * naming rules in `electron/athena/hermes-names.ts`. In a stock build (and wherever no Athena client-config snapshot exists, such
  * as tests without the Electron bridge) every function here returns its input unchanged.
  *
  * - `brandCatalog` maps a whole translation catalog; `resolveTranslations` (`src/i18n/registry.ts`) calls it, so
  *   React's `t`, `translateNow` and backend language packs all pass through it.
  * - `brandText` is for one string written directly in upstream code: the line is wrapped, the text stays upstream's.
  */
-import { KEEP_KEYS, renameHermes } from './hermes-names'
+import { KEEP_KEYS, renameHermes } from '../../electron/athena/hermes-names'
+
 import { athenaStrings } from './strings'
 
 let override: boolean | null = null

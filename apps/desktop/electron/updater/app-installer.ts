@@ -18,6 +18,7 @@ import {
   triggerAppInstallerUpdate,
   win32AppInstallerFeedPath
 } from '../app-updater'
+import { brandText } from '../athena/brand-text'
 
 import type { ChannelTarget } from './channel'
 import { channelPublicBase } from './channel-protocol'
@@ -156,7 +157,7 @@ export class AppInstallerStrategy {
 
     this.deps.emitUpdateProgress({
       stage: 'restart',
-      message: 'Applying the Hermes update — the window will close and the App Installer will finish.',
+      message: brandText('Applying the Hermes update — the window will close and the App Installer will finish.'),
       percent: 100
     })
 
@@ -171,7 +172,9 @@ export class AppInstallerStrategy {
             this.deps.emitUpdateProgress({
               stage: 'restart',
               percent: 100,
-              message: 'Automatic relaunch could not be registered. Reopen Hermes after App Installer finishes.'
+              message: brandText(
+                'Automatic relaunch could not be registered. Reopen Hermes after App Installer finishes.'
+              )
             })
         }
       },

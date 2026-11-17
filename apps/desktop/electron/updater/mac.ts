@@ -1,5 +1,7 @@
 import type { AppUpdater } from 'electron-updater'
 
+import { brandText } from '../athena/brand-text'
+
 import { applyPackagedHandoff } from './packaged-handoff'
 
 import type { UpdaterApplyResultWire, UpdaterStatusWire, UpdaterStrategy } from './index'
@@ -61,7 +63,7 @@ export class MacStrategy implements UpdaterStrategy {
     this.applying = true
 
     const progress = ({ percent }: { percent: number }): void => {
-      this.deps.emitProgress({ stage: 'fetch', message: 'Downloading the Hermes update.', percent })
+      this.deps.emitProgress({ stage: 'fetch', message: brandText('Downloading the Hermes update.'), percent })
     }
 
     this.deps.updater.on('download-progress', progress)
@@ -87,7 +89,7 @@ export class MacStrategy implements UpdaterStrategy {
           await stop()
           this.deps.emitProgress({
             stage: 'restart',
-            message: 'Restarting Hermes to install the update.',
+            message: brandText('Restarting Hermes to install the update.'),
             percent: 100
           })
           this.deps.updater.quitAndInstall()
