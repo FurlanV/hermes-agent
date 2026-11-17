@@ -1051,3 +1051,16 @@ to new chats within a minute".
     Check again can say "Still not connected" for that long after new chats already have the tools.
   - The page learns the state only from a `reload.mcp` it sent. A package that failed at app start shows nothing until
     it is switched or checked.
+
+## Desktop text says Athena (F14)
+
+F14 makes the text a user reads in the Athena build name Athena, not Hermes, and
+credits Hermes Agent in About. It is inert in a stock build.
+
+### Upstream files touched (F14)
+
+Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
+`managed/diff-scope.test.ts` reads this table as well as the F02 one.
+
+| File | Change |
+|---|---|
