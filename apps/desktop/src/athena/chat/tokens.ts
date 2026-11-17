@@ -10,6 +10,9 @@
  * | `chat-user-border` | accent 65% | accent 60% | ≥ 3 against the page |
  * | `chat-agent-label` | accent (`#005ba8`) | accent (`#00b3e2`) | ≥ 4.5 against the page |
  * | `chat-code-surface` / `-border` | foreground 4% / 12% | foreground 8% / 16% | foreground on it ≥ 4.5 |
+ * | `chat-code-label` | the note text (below) | same | ≥ 4.5 on the code surface (the code block header) |
+ * | `chat-inline-code` | foreground 7% on background | foreground 12% | foreground on it ≥ 4.5 |
+ * | `chat-user-inline-code` | foreground 7% on the user surface | foreground 12% | foreground on it ≥ 4.5 |
  * | `chat-note-text` | foreground 70% on background (the skin's `mutedForeground`) | same | ≥ 4.5 against the page |
  * | `chat-note-rule` | foreground 50% | foreground 40% | ≥ 3 against the page |
  * | `chat-state-<s>` | one hue per state, both modes | same | chip edge ≥ 3 against the page |
@@ -19,7 +22,9 @@
  * The plan's starting point for the user border (accent 25% / 35%) gives about 1.5:1 / 2:1 against the page, so it
  * was raised to the least that passes. The note rule (slice 06) is held to the same 3:1, at the least amount (in 5%
  * steps) that passes. A state hue is the same in light and dark and clears 3:1 on both Athena pages (4.5:1 on both
- * is not possible for one colour, so chip text is per mode).
+ * is not possible for one colour, so chip text is per mode). Inline code (slice 07) is a faint foreground tint mixed
+ * onto the surface it sits on: the page in the agent's text, the user surface in the bubble; both opaque, so the
+ * check is exact. The code block's language label is the note text, checked on the code surface.
  */
 import { contrastRatio, parseColor, toHex } from '@hermes/shared/color'
 
@@ -42,10 +47,13 @@ type StateTokenName = `chat-state-${ChatState}` | `chat-state-${ChatState}-surfa
 export type ChatTokenName =
   | 'chat-agent-label'
   | 'chat-code-border'
+  | 'chat-code-label'
   | 'chat-code-surface'
+  | 'chat-inline-code'
   | 'chat-note-rule'
   | 'chat-note-text'
   | 'chat-user-border'
+  | 'chat-user-inline-code'
   | 'chat-user-surface'
   | StateTokenName
 
@@ -57,6 +65,7 @@ const AMOUNT = {
   userBorder: [0.65, 0.6],
   codeSurface: [0.04, 0.08],
   codeBorder: [0.12, 0.16],
+  inlineCode: [0.07, 0.12],
   noteText: [0.7, 0.7],
   noteRule: [0.5, 0.4],
   stateSurface: [0.12, 0.2],
@@ -92,13 +101,19 @@ export function chatTokens(
     })
   ) as Record<StateTokenName, string>
 
+  const userSurface = mix(accent, background, at(AMOUNT.userSurface))
+  const noteText = mix(foreground, background, at(AMOUNT.noteText))
+
   return Object.freeze({
-    'chat-user-surface': mix(accent, background, at(AMOUNT.userSurface)),
+    'chat-user-surface': userSurface,
     'chat-user-border': mix(accent, background, at(AMOUNT.userBorder)),
     'chat-agent-label': accent,
     'chat-code-surface': mix(foreground, background, at(AMOUNT.codeSurface)),
     'chat-code-border': mix(foreground, background, at(AMOUNT.codeBorder)),
-    'chat-note-text': mix(foreground, background, at(AMOUNT.noteText)),
+    'chat-code-label': noteText,
+    'chat-inline-code': mix(foreground, background, at(AMOUNT.inlineCode)),
+    'chat-user-inline-code': mix(foreground, userSurface, at(AMOUNT.inlineCode)),
+    'chat-note-text': noteText,
     'chat-note-rule': mix(foreground, background, at(AMOUNT.noteRule)),
     ...states
   })
@@ -121,6 +136,14 @@ export function chatContrastChecks(tokens: ChatTokens, colors: Pick<DesktopTheme
     { name: 'chat-user-border against the page', ink: tokens['chat-user-border'], on: page, min: 3 },
     { name: 'chat-agent-label against the page', ink: tokens['chat-agent-label'], on: page, min: 4.5 },
     { name: 'code text on chat-code-surface', ink: text, on: tokens['chat-code-surface'], min: 4.5 },
+    {
+      name: 'chat-code-label on chat-code-surface',
+      ink: tokens['chat-code-label'],
+      on: tokens['chat-code-surface'],
+      min: 4.5
+    },
+    { name: 'inline code text on chat-inline-code', ink: text, on: tokens['chat-inline-code'], min: 4.5 },
+    { name: 'inline code text on chat-user-inline-code', ink: text, on: tokens['chat-user-inline-code'], min: 4.5 },
     { name: 'chat-note-text against the page', ink: tokens['chat-note-text'], on: page, min: 4.5 },
     { name: 'chat-note-rule against the page', ink: tokens['chat-note-rule'], on: page, min: 3 }
   ]

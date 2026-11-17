@@ -188,3 +188,93 @@
 [data-hud-shell] [data-athena-chat] [data-athena-note]:has(> [data-slot='aui_system-message-root']) {
   display: none;
 }
+
+/* Slice 07: code blocks (athena-code-block.tsx). Upstream's CodeCard, marked [data-athena-code-block]: its own
+   surface and 1px border on the code tokens, 12px radius, a header row with the language and Copy, and the body
+   scrolling sideways instead of wrapping, in monospace at 0.86em of the message text. Fenced code never mirrors. */
+[data-athena-chat] [data-athena-code-block] {
+  --expandable-fade-from: var(--chat-code-surface);
+  direction: ltr;
+  text-align: left;
+  overflow: hidden;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--chat-code-border);
+  border-radius: 12px;
+  background-color: var(--chat-code-surface);
+  color: var(--dt-foreground);
+  font-size: var(--conversation-text-font-size);
+}
+
+[data-athena-chat] [data-slot='athena_code-header'] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-block-size: 2rem;
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem 0.375rem;
+  border-block-end: 1px solid var(--chat-code-border);
+  color: var(--chat-code-label);
+  font-family: var(--dt-font-sans);
+  font-size: var(--conversation-caption-font-size);
+  line-height: var(--conversation-caption-line-height);
+  user-select: none;
+}
+
+[data-athena-chat] [data-slot='athena_code-language'] {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Copy sits at the end of the header, with or without a language before it; always visible, a visible focus ring. */
+[data-athena-chat] [data-slot='athena_code-header'] > button {
+  margin-inline-start: auto;
+  color: var(--chat-code-label);
+}
+
+[data-athena-chat] [data-slot='athena_code-header'] > button:is(:hover, :focus-visible) {
+  color: var(--dt-foreground);
+}
+
+[data-athena-chat] [data-slot='athena_code-header'] > button:focus-visible {
+  outline: 2px solid var(--chat-agent-label);
+  outline-offset: 1px;
+}
+
+/* The body: upstream's scroller and highlighter (agent) or upstream's fence (user bubble). */
+[data-athena-chat] [data-athena-code-block] :is([data-slot='code-card-body'], [data-slot='aui_user-fence']) {
+  color: var(--dt-foreground);
+  font-size: 0.86em;
+}
+
+[data-athena-chat] [data-athena-code-block] :is(pre, code) {
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+[data-athena-chat] [data-athena-code-block] [data-slot='aui_user-fence'] {
+  max-inline-size: none;
+  margin: 0;
+  padding-block: 0.625rem;
+  padding-inline: 0.75rem;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+/* Inline code: a faint foreground tint on the surface it sits on (tokens.ts, 4.5:1), in the full text colour. */
+[data-athena-chat] .aui-md :not(pre) > code {
+  background-color: var(--chat-inline-code);
+  color: var(--dt-foreground);
+}
+
+[data-athena-chat] [data-slot='aui_user-inline-code'] {
+  background-color: var(--chat-user-inline-code);
+  color: var(--dt-foreground);
+}

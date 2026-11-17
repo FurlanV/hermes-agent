@@ -1,7 +1,7 @@
 'use client'
 
 import type { SyntaxHighlighterProps } from '@assistant-ui/react-streamdown'
-import { type FC, lazy, Suspense, useMemo } from 'react'
+import { createContext, type FC, lazy, type ReactNode, Suspense, useContext, useMemo } from 'react'
 
 import { hasHttpUrlHost } from '@/app/chat/composer/url-refs'
 import { referenceRe, unquoteReferenceValue } from '@/components/assistant-ui/reference-kinds'
@@ -165,6 +165,21 @@ export function copyableCodeText(code: string): string {
   })
 }
 
+/** What a code-block shell gets: the fence's text and language, whether the
+ *  reply is still streaming, and the highlighted body to frame. */
+export interface CodeBlockShellProps {
+  children: ReactNode
+  code: string
+  language?: null | string
+  streaming: boolean
+}
+
+/** A surface that frames fenced code in place of the default card and its
+ *  corner Copy control (a layout's own header, say). None by default: without
+ *  a provider every fence renders exactly as before. Read by
+ *  `SyntaxHighlighter` and the user bubble's fences (`UserMessageText`). */
+export const CodeBlockShellContext = createContext<FC<CodeBlockShellProps> | null>(null)
+
 export const SyntaxHighlighter: FC<HermesSyntaxHighlighterProps> = ({
   components: { Pre },
   language,
@@ -172,6 +187,7 @@ export const SyntaxHighlighter: FC<HermesSyntaxHighlighterProps> = ({
   defer = false
 }) => {
   const { t } = useI18n()
+  const Shell = useContext(CodeBlockShellContext)
   // Preserve the parser payload for both display and copy, including whitespace.
   const content = code ?? ''
 
@@ -187,6 +203,37 @@ export const SyntaxHighlighter: FC<HermesSyntaxHighlighterProps> = ({
 
   const plain = defer || exceedsHighlightBudget(content)
 
+  const body = (
+    <CodeCardBody className="[&_pre]:px-3 [&_pre]:py-2.5">
+      <ExpandableBlock>
+        {/* In the browser host the fence is sized to its longest line, so
+              ExpandableBlock scrolls it sideways in place and draws its fade.
+              Native Desktop keeps main's fence, whose <pre> scrolls itself. */}
+        <Pre
+          className={
+            hostHas('sidewaysCodeFences')
+              ? 'aui-shiki m-0 min-w-max bg-transparent p-0'
+              : 'aui-shiki m-0 overflow-hidden bg-transparent p-0'
+          }
+        >
+          {plain ? (
+            <PlainCode code={content} />
+          ) : (
+            <LazyShiki code={content} colorReplacements={SHIKI_COLOR_REPLACEMENTS} language={language || 'text'} />
+          )}
+        </Pre>
+      </ExpandableBlock>
+    </CodeCardBody>
+  )
+
+  if (Shell) {
+    return (
+      <Shell code={content} language={language} streaming={defer}>
+        {body}
+      </Shell>
+    )
+  }
+
   return (
     <CodeCard data-streaming={defer ? 'true' : undefined}>
       <CopyButton
@@ -197,26 +244,7 @@ export const SyntaxHighlighter: FC<HermesSyntaxHighlighterProps> = ({
         showLabel={false}
         text={() => copyableCodeText(content)}
       />
-      <CodeCardBody className="[&_pre]:px-3 [&_pre]:py-2.5">
-        <ExpandableBlock>
-          {/* In the browser host the fence is sized to its longest line, so
-              ExpandableBlock scrolls it sideways in place and draws its fade.
-              Native Desktop keeps main's fence, whose <pre> scrolls itself. */}
-          <Pre
-            className={
-              hostHas('sidewaysCodeFences')
-                ? 'aui-shiki m-0 min-w-max bg-transparent p-0'
-                : 'aui-shiki m-0 overflow-hidden bg-transparent p-0'
-            }
-          >
-            {plain ? (
-              <PlainCode code={content} />
-            ) : (
-              <LazyShiki code={content} colorReplacements={SHIKI_COLOR_REPLACEMENTS} language={language || 'text'} />
-            )}
-          </Pre>
-        </ExpandableBlock>
-      </CodeCardBody>
+      {body}
     </CodeCard>
   )
 }

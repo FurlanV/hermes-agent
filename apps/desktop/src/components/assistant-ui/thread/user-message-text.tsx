@@ -1,8 +1,9 @@
 import type { FC } from 'react'
-import { Fragment, useMemo } from 'react'
+import { Fragment, useContext, useMemo } from 'react'
 
 import { DirectiveContent } from '@/components/assistant-ui/directive-text'
 import { referenceRe } from '@/components/assistant-ui/reference-kinds'
+import { CodeBlockShellContext } from '@/components/chat/shiki-highlighter'
 import { cn } from '@/lib/utils'
 import { useForcedTextDirection } from '@/store/text-direction'
 
@@ -121,12 +122,14 @@ interface UserMessageTextProps {
 
 export const UserMessageText: FC<UserMessageTextProps> = ({ className, text }) => {
   const top = useMemo(() => splitFences(text), [text])
+  // A layout's code-block shell (shiki-highlighter.tsx), if one is provided, frames each fence.
+  const Shell = useContext(CodeBlockShellContext)
 
   return (
     <span className={cn('block', className)} data-slot="aui_user-message-text">
       {top.map((segment, segmentIndex) => {
         if (segment.kind === 'fence') {
-          return (
+          const fence = (
             <pre
               className="my-1.5 max-w-full overflow-x-hidden whitespace-pre-wrap wrap-anywhere rounded-md border border-(--ui-stroke-tertiary) bg-[color-mix(in_srgb,currentColor_5%,transparent)] px-2.5 py-2 font-mono text-[0.86em] leading-snug"
               data-slot="aui_user-fence"
@@ -134,6 +137,14 @@ export const UserMessageText: FC<UserMessageTextProps> = ({ className, text }) =
             >
               <code className="block whitespace-pre-wrap wrap-anywhere">{segment.code}</code>
             </pre>
+          )
+
+          return Shell ? (
+            <Shell code={segment.code} key={`fence-${segmentIndex}`} language={segment.lang} streaming={false}>
+              {fence}
+            </Shell>
+          ) : (
+            fence
           )
         }
 

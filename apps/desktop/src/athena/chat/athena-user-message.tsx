@@ -9,6 +9,9 @@
  * touch bubble, the Stop / Restore / hover-time cluster, reactions and checkpoints. Click-to-edit is
  * `ActionBarPrimitive.Edit`, so the thread's shared edit composer opens in place as it does upstream.
  *
+ * Fenced code in the bubble takes the Athena code block surface and language header (slice 07, `AthenaUserCodeBlock`)
+ * through `CodeBlockShellContext`, which upstream's `UserMessageText` reads.
+ *
  * Inter-agent and process notes arrive on the user role but are not the user speaking: they render as upstream's
  * `UserMessage` inside an Athena note (slice 06, `athena-system-message.tsx`), centred and muted, with no "You".
  */
@@ -40,6 +43,7 @@ import {
   useUserBubbleClamp
 } from '@/components/assistant-ui/thread/user-message'
 import { UserMessageText } from '@/components/assistant-ui/thread/user-message-text'
+import { CodeBlockShellContext } from '@/components/chat/shiki-highlighter'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import { $touchPointer, isTouchInteraction } from '@/lib/touch-interaction'
@@ -49,6 +53,7 @@ import { isWatchWindow } from '@/store/windows'
 
 import { athenaStrings } from '../strings'
 
+import { AthenaUserCodeBlock } from './athena-code-block'
 import { AthenaNote } from './athena-system-message'
 
 export type AthenaUserMessageProps = ComponentProps<typeof UserMessage>
@@ -131,7 +136,10 @@ function AthenaUserBubble({ onCancel, onRequestRestoreConfirm }: AthenaUserMessa
       data-clamped={clampActive && bodyClamped ? 'true' : undefined}
     >
       <div className="min-h-[1.25rem]" ref={clampInnerRef}>
-        <UserMessageText className="wrap-anywhere" text={messageText} />
+        {/* Fences take the Athena code block shell, without Copy: the bubble is a button (slice 07). */}
+        <CodeBlockShellContext.Provider value={AthenaUserCodeBlock}>
+          <UserMessageText className="wrap-anywhere" text={messageText} />
+        </CodeBlockShellContext.Provider>
       </div>
     </div>
   ) : (

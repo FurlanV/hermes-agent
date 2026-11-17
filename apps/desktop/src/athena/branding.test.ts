@@ -210,6 +210,9 @@ describe('athena chat colour tokens', () => {
       ['user border against the page', tokens['chat-user-border'], page, 3],
       ['agent label against the page', tokens['chat-agent-label'], page, 4.5],
       ['code text on the code surface', colors.foreground, tokens['chat-code-surface'], 4.5],
+      ['code block language label on the code surface', tokens['chat-code-label'], tokens['chat-code-surface'], 4.5],
+      ['inline code text on its tint', colors.foreground, tokens['chat-inline-code'], 4.5],
+      ['inline code text on its tint in the user bubble', colors.foreground, tokens['chat-user-inline-code'], 4.5],
       ['note text against the page', tokens['chat-note-text'], page, 4.5],
       ['note rule against the page', tokens['chat-note-rule'], page, 3],
       ...CHAT_STATES.flatMap(state => [

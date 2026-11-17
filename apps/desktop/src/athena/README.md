@@ -1141,7 +1141,8 @@ is upstream's.
   Athena chat CSS is scoped under, and the colour tokens.
 - The colour tokens (`chat/tokens.ts`): `chatTokens(colors, dark)` derives
   `--chat-user-surface`, `--chat-user-border`, `--chat-agent-label`,
-  `--chat-code-surface`, `--chat-code-border`, `--chat-note-text`,
+  `--chat-code-surface`, `--chat-code-border`, `--chat-code-label`,
+  `--chat-inline-code`, `--chat-user-inline-code`, `--chat-note-text`,
   `--chat-note-rule` and, per state (running, done, error),
   `--chat-state-<s>`, `-surface` and `-text` from the painted skin's
   background, foreground and accent. `branding.test.ts` checks every pair at
@@ -1185,6 +1186,28 @@ is upstream's.
   `interAgentReplySender`; while it streams it is a labelled agent block).
   Upstream keeps the parsing, the disclosures and the links. The agent label
   rides the first agent block of a group that speaks, so a note never takes it.
+- Code blocks (`chat/athena-code-block.tsx`, styles in `chat/chat.css`):
+  fenced code in agent messages sits on its own surface
+  (`--chat-code-surface`, 1px `--chat-code-border`, 12px radius) with a header
+  row holding the language and a Copy button (Copy only when the fence names
+  no language), scrolls sideways instead of wrapping, monospace at 0.86em. It
+  is a shell around upstream's highlighter: upstream's `SyntaxHighlighter`
+  reads `CodeBlockShellContext` (`components/chat/shiki-highlighter.tsx`) and,
+  when the Athena agent message provides `AthenaCodeBlock`, hands it the body
+  it would have put in its own card (Shiki or plain code, deferred while
+  streaming, chunked, within the highlight budget) instead of rendering its
+  card and corner Copy. The surface is upstream's `CodeCard` (same
+  `data-slot="code-card"`) marked `data-athena-code-block`. Copy is
+  upstream's `CopyButton` with `copyableCodeText`. Rich fences (diagrams,
+  embeds, artifact cards) stay upstream's. The user bubble's fences
+  (`UserMessageText` reads the same context) get `AthenaUserCodeBlock`: the
+  surface and language header without Copy, because the bubble is itself a
+  button. Inline code takes `--chat-inline-code` (agent text) or
+  `--chat-user-inline-code` (in the bubble), foreground tints checked at
+  4.5:1; the language label is `--chat-code-label`. With no provider (layout
+  off, stock build) every fence renders exactly as upstream.
+  `chat/upstream-code-shell-suite.tsx` runs upstream's markdown, highlighter
+  and user-text test files unchanged with the shell provided.
 - Upstream behaviour tests run unchanged against the Athena components:
   `chat/upstream-<name>.test.tsx` imports upstream's `thread/<name>.test.tsx`
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which
@@ -1202,3 +1225,5 @@ Every row is reviewed by a person before merge (hermes change policy).
 | `src/components/assistant-ui/thread/assistant-message.tsx` | Behaviour-preserving move: the inter-agent reply detection in `AssistantMessage`'s selector moved unchanged into an exported function `interAgentReplySender(messages, messageId)`, which the selector now calls, so the Athena agent message reads the same rule (F15 slice 06) |
 | `src/components/assistant-ui/thread/index.tsx` | Choke point: the message-component map goes through `athenaMessageComponents` (`src/athena/chat/layout.ts`) with the layout switch (`useAthenaChatLayout`: Athena variant and row `F15` on) as its one extra memo dep, and the `data-slot="thread"` root spreads `useAthenaThreadRootProps` (the `data-athena-chat` marker while active). Both sides still return the upstream components (F15 slice 02). The `UserMessage` closure renders the type `athenaMessageType(athenaChat, 'UserMessage', UserMessage)` picks (`AthenaUserMessage` while active), listed as a memo dep, so its callbacks still go through `callbacksRef` and the map changes only when the layout flips; the switch's two lines moved above that memo (F15 slice 04). The `AssistantMessage` closure does the same with `athenaMessageType(athenaChat, 'AssistantMessage', AssistantMessage)` (`AthenaAssistantMessage` while active), also a memo dep (F15 slice 05). No edit for slice 06: `athenaMessageComponents` now swaps the callback-free `SystemMessage` entry for `AthenaSystemMessage` while active, inside the existing memo |
 | `src/components/assistant-ui/thread/user-message.tsx` | Export-only: `isChipOnlyTurn`, `UserBubbleActions`, `TouchUserBubble`, `useUserBubbleClamp`, for the Athena user message (F15 slice 04) |
+| `src/components/assistant-ui/thread/user-message-text.tsx` | Behaviour-preserving seam: `UserMessageText` reads `CodeBlockShellContext` (from `components/chat/shiki-highlighter.tsx`) and, when a shell is provided, wraps each fence's unchanged `<pre>` in it (with the fence's text and language). No provider: the same `<pre>` as before (F15 slice 07) |
+| `src/components/chat/shiki-highlighter.tsx` | Behaviour-preserving seam: new exported `CodeBlockShellContext` (default none) and `CodeBlockShellProps`. `SyntaxHighlighter` reads it; when a shell is provided it renders the shell around its unchanged body (`CodeCardBody` > `ExpandableBlock` > highlighter) instead of its own `CodeCard` and corner `CopyButton`. The body JSX moved into a local `body` constant; with no provider the DOM is identical (F15 slice 07) |

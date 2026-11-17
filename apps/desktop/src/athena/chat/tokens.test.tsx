@@ -30,6 +30,9 @@ const TOKEN_NAMES: ChatTokenName[] = [
   'chat-agent-label',
   'chat-code-surface',
   'chat-code-border',
+  'chat-code-label',
+  'chat-inline-code',
+  'chat-user-inline-code',
   'chat-note-text',
   'chat-note-rule',
   ...CHAT_STATES.flatMap(
