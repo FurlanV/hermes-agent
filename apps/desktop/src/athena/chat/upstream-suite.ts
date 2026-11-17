@@ -4,27 +4,35 @@
  * variant active; feature row F15 is on by default (no client config: every row allowed).
  *
  * Each case also checks that the messages it rendered were the Athena ones, so a suite can't pass vacuously on
- * upstream's: every user bubble and every agent message mounted during a case must be the Athena one (an edit case
- * replaces the bubble with the composer, so this watches mounts rather than the page at the end), and across the file
- * at least one Athena message of each kind in `expects` (default: the user message) must have mounted.
+ * upstream's: every user bubble, every agent message and every note mounted during a case must be the Athena one (an
+ * edit case replaces the bubble with the composer, so this watches mounts rather than the page at the end), and
+ * across the file at least one Athena message of each kind in `expects` (default: the user message) must have
+ * mounted.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, expect } from 'vitest'
 
 import { setAthenaBrandForTests } from '../brand-text'
 
-type Watched = 'assistant' | 'user'
+type Watched = 'assistant' | 'note' | 'user'
 
 /**
  * Per kind: the Athena message's own slot, and a test telling an upstream element of that kind that is not inside
  * the Athena one. The user side: upstream's bubble wrapper, which the Athena message keeps (athena-user-message.tsx);
  * without the Athena slot inside it is upstream's bubble. The agent side: upstream's message root, which the Athena
  * message wraps (athena-assistant-message.tsx); without the Athena wrapper as its parent it is upstream's message.
+ * The note side: upstream's system rows, delivery notes and background results, which the Athena note container
+ * wraps (athena-system-message.tsx); outside one they are upstream's.
  */
 const WATCHED: Readonly<Record<Watched, { athena: string; upstream: string; isUpstream: (el: Element) => boolean }>> = {
   assistant: {
     athena: '[data-slot="athena_assistant-message"]',
     upstream: '[data-slot="aui_assistant-message-root"]',
     isUpstream: root => !root.parentElement?.matches('[data-slot="athena_assistant-message"]')
+  },
+  note: {
+    athena: '[data-athena-note]',
+    upstream: '[data-role="system"], [data-slot="aui_agent-message-note"], [data-slot="aui_background-result"]',
+    isUpstream: note => !note.closest('[data-athena-note]')
   },
   user: {
     athena: '[data-slot="athena_user-message"]',
@@ -40,7 +48,7 @@ const within = (root: Element, selector: string) => [
   ...root.querySelectorAll(selector)
 ]
 
-const zero = (): Record<Watched, number> => ({ assistant: 0, user: 0 })
+const zero = (): Record<Watched, number> => ({ assistant: 0, note: 0, user: 0 })
 
 export async function runUpstreamSuiteInAthenaLayout(
   load: () => Promise<unknown>,
@@ -80,6 +88,7 @@ export async function runUpstreamSuiteInAthenaLayout(
     observer?.disconnect()
     expect(upstreamMounts.user, 'an upstream user bubble mounted in the Athena layout').toBe(0)
     expect(upstreamMounts.assistant, 'an upstream agent message mounted in the Athena layout').toBe(0)
+    expect(upstreamMounts.note, 'an upstream note mounted in the Athena layout').toBe(0)
   })
 
   afterAll(() => {

@@ -210,6 +210,8 @@ describe('athena chat colour tokens', () => {
       ['user border against the page', tokens['chat-user-border'], page, 3],
       ['agent label against the page', tokens['chat-agent-label'], page, 4.5],
       ['code text on the code surface', colors.foreground, tokens['chat-code-surface'], 4.5],
+      ['note text against the page', tokens['chat-note-text'], page, 4.5],
+      ['note rule against the page', tokens['chat-note-rule'], page, 3],
       ...CHAT_STATES.flatMap(state => [
         [`${state} chip text`, tokens[`chat-state-${state}-text`], tokens[`chat-state-${state}-surface`], 4.5] as const,
         [`${state} chip edge against the page`, tokens[`chat-state-${state}`], page, 3] as const
@@ -233,6 +235,8 @@ describe('athena chat colour tokens', () => {
     expect(tokens['chat-agent-label']).toBe(seeds.accent)
     expect(tokens['chat-user-surface']).toBe(mix(seeds.accent, seeds.background, dark ? 0.18 : 0.1))
     expect(tokens['chat-code-surface']).toBe(mix(seeds.foreground, seeds.background, dark ? 0.08 : 0.04))
+    // The note text is the skin's own muted foreground.
+    expect(tokens['chat-note-text']).toBe(colors.mutedForeground)
   })
 
   test('the running, done and error colours each pass on both the light and the dark page', () => {

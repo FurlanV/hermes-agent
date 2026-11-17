@@ -10,7 +10,7 @@
  * `ActionBarPrimitive.Edit`, so the thread's shared edit composer opens in place as it does upstream.
  *
  * Inter-agent and process notes arrive on the user role but are not the user speaking: they render as upstream's
- * `UserMessage` until slice 06 restyles them.
+ * `UserMessage` inside an Athena note (slice 06, `athena-system-message.tsx`), centred and muted, with no "You".
  */
 import './chat.css'
 
@@ -49,22 +49,38 @@ import { isWatchWindow } from '@/store/windows'
 
 import { athenaStrings } from '../strings'
 
+import { AthenaNote } from './athena-system-message'
+
 export type AthenaUserMessageProps = ComponentProps<typeof UserMessage>
+
+/**
+ * The note kind of a text upstream renders through the user message that is not the user speaking (a process
+ * notification or an inter-agent delivery, in upstream's order), or null for the user's own prompt.
+ */
+export function userRoleNoteKind(text: string): 'agent-message' | 'process' | null {
+  const trimmed = text.trim()
+
+  return PROCESS_NOTIFICATION_RE.test(trimmed) ? 'process' : AGENT_MESSAGE_RE.test(trimmed) ? 'agent-message' : null
+}
 
 /** A text upstream renders through the user message that is not the user speaking (a delivery or a process note). */
 export function isUserRoleNote(text: string): boolean {
-  const trimmed = text.trim()
-
-  return PROCESS_NOTIFICATION_RE.test(trimmed) || AGENT_MESSAGE_RE.test(trimmed)
+  return userRoleNoteKind(text) !== null
 }
 
 /** The thread's `UserMessage` entry while the Athena layout is active; same props as upstream's. */
 export const AthenaUserMessage: FC<AthenaUserMessageProps> = props => {
   // The content array, as upstream selects it (a reference compare per store tick); the text is derived on render.
   const content = useAuiState(s => s.message.content)
-  const note = useMemo(() => isUserRoleNote(messageContentText(content)), [content])
+  const note = useMemo(() => userRoleNoteKind(messageContentText(content)), [content])
 
-  return note ? <UserMessage {...props} /> : <AthenaUserBubble {...props} />
+  return note ? (
+    <AthenaNote kind={note}>
+      <UserMessage {...props} />
+    </AthenaNote>
+  ) : (
+    <AthenaUserBubble {...props} />
+  )
 }
 
 const BUBBLE_CLASS = cn(

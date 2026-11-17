@@ -65,3 +65,126 @@
 [data-athena-chat]:not([data-hud-shell] *) [data-slot='aui_response-group'] {
   row-gap: var(--conversation-turn-gap);
 }
+
+/* Slice 06: notes (athena-system-message.tsx). Everything that is neither the user nor the agent speaking
+   (system messages, inter-agent deliveries and process notes, a settled inter-agent reply) is upstream's element
+   inside a [data-athena-note] container: centred between two hairline rules, in the muted note text, never a
+   bubble. The rules sit on the first line's centre, so a multi-line note (slash output, an opened report) hangs
+   below them. */
+[data-athena-chat] [data-athena-note] {
+  --athena-note-rule-offset: 0.75rem;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  column-gap: 0.75rem;
+  align-self: stretch;
+  inline-size: 100%;
+  min-inline-size: 0;
+  color: var(--chat-note-text);
+  text-align: center;
+}
+
+[data-athena-chat] [data-athena-note]::before,
+[data-athena-chat] [data-athena-note]::after {
+  content: '';
+  flex: 1 1 1.5rem;
+  min-inline-size: 1.5rem;
+  block-size: 1px;
+  margin-block-start: var(--athena-note-rule-offset);
+  background-color: var(--chat-note-rule);
+}
+
+/* The upstream element sizes to its text, up to the reading column, between the rules. */
+[data-athena-chat] [data-athena-note] > * {
+  flex: 0 1 auto;
+  inline-size: auto;
+  min-inline-size: 0;
+  max-inline-size: min(44rem, 100% - 4.5rem);
+  margin-inline: 0;
+  align-self: flex-start;
+}
+
+/* Rows whose first line is not a 1.25rem note line: the background-result disclosure and the review note use the
+   conversation line, refused content its prompt text. */
+[data-athena-chat] [data-athena-note]:has([data-slot='aui_background-result']) {
+  --athena-note-rule-offset: calc(0.25rem + var(--conversation-line-height) / 2);
+}
+
+[data-athena-chat] [data-athena-note]:has(.tool-memory-legendary-title) {
+  --athena-note-rule-offset: calc(0.125rem + var(--conversation-line-height) / 2);
+}
+
+[data-athena-chat] [data-athena-note='content-refused'] {
+  --athena-note-rule-offset: calc(var(--conversation-line-height, 1.25rem) / 2);
+}
+
+/* Muted text: upstream paints its notes in faded greys (alpha and opacity on muted-foreground, the tertiary and
+   scaffold inks), below 4.5:1. In a note they take --chat-note-text, which passes on the page (tokens.ts). Links,
+   code and an opened message or report keep their own colours. */
+[data-athena-chat]
+  [data-athena-note]
+  :is(
+    [class*='text-muted-foreground'],
+    [class*='text-(--ui-text-tertiary)'],
+    [class*='text-(--conversation-scaffold'],
+    [class*='text-(--tool-memory-legendary']
+  ) {
+  color: var(--chat-note-text);
+}
+
+[data-athena-chat] [data-athena-note] :is([data-conversation-scaffold], .opacity-70) {
+  opacity: 1;
+}
+
+/* The review note's gold-to-purple memory chrome (styles.css) is a note here too. */
+[data-athena-chat] [data-athena-note] .tool-memory-legendary-title {
+  background-image: none;
+  color: var(--chat-note-text) !important;
+}
+
+[data-athena-chat] [data-athena-note] :is(.tool-memory-legendary-meta, .tool-memory-legendary-glyph) {
+  color: var(--chat-note-text);
+  filter: none;
+}
+
+/* The show message / show reply disclosures: brighter on hover, and a visible focus ring. */
+[data-athena-chat] [data-athena-note] summary:is(:hover, :focus-visible) {
+  color: var(--ui-text-primary);
+}
+
+[data-athena-chat] [data-athena-note] summary:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--chat-agent-label);
+  outline-offset: 2px;
+}
+
+/* Upstream's full-width roots (a background result, a delivery, the collapsed reply) size to the note instead. */
+[data-athena-chat] [data-athena-note] [data-slot='aui_background-result'] {
+  inline-size: auto;
+  padding-inline: 0;
+}
+
+/* Refused content keeps its greyed, non-interactive semantics (muted text, the shield notice, no actions), but as a
+   centred note rather than upstream's right-aligned dashed card. */
+[data-athena-chat] [data-athena-note='content-refused'] [data-slot='aui_content-refused'] {
+  align-items: center;
+}
+
+[data-athena-chat] [data-athena-note='content-refused'] [data-slot='aui_content-refused'] > div:first-child {
+  align-items: center;
+  margin-inline: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+}
+
+[data-athena-chat] [data-athena-note='content-refused'] [data-slot='aui_content-refused'] > :last-child {
+  align-self: center;
+}
+
+/* The HUD hides system rows (styles.css); their note container and rules go with them. */
+[data-hud-shell] [data-athena-chat] [data-athena-note]:has(> [data-slot='aui_system-message-root']) {
+  display: none;
+}

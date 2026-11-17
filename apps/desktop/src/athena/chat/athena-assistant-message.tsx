@@ -8,11 +8,13 @@
  * thread's props. Upstream's message keeps everything it owns: the `aui_assistant-message-root` slot and its
  * `data-role`, the hoisted parts element and its PERF leaves (status, previews, changed files, streaming marker), the
  * inter-agent collapse, the footer rules (copy, read aloud, branch, reactions, turn duration), the timeline stamp, the
- * enter animation and the double-click tapback. Nothing upstream is copied or exported for this.
+ * enter animation and the double-click tapback. Nothing upstream is copied for this; slice 06 reads upstream's
+ * inter-agent reply rule through `interAgentReplySender`, exported from `thread/assistant-message.tsx`.
  *
- * The wrapper subscribes to one boolean (does this message lead its response group?), never to streaming text or
- * status, so a stream flush re-renders neither the wrapper nor, through it, upstream's root; and the root stays the
- * wrapper's last child whether or not the label shows, so a label flip never remounts it.
+ * The wrapper subscribes to two booleans (does this message lead its response group? is it a reply to an inter-agent
+ * delivery?), never to streaming text or status, so a stream flush re-renders neither the wrapper nor, through it,
+ * upstream's root; and the root stays the wrapper's last child whether or not the label shows, so a label flip never
+ * remounts it. A settled inter-agent reply is a note, not speech (slice 06): see `AthenaAgentReply`.
  *
  * Later slices that restyle a leaf inside the body (status, tool rows, errors) can do it in `chat.css` under the
  * marker; one that needs a different leaf component has the seam upstream already has: `AssistantMessage` spreads its
@@ -28,12 +30,14 @@ import './chat.css'
 import { useAuiState } from '@assistant-ui/react'
 import type { ComponentProps, FC } from 'react'
 
-import { AssistantMessage } from '@/components/assistant-ui/thread/assistant-message'
+import { AssistantMessage, interAgentReplySender } from '@/components/assistant-ui/thread/assistant-message'
 import { responseMessageRole } from '@/components/assistant-ui/thread/response-group'
 import { threadMessageIndex } from '@/components/assistant-ui/thread/thread-message-index'
 
 import logoUrl from '../assets/source/sickkids-logo.svg'
 import { athenaStrings } from '../strings'
+
+import type { AthenaNoteKind } from './athena-system-message'
 
 export type AthenaAssistantMessageProps = ComponentProps<typeof AssistantMessage>
 
@@ -60,20 +64,71 @@ const AGENT_LABEL = (
   </div>
 )
 
+type ThreadRow = { content: unknown; id: string; role: string; status?: { type: string } }
+
+/** A settled reply to an inter-agent delivery: upstream collapses it under "Replied to …" (a note, not a block). */
+const isCollapsedAgentReply = (messages: readonly ThreadRow[], row: ThreadRow) =>
+  row.status?.type !== 'running' && interAgentReplySender(messages, row.id) !== null
+
+/**
+ * Does message `id` lead its response group, i.e. carry the label? The group is the run of agent and background rows
+ * before it (the grouping rule of ResponseMessages); the label rides its first agent block that speaks. Background
+ * rows and collapsed inter-agent replies are notes, so they neither carry the label nor take it from the block after.
+ */
+function leadsResponse(messages: readonly ThreadRow[], id: string): boolean {
+  for (let j = threadMessageIndex(messages, id) - 1; j >= 0; j--) {
+    const row = messages[j]!
+    const role = responseMessageRole(row)
+
+    if (!RESPONSE_ROLES.has(role)) {
+      return true
+    }
+
+    if (role === 'assistant' && !isCollapsedAgentReply(messages, row)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const AGENT_REPLY_NOTE: AthenaNoteKind = 'agent-reply'
+const BLOCK_CLASS = 'flex w-full min-w-0 max-w-full flex-col self-start'
+
 /** The thread's `AssistantMessage` entry while the Athena layout is active; same props as upstream's. */
 export const AthenaAssistantMessage: FC<AthenaAssistantMessageProps> = props => {
-  // The label rides the first message of a response group: the one whose previous row is not part of the same
-  // group (the grouping rule of ResponseMessages). A boolean, so stream flushes bail out here.
-  const leadsResponse = useAuiState(s => {
-    const messages = s.thread.messages
-    const previous = messages[threadMessageIndex(messages, s.message.id) - 1]
+  // Booleans, so stream flushes bail out here.
+  const leads = useAuiState(s => leadsResponse(s.thread.messages, s.message.id))
+  // Upstream's rule for a reply to an inter-agent delivery (it collapses once settled).
+  const agentReply = useAuiState(s => interAgentReplySender(s.thread.messages, s.message.id) !== null)
 
-    return !previous || !RESPONSE_ROLES.has(responseMessageRole(previous))
-  })
+  return agentReply ? (
+    <AthenaAgentReply {...props} leads={leads} />
+  ) : (
+    <div className={BLOCK_CLASS} data-slot="athena_assistant-message">
+      {leads && AGENT_LABEL}
+      <AssistantMessage {...props} />
+    </div>
+  )
+}
+
+/**
+ * A reply to an inter-agent delivery. While it streams it is the agent speaking: a labelled block like any other.
+ * Once settled upstream collapses it under "Replied to …", an event in the transcript rather than speech, so it
+ * drops the label and reads as a note (`data-athena-note`). Like upstream's `InterAgentAssistantMessage`, this is the
+ * only place that subscribes to the running status, and only for this rare case; the root stays the wrapper's last
+ * child either way, so settling never remounts it.
+ */
+const AthenaAgentReply: FC<AthenaAssistantMessageProps & { leads: boolean }> = ({ leads, ...props }) => {
+  const collapsed = useAuiState(s => s.message.status?.type !== 'running')
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col self-start" data-slot="athena_assistant-message">
-      {leadsResponse && AGENT_LABEL}
+    <div
+      className={BLOCK_CLASS}
+      data-athena-note={collapsed ? AGENT_REPLY_NOTE : undefined}
+      data-slot="athena_assistant-message"
+    >
+      {leads && !collapsed && AGENT_LABEL}
       <AssistantMessage {...props} />
     </div>
   )

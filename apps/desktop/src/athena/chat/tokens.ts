@@ -10,13 +10,16 @@
  * | `chat-user-border` | accent 65% | accent 60% | ≥ 3 against the page |
  * | `chat-agent-label` | accent (`#005ba8`) | accent (`#00b3e2`) | ≥ 4.5 against the page |
  * | `chat-code-surface` / `-border` | foreground 4% / 12% | foreground 8% / 16% | foreground on it ≥ 4.5 |
+ * | `chat-note-text` | foreground 70% on background (the skin's `mutedForeground`) | same | ≥ 4.5 against the page |
+ * | `chat-note-rule` | foreground 50% | foreground 40% | ≥ 3 against the page |
  * | `chat-state-<s>` | one hue per state, both modes | same | chip edge ≥ 3 against the page |
  * | `chat-state-<s>-surface` | hue 12% on background | hue 20% | chip fill |
  * | `chat-state-<s>-text` | foreground 30% into the hue | same | ≥ 4.5 on the chip fill |
  *
  * The plan's starting point for the user border (accent 25% / 35%) gives about 1.5:1 / 2:1 against the page, so it
- * was raised to the least that passes. A state hue is the same in light and dark and clears 3:1 on both Athena pages
- * (4.5:1 on both is not possible for one colour, so chip text is per mode).
+ * was raised to the least that passes. The note rule (slice 06) is held to the same 3:1, at the least amount (in 5%
+ * steps) that passes. A state hue is the same in light and dark and clears 3:1 on both Athena pages (4.5:1 on both
+ * is not possible for one colour, so chip text is per mode).
  */
 import { contrastRatio, parseColor, toHex } from '@hermes/shared/color'
 
@@ -40,6 +43,8 @@ export type ChatTokenName =
   | 'chat-agent-label'
   | 'chat-code-border'
   | 'chat-code-surface'
+  | 'chat-note-rule'
+  | 'chat-note-text'
   | 'chat-user-border'
   | 'chat-user-surface'
   | StateTokenName
@@ -52,6 +57,8 @@ const AMOUNT = {
   userBorder: [0.65, 0.6],
   codeSurface: [0.04, 0.08],
   codeBorder: [0.12, 0.16],
+  noteText: [0.7, 0.7],
+  noteRule: [0.5, 0.4],
   stateSurface: [0.12, 0.2],
   stateText: [0.3, 0.3]
 } as const
@@ -91,6 +98,8 @@ export function chatTokens(
     'chat-agent-label': accent,
     'chat-code-surface': mix(foreground, background, at(AMOUNT.codeSurface)),
     'chat-code-border': mix(foreground, background, at(AMOUNT.codeBorder)),
+    'chat-note-text': mix(foreground, background, at(AMOUNT.noteText)),
+    'chat-note-rule': mix(foreground, background, at(AMOUNT.noteRule)),
     ...states
   })
 }
@@ -111,7 +120,9 @@ export function chatContrastChecks(tokens: ChatTokens, colors: Pick<DesktopTheme
     { name: 'text on chat-user-surface', ink: text, on: tokens['chat-user-surface'], min: 4.5 },
     { name: 'chat-user-border against the page', ink: tokens['chat-user-border'], on: page, min: 3 },
     { name: 'chat-agent-label against the page', ink: tokens['chat-agent-label'], on: page, min: 4.5 },
-    { name: 'code text on chat-code-surface', ink: text, on: tokens['chat-code-surface'], min: 4.5 }
+    { name: 'code text on chat-code-surface', ink: text, on: tokens['chat-code-surface'], min: 4.5 },
+    { name: 'chat-note-text against the page', ink: tokens['chat-note-text'], on: page, min: 4.5 },
+    { name: 'chat-note-rule against the page', ink: tokens['chat-note-rule'], on: page, min: 3 }
   ]
 
   for (const state of CHAT_STATES) {

@@ -17,6 +17,7 @@ import { athenaBrandActive } from '../brand-text'
 import { $featureFilter, isFeatureAllowed } from '../managed/features'
 
 import { AthenaAssistantMessage } from './athena-assistant-message'
+import { AthenaSystemMessage } from './athena-system-message'
 import { AthenaUserMessage } from './athena-user-message'
 import { chatTokens, chatTokenVars } from './tokens'
 
@@ -60,14 +61,13 @@ export function athenaMessageType<K extends keyof AthenaMessageTypes>(
 /**
  * The message components the thread hands its list. `upstream` is the thread's own memoized map; the result must
  * keep its identity for as long as `upstream` and `active` do (the values are component types: a new map remounts
- * every visible message). Today both sides return the map as given: entries that need the thread's callbacks
- * (`AssistantMessage`, `UserMessage`) are already picked inside it through `athenaMessageType`; later F15 slices swap callback-free
- * entries here when `active`.
+ * every visible message), which the thread's memo over (`active`, `upstream`) gives. Entries that need the thread's
+ * callbacks (`AssistantMessage`, `UserMessage`) are already picked inside it through `athenaMessageType`; the
+ * callback-free ones are swapped here when `active`: `SystemMessage` is the Athena note (slice 06). Inactive, the
+ * map is returned as given.
  */
-export function athenaMessageComponents<M>(active: boolean, upstream: M): M {
-  void active
-
-  return upstream
+export function athenaMessageComponents<M extends { SystemMessage?: unknown }>(active: boolean, upstream: M): M {
+  return active ? { ...upstream, SystemMessage: AthenaSystemMessage } : upstream
 }
 
 export type AthenaThreadRootProps = Readonly<{ [ATHENA_CHAT_ATTR]?: ''; style?: CSSProperties }>

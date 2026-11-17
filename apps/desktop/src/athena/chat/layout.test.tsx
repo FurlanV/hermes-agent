@@ -15,6 +15,7 @@ import { $clientConfig } from '../managed/client-config'
 import { installFeaturePolicy } from '../managed/feature-policy'
 
 import { AthenaAssistantMessage } from './athena-assistant-message'
+import { AthenaSystemMessage } from './athena-system-message'
 import { AthenaUserMessage } from './athena-user-message'
 import type * as layout from './layout'
 import { ATHENA_CHAT_ATTR, athenaMessageComponents, athenaMessageType, useAthenaChatLayout } from './layout'
@@ -185,10 +186,11 @@ describe('athenaMessageType', () => {
 })
 
 describe('athenaMessageComponents', () => {
-  test('returns the upstream map itself on both sides (for now)', () => {
-    const upstream = { UserMessage: () => null }
+  test('swaps in the Athena note for SystemMessage while active, keeping the other entries; inactive it is the map itself', () => {
+    const UserMessage = () => null
+    const upstream = { SystemMessage: () => null, UserMessage }
 
-    expect(athenaMessageComponents(true, upstream)).toBe(upstream)
+    expect(athenaMessageComponents(true, upstream)).toEqual({ SystemMessage: AthenaSystemMessage, UserMessage })
     expect(athenaMessageComponents(false, upstream)).toBe(upstream)
   })
 })

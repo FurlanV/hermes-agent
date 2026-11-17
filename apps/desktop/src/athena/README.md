@@ -1141,8 +1141,9 @@ is upstream's.
   Athena chat CSS is scoped under, and the colour tokens.
 - The colour tokens (`chat/tokens.ts`): `chatTokens(colors, dark)` derives
   `--chat-user-surface`, `--chat-user-border`, `--chat-agent-label`,
-  `--chat-code-surface`, `--chat-code-border` and, per state (running, done,
-  error), `--chat-state-<s>`, `-surface` and `-text` from the painted skin's
+  `--chat-code-surface`, `--chat-code-border`, `--chat-note-text`,
+  `--chat-note-rule` and, per state (running, done, error),
+  `--chat-state-<s>`, `-surface` and `-text` from the painted skin's
   background, foreground and accent. `branding.test.ts` checks every pair at
   WCAG AA for the Athena skin (`chatContrastFailures`); other skins get the
   same derivation, untested.
@@ -1153,7 +1154,7 @@ is upstream's.
   bubble's action corner as upstream. It composes upstream's pieces from
   `thread/user-message.tsx` (sticky container, bubble base class, clamp, touch
   bubble, Stop / Restore cluster, reactions, checkpoints) and opens upstream's
-  shared edit composer. Delivery and process notes keep upstream's look. The
+  shared edit composer. Delivery and process notes are notes (below). The
   thread picks the type inside its own `UserMessage` closure with
   `athenaMessageType(athenaChat, 'UserMessage', UserMessage)`, so callbacks
   still go through `callbacksRef`.
@@ -1170,11 +1171,25 @@ is upstream's.
   has no per-message model. Turn spacing in the layout: `--conversation-turn-gap`
   is 8px, each list row ends on 24px, agent blocks of a turn are 8px apart; the
   HUD keeps its own rhythm.
+- Notes (`chat/athena-system-message.tsx`, styles in `chat/chat.css`):
+  everything that is neither the user nor the agent speaking is upstream's
+  element inside an Athena note container (`data-slot="athena_note"`,
+  `data-athena-note="<kind>"`): centred between two hairline rules
+  (`--chat-note-rule`, 3:1) in `--chat-note-text` (the skin's muted
+  foreground, 4.5:1), never a bubble, no "You" or "Athena" label. System
+  messages (`AthenaSystemMessage`, the map's `SystemMessage` entry through
+  `athenaMessageComponents`: slash output, steer and review notes, background
+  results, refused content), inter-agent deliveries and process notifications
+  (`AthenaUserMessage`), and a settled inter-agent reply ("Replied to …",
+  `AthenaAssistantMessage`, which reads upstream's rule through
+  `interAgentReplySender`; while it streams it is a labelled agent block).
+  Upstream keeps the parsing, the disclosures and the links. The agent label
+  rides the first agent block of a group that speaks, so a note never takes it.
 - Upstream behaviour tests run unchanged against the Athena components:
   `chat/upstream-<name>.test.tsx` imports upstream's `thread/<name>.test.tsx`
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which
-  also fails if an upstream user bubble or agent message mounts, or no Athena
-  one of the kind the file is about does.
+  also fails if an upstream user bubble, agent message or note mounts, or no
+  Athena one of the kind the file is about does.
 
 ### Upstream files touched (F15)
 
@@ -1184,5 +1199,6 @@ Every row is reviewed by a person before merge (hermes change policy).
 
 | File | Change |
 |---|---|
-| `src/components/assistant-ui/thread/index.tsx` | Choke point: the message-component map goes through `athenaMessageComponents` (`src/athena/chat/layout.ts`) with the layout switch (`useAthenaChatLayout`: Athena variant and row `F15` on) as its one extra memo dep, and the `data-slot="thread"` root spreads `useAthenaThreadRootProps` (the `data-athena-chat` marker while active). Both sides still return the upstream components (F15 slice 02). The `UserMessage` closure renders the type `athenaMessageType(athenaChat, 'UserMessage', UserMessage)` picks (`AthenaUserMessage` while active), listed as a memo dep, so its callbacks still go through `callbacksRef` and the map changes only when the layout flips; the switch's two lines moved above that memo (F15 slice 04). The `AssistantMessage` closure does the same with `athenaMessageType(athenaChat, 'AssistantMessage', AssistantMessage)` (`AthenaAssistantMessage` while active), also a memo dep (F15 slice 05) |
+| `src/components/assistant-ui/thread/assistant-message.tsx` | Behaviour-preserving move: the inter-agent reply detection in `AssistantMessage`'s selector moved unchanged into an exported function `interAgentReplySender(messages, messageId)`, which the selector now calls, so the Athena agent message reads the same rule (F15 slice 06) |
+| `src/components/assistant-ui/thread/index.tsx` | Choke point: the message-component map goes through `athenaMessageComponents` (`src/athena/chat/layout.ts`) with the layout switch (`useAthenaChatLayout`: Athena variant and row `F15` on) as its one extra memo dep, and the `data-slot="thread"` root spreads `useAthenaThreadRootProps` (the `data-athena-chat` marker while active). Both sides still return the upstream components (F15 slice 02). The `UserMessage` closure renders the type `athenaMessageType(athenaChat, 'UserMessage', UserMessage)` picks (`AthenaUserMessage` while active), listed as a memo dep, so its callbacks still go through `callbacksRef` and the map changes only when the layout flips; the switch's two lines moved above that memo (F15 slice 04). The `AssistantMessage` closure does the same with `athenaMessageType(athenaChat, 'AssistantMessage', AssistantMessage)` (`AthenaAssistantMessage` while active), also a memo dep (F15 slice 05). No edit for slice 06: `athenaMessageComponents` now swaps the callback-free `SystemMessage` entry for `AthenaSystemMessage` while active, inside the existing memo |
 | `src/components/assistant-ui/thread/user-message.tsx` | Export-only: `isChipOnlyTurn`, `UserBubbleActions`, `TouchUserBubble`, `useUserBubbleClamp`, for the Athena user message (F15 slice 04) |

@@ -143,33 +143,7 @@ export const AssistantMessage: FC<AssistantMessageProps> = props => {
   // the teammate's answer and the next assistant message is the report to
   // the human (#114629); folding it hid the substance of the turn behind a
   // "Replied to" row nothing was ever sent through.
-  const interAgentSender = useAuiState(s => {
-    const messages = s.thread.messages
-
-    // Shared id->index map: a per-row scan for its own position was
-    // mounted-rows x transcript-length on every streamed chunk (#126486).
-    for (let j = threadMessageIndex(messages, s.message.id) - 1; j >= 0; j--) {
-      const prev = messages[j] as { content?: unknown; role?: string }
-
-      if (prev.role === 'assistant') {
-        return null
-      }
-
-      if (prev.role === 'user') {
-        const match = AGENT_MESSAGE_RE.exec(messageContentText(prev.content as never).trim())
-
-        if (!match) {
-          return null
-        }
-
-        const sender = (match[1] || match[3] || 'agent').trim()
-
-        return dispatchedTo(messages.slice(0, j), [match[1], match[2], match[3]]) ? null : sender
-      }
-    }
-
-    return null
-  })
+  const interAgentSender = useAuiState(s => interAgentReplySender(s.thread.messages, s.message.id))
 
   // The collapse gate below needs the LIVE running status, but only an
   // inter-agent reply can ever be collapsed. Dispatching on that first keeps
@@ -180,6 +154,39 @@ export const AssistantMessage: FC<AssistantMessageProps> = props => {
   ) : (
     <AssistantMessageBody {...props} />
   )
+}
+
+/** The sender of the inter-agent delivery message `messageId` replies to, or
+ *  null when it is not such a reply (the detection rule above). Athena (F15):
+ *  moved out of AssistantMessage's selector unchanged and exported, so the
+ *  Athena layout reads the same rule (src/athena/chat). */
+export function interAgentReplySender(
+  messages: readonly { content?: unknown; id: string; role: string }[],
+  messageId: string
+): null | string {
+  // Shared id->index map: a per-row scan for its own position was
+  // mounted-rows x transcript-length on every streamed chunk (#126486).
+  for (let j = threadMessageIndex(messages, messageId) - 1; j >= 0; j--) {
+    const prev = messages[j] as { content?: unknown; role?: string }
+
+    if (prev.role === 'assistant') {
+      return null
+    }
+
+    if (prev.role === 'user') {
+      const match = AGENT_MESSAGE_RE.exec(messageContentText(prev.content as never).trim())
+
+      if (!match) {
+        return null
+      }
+
+      const sender = (match[1] || match[3] || 'agent').trim()
+
+      return dispatchedTo(messages.slice(0, j), [match[1], match[2], match[3]]) ? null : sender
+    }
+  }
+
+  return null
 }
 
 /** The compact stand-in a settled inter-agent reply collapses to (Grok-bots
