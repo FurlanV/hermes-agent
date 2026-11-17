@@ -3,6 +3,8 @@ import path from 'node:path'
 
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from 'electron'
 
+import { brandText } from './athena/brand-text'
+
 export interface MinimizeToTrayStatus {
   enabled: boolean
   available: boolean
@@ -183,13 +185,13 @@ export function createMinimizeToTray(options: Options) {
             height: process.platform === 'darwin' ? 18 : 24
           })
         )
-        tray.setToolTip('Hermes')
+        tray.setToolTip(brandText('Hermes'))
         tray.setContextMenu(
           Menu.buildFromTemplate([
-            { label: 'Show Hermes', click: restore },
+            { label: brandText('Show Hermes'), click: restore },
             { type: 'separator' },
             // Do not bypass the ordinary active-work confirmation or teardown.
-            { label: 'Quit Hermes', click: () => app.quit() }
+            { label: brandText('Quit Hermes'), click: () => app.quit() }
           ])
         )
 

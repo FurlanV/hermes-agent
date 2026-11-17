@@ -24,6 +24,8 @@ import {
 } from '@hermes/shared/i18n'
 import { atom } from 'nanostores'
 
+import { athenaBrandActive, brandCatalog } from '@/athena/brand-text'
+
 import { isBundledLocale, TRANSLATIONS } from './catalog'
 import type { Locale, Translations } from './types'
 
@@ -59,7 +61,7 @@ interface Entry extends RegisteredLocaleMeta {
 }
 
 const entries = new Map<Locale, Entry[]>()
-const resolved = new Map<Locale, { version: number; value: Translations }>()
+const resolved = new Map<Locale, { branded: boolean; version: number; value: Translations }>()
 
 /** Bumps whenever a language is registered or dropped. Translators key on it. */
 export const $appLocaleVersion = atom(0)
@@ -227,8 +229,9 @@ export function registeredLocaleMeta(locale: Locale): RegisteredLocaleMeta[] {
 export function resolveTranslations(locale: Locale): Translations {
   const version = $appLocaleVersion.get()
   const cached = resolved.get(locale)
+  const branded = athenaBrandActive()
 
-  if (cached && cached.version === version) {
+  if (cached && cached.version === version && cached.branded === branded) {
     return cached.value
   }
 
@@ -243,7 +246,10 @@ export function resolveTranslations(locale: Locale): Translations {
     }
   }
 
-  resolved.set(locale, { version, value })
+  // Athena (F14 slice 03): text names Athena in the Athena build; a stock build gets the catalog unchanged.
+  value = brandCatalog(value, locale)
+
+  resolved.set(locale, { branded, version, value })
 
   return value
 }

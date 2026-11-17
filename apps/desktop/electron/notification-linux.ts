@@ -2,6 +2,8 @@ import { EventEmitter } from 'node:events'
 
 import { createClient, type Message, Variant } from 'dbus-native'
 
+import { brandText } from './athena/brand-text'
+
 const SERVICE = 'org.freedesktop.Notifications'
 const PATH = '/org/freedesktop/Notifications'
 const DBUS = 'org.freedesktop.DBus'
@@ -250,7 +252,7 @@ export function createLinuxNotifications() {
               member: 'Notify',
               signature: 'susssasa{sv}i',
               body: [
-                'Hermes',
+                brandText('Hermes'),
                 0,
                 options.icon || '',
                 options.title,

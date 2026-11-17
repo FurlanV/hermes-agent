@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { brandText } from '@/athena/brand-text'
 import { PetHeartField, playVibeHearts } from '@/components/chat/vibe-hearts'
 import { PetBubble } from '@/components/pet/pet-bubble'
 import { PetSprite } from '@/components/pet/pet-sprite'
@@ -449,7 +450,7 @@ export function PetOverlayApp() {
               stopPropagation keeps a click from starting a window drag. */}
           {unread && (
             <button
-              aria-label="Open in Hermes"
+              aria-label={brandText('Open in Hermes')}
               onClick={openApp}
               onPointerDown={e => e.stopPropagation()}
               onPointerUp={e => e.stopPropagation()}

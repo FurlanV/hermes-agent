@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef } from 'react'
 
+import { brandText } from '@/athena/brand-text'
 import { isSubmitEnter } from '@/lib/ime'
 import {
   initialQuickComposerState,
@@ -83,7 +84,7 @@ export function QuickEntryApp() {
 
     const offLateResult = api?.onLateResult(payload => {
       dispatch({
-        message: payload?.result?.message ?? 'Hermes could not deliver the prompt.',
+        message: payload?.result?.message ?? brandText('Hermes could not deliver the prompt.'),
         ok: payload?.result?.ok === true,
         type: 'late-result'
       })
@@ -162,7 +163,9 @@ export function QuickEntryApp() {
                 dispatch({ type: 'dismiss' })
               }
             }}
-            placeholder={state.connected ? 'Ask Hermes…' : 'Not connected — open Hermes to reconnect'}
+            placeholder={
+              state.connected ? brandText('Ask Hermes…') : brandText('Not connected — open Hermes to reconnect')
+            }
             ref={inputRef}
             spellCheck={false}
             style={{

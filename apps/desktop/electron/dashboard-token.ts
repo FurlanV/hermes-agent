@@ -7,6 +7,8 @@
  * probes still pass while /api/ws rejects the renderer's token.
  */
 
+import { brandText } from './athena/brand-text'
+
 const DEFAULT_TOKEN_FETCH_TIMEOUT_MS = 3_000
 
 async function fetchPublicText(url, options: any = {}) {
@@ -85,7 +87,11 @@ function isForeignBackendToken({ servedToken, spawnToken, childAlive }) {
  * failing loudly on a foreign backend. `childAlive` is a thunk so liveness is
  * sampled after the fetch, not before.
  */
-async function adoptServedDashboardToken(baseUrl, spawnToken, { childAlive, label = 'Hermes backend', ...options }) {
+async function adoptServedDashboardToken(
+  baseUrl,
+  spawnToken,
+  { childAlive, label = brandText('Hermes backend'), ...options }
+) {
   const servedToken = await resolveServedDashboardToken(baseUrl, spawnToken, options).catch(error => {
     options.rememberLog?.(`[boot] could not read served dashboard token (${label}): ${error.message}`)
 

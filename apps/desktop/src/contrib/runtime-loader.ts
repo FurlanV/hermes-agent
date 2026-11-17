@@ -37,6 +37,7 @@
 
 import { atom } from 'nanostores'
 
+import { brandText } from '@/athena/brand-text'
 import { desktopPluginVerdict, onDesktopPluginModeChanged } from '@/athena/managed/desktop-plugin-gate'
 import { isReadFileErrorResult } from '@/lib/desktop-fs'
 import { installPluginSdk, sdkImportMap } from '@/sdk/runtime'
@@ -710,7 +711,7 @@ async function readPluginSourceText(file: string): Promise<string> {
 
   if (result.truncated) {
     throw new PluginSourceOversizeError(
-      "plugin.js exceeds this shell's 512 KiB read limit — update Hermes Desktop to load larger plugins"
+      brandText("plugin.js exceeds this shell's 512 KiB read limit — update Hermes Desktop to load larger plugins")
     )
   }
 

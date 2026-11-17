@@ -1,6 +1,7 @@
 import { useStore } from '@nanostores/react'
 import { type ReactElement, useEffect } from 'react'
 
+import { AthenaAboutCredit } from '@/athena/about-credit'
 import { FeatureGate } from '@/athena/managed/feature-gate'
 import { AthenaManagedLine } from '@/athena/managed/managed-line'
 import { UpdateStatusCard, VersionHero } from '@/components/update-status'
@@ -60,6 +61,7 @@ function AppUpdatesSettings({ includeUninstall }: AppUpdatesSettingsProps): Reac
   return (
     <SettingsContent>
       <VersionHero version={version} />
+      <AthenaAboutCredit />
       <AthenaManagedLine />
       <div className="mx-auto mt-4 w-full max-w-2xl">
         {!cloudOwned.client && (

@@ -22,6 +22,8 @@
  * never itself fail on a torn install.
  */
 
+import { brandText } from './athena/brand-text'
+
 export interface RendererLoadErrorDetails {
   /** Chromium error code, e.g. -6 (ERR_FILE_NOT_FOUND) or its name. */
   errorCode?: number | string | undefined
@@ -104,7 +106,7 @@ export function buildRendererLoadErrorPage(details: RendererLoadErrorDetails = {
   const code =
     details.errorCode === undefined || details.errorCode === null ? '' : ` (${escapeHtml(details.errorCode)})`
 
-  const title = escapeHtml(details.title || 'Hermes couldn\u2019t start the desktop UI')
+  const title = escapeHtml(details.title || brandText('Hermes couldn\u2019t start the desktop UI'))
   const description = escapeHtml(details.errorDescription || 'The desktop renderer failed to load.')
   const url = details.url ? `<p><code>${escapeHtml(details.url)}</code></p>` : ''
   const repair = details.repairHint ? `<p>Repair with: <code>hermes desktop --force-build</code></p>` : ''

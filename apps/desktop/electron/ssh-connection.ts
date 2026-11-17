@@ -36,6 +36,7 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 
+import { brandText } from './athena/brand-text'
 import { platformDefaultHermesHome } from './data-paths'
 import { type ControlMasterHolders, sharedControlMasterHolders } from './ssh-control-master-holders'
 
@@ -479,7 +480,7 @@ function sshErrorMessage(kind, conn, stderr?) {
 
       return (
         `Tailscale SSH requires an interactive browser check for ${host}. ` +
-        `Hermes Desktop runs SSH non-interactively. In Terminal, run ` +
+        brandText(`Hermes Desktop runs SSH non-interactively. In Terminal, run `) +
         `\`ssh${portArg} ${host} true\`, complete the browser check, then retry. ` +
         `If checks recur, use a key-authenticated OpenSSH route or adjust the tailnet SSH check policy.`
       )

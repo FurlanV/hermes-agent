@@ -1,5 +1,6 @@
 import { atom } from 'nanostores'
 
+import { brandText } from '@/athena/brand-text'
 import { allowedNotificationAction, entryAction, routeAction } from '@/athena/managed/entry-points'
 import { translateNow } from '@/i18n'
 import { isOutOfSyncRpcParams } from '@/lib/gateway-rpc'
@@ -333,9 +334,10 @@ function showNotification(input: NotificationInput, errorCategory: ErrorToastCat
     icon: input.icon,
     accentColor: input.accentColor,
     meta: input.meta,
-    title: input.title,
-    message: input.message,
-    detail: input.detail,
+    // Athena (F14 slice 05): toast text names Athena in the Athena build, including error messages.
+    title: input.title === undefined ? undefined : brandText(input.title),
+    message: brandText(input.message),
+    detail: input.detail === undefined ? undefined : brandText(input.detail),
     // Athena (F02): a button into a refused feature is left off the toast.
     action: allowedNotificationAction(input.action),
     secondaryAction: allowedNotificationAction(input.secondaryAction),

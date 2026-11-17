@@ -16,6 +16,8 @@
 
 // Default matches the muscle memory of the apps this ports from (Claude
 // Desktop's quick entry / ChatGPT's Quick Chat sit on a Cmd+Shift chord).
+import { brandText } from './athena/brand-text'
+
 const DEFAULT_QUICK_ENTRY_SHORTCUT = 'CommandOrControl+Shift+Space'
 
 // Compact capture surface: wide enough for a sentence, short enough to read as
@@ -89,7 +91,7 @@ export function createQuickEntrySubmitRelay(options: {
           reconcilable.add(correlationId)
           resolve({
             code: 'timeout',
-            message: 'Hermes has not confirmed the prompt yet — it may still be delivered.',
+            message: brandText('Hermes has not confirmed the prompt yet — it may still be delivered.'),
             ok: false,
             retryable: false
           })

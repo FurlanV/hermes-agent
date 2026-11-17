@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import zlib from 'node:zlib'
 
+import { brandText } from './athena/brand-text'
 import { lockServesConnect, resolveReadyTimeoutMs } from './remote-lifecycle'
 import { WINDOWS_CHECKOUT_LOCK_PS, WINDOWS_MARKER_JUDGE_PS } from './remote-update-marker-programs'
 import { assertBootstrapNotSuperseded, redactSecrets, SSH_ERROR } from './ssh-connection'
@@ -331,10 +332,10 @@ async function assertWindowsRemoteInstallUpdateClear(ssh, hermesHome, python = '
 
   const error: any = new Error(
     live
-      ? `Remote Hermes update process ${live[1]} is still running; SSH startup is paused.`
+      ? brandText(`Remote Hermes update process ${live[1]} is still running; SSH startup is paused.`)
       : observation === 'HELD'
-        ? 'A process the remote Hermes update started still holds the install; SSH startup is paused.'
-        : 'The remote Hermes update marker is unreadable or malformed; refusing SSH startup.'
+        ? brandText('A process the remote Hermes update started still holds the install; SSH startup is paused.')
+        : brandText('The remote Hermes update marker is unreadable or malformed; refusing SSH startup.')
   )
 
   error.kind = 'update-in-progress'

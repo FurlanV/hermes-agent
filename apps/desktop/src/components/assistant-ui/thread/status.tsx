@@ -3,6 +3,7 @@ import { useStore } from '@nanostores/react'
 import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
 
 import { useSessionView } from '@/app/chat/session-view'
+import { brandText } from '@/athena/brand-text'
 import { activitySignature, toolNarratesWait, TURN_QUIET_S } from '@/components/assistant-ui/thread/turn-activity'
 import { toolPresentVerb } from '@/components/assistant-ui/tool/run-summary'
 import { useElapsedSeconds } from '@/components/chat/activity-timer'
@@ -330,7 +331,7 @@ const TurnActivityRow: FC<TurnActivityRowProps> = ({ active, elapsed, hint, loca
       className={cn(!active && 'sr-only')}
       data-slot="aui_turn-activity"
       data-state={active ? 'active' : 'idle'}
-      label={active ? hint || 'Hermes is working' : ''}
+      label={active ? hint || brandText('Hermes is working') : ''}
     >
       {active && (
         <>

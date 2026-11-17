@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import * as path from 'node:path'
 
+import { brandText } from '../athena/brand-text'
 import { bindReleaseHolderConsent } from '../release-holder-consent'
 import {
   claimBridgeMarker,
@@ -256,7 +257,9 @@ export function createCheckoutStrategy(deps: CheckoutStrategyDeps): CheckoutStra
     }
 
     return refuse(
-      'The updater could not take the update lock, so nothing was changed. Hermes keeps running on the previous version — try the update again.',
+      brandText(
+        'The updater could not take the update lock, so nothing was changed. Hermes keeps running on the previous version — try the update again.'
+      ),
       'updater-spawn-failed'
     )
   }
@@ -284,7 +287,9 @@ export function createCheckoutStrategy(deps: CheckoutStrategyDeps): CheckoutStra
       }
 
       failure =
-        'The updater did not start, so nothing was changed. Hermes keeps running on the previous version — try the update again.\n\n' +
+        brandText(
+          'The updater did not start, so nothing was changed. Hermes keeps running on the previous version — try the update again.\n\n'
+        ) +
         `Details: the hand-off script never took the update lock within ${Math.round((deps.handoffClaimTimeoutMs ?? HANDOFF_CLAIM_TIMEOUT_MS) / 1000)} s.`
     }
 
@@ -523,8 +528,9 @@ export function createCheckoutStrategy(deps: CheckoutStrategyDeps): CheckoutStra
 
     deps.emitUpdateProgress({
       stage: 'restart',
-      message:
-        'Updating Hermes — this window will close and the updater will open. Don’t reopen Hermes yourself; it restarts automatically when the update finishes.',
+      message: brandText(
+        'Updating Hermes — this window will close and the updater will open. Don’t reopen Hermes yourself; it restarts automatically when the update finishes.'
+      ),
       percent: 100
     })
     deps.repairMacUpdaterHelper(updater)
@@ -763,8 +769,9 @@ export function createCheckoutStrategy(deps: CheckoutStrategyDeps): CheckoutStra
     deps.rememberLog(`[updates] launched posix hand-off: ${handoff.scriptPath} (${targetLabel}); quitting to hand off`)
     deps.emitUpdateProgress({
       stage: 'restart',
-      message:
-        'Updating Hermes — this window will close. Don’t reopen Hermes yourself; it restarts automatically when the update finishes.',
+      message: brandText(
+        'Updating Hermes — this window will close. Don’t reopen Hermes yourself; it restarts automatically when the update finishes.'
+      ),
       percent: 100
     })
 

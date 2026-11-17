@@ -47,6 +47,8 @@
  * @param {boolean} isWindows
  * @returns {string[]} extensions to try, in order, always ending in ''.
  */
+import { brandText } from './athena/brand-text'
+
 export function buildPathExtCandidates(pathext: string | undefined, isWindows: boolean): string[] {
   if (!isWindows) {
     return ['']
@@ -164,14 +166,16 @@ export async function resolveVenvHermesCommand(
   // cwd at the checkout root, no PYTHONPATH.
   if (!(await canImportHermesCli(python, { cwd: directoryExists(root) ? root : undefined }))) {
     rememberLog?.(
-      `Ignoring venv Hermes at ${python}: runtime import probe failed (broken/partial venv); falling through to bootstrap.`
+      brandText(
+        `Ignoring venv Hermes at ${python}: runtime import probe failed (broken/partial venv); falling through to bootstrap.`
+      )
     )
 
     return null
   }
 
   return {
-    label: `existing Hermes Python at ${python}`,
+    label: brandText(`existing Hermes Python at ${python}`),
     command: python,
     args: ['-m', 'hermes_cli.main', ...backendArgs],
     bootstrap: false,

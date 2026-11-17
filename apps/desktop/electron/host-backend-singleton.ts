@@ -20,6 +20,8 @@
 // Pure and dependency-injected so the decision tests without Electron.
 
 /** Everything the collapse decision needs about one profile's routing. */
+import { brandText } from './athena/brand-text'
+
 export interface HostBackendCollapseOptions {
   /** `HERMES_DESKTOP_ISOLATED_BACKEND=1`: this app wants its own backend. */
   isolated?: boolean
@@ -55,8 +57,9 @@ export class SecondLocalBackendError extends Error {
 
   constructor(poolKey: string) {
     super(
-      `Refusing to start a second local Hermes backend for "${poolKey}": one backend serves every profile on this host. ` +
-        'Set HERMES_DESKTOP_ISOLATED_BACKEND=1 for a private backend.'
+      brandText(
+        `Refusing to start a second local Hermes backend for "${poolKey}": one backend serves every profile on this host. `
+      ) + 'Set HERMES_DESKTOP_ISOLATED_BACKEND=1 for a private backend.'
     )
     this.name = 'SecondLocalBackendError'
     this.poolKey = poolKey

@@ -1051,3 +1051,76 @@ to new chats within a minute".
     Check again can say "Still not connected" for that long after new chats already have the tools.
   - The page learns the state only from a `reload.mcp` it sent. A package that failed at app start shows nothing until
     it is switched or checked.
+
+## Desktop text says Athena (F14)
+
+F14 makes the text a user reads in the Athena build name Athena, not Hermes, and
+credits Hermes Agent in About. It is inert in a stock build.
+
+### Upstream files touched (F14)
+
+Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
+`managed/diff-scope.test.ts` reads this table as well as the F02 one.
+
+| File | Change |
+|---|---|
+| `src/i18n/registry.ts` | `resolveTranslations` passes the merged catalog through `brandCatalog` (`src/athena/brand-text.ts`) and caches whether it did; a stock build gets the catalog unchanged (F14 slice 03) |
+| `src/i18n/plugin-i18n.ts` | `registerPluginLocales` passes each plugin bundle through `brandCatalog` before merging it; a stock build stores it unchanged (F14 slice 04) |
+| `src/app/settings/about-settings.tsx` | Mounts `AthenaAboutCredit` (`src/athena/about-credit.tsx`) under the version hero: the fork sentence, the upstream link and the MIT licence; Athena build only (F14 slice 09) |
+| `src/app/capabilities/scope-selector.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/chat/composer/hooks/use-voice-live-conversation.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/messaging/index.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/pet-overlay/pet-overlay-app.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/quick-entry/quick-entry-app.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/session/hooks/use-message-stream/gateway-event/server-requests.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/settings/computer-use-panel.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/settings/constants.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/settings/model-settings.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/components/assistant-ui/thread/message-reactions.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/components/assistant-ui/thread/status.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/components/chat/intro.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/contrib/runtime-loader.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/lib/boot-failure.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/lib/commit-changelog.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/lib/error-surface.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/plugins/kanban/transfer.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/sdk/index.ts` | Exports `brandText` for plugins (the plugin fence allows only the SDK); its bot-chat notice is wrapped (F14 slice 05) |
+| `src/store/notifications.ts` | `showNotification` brands a toast's title, message and detail, so error messages reach the user as Athena (F14 slice 05) |
+| `src/store/onboarding.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/store/quick-entry.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `electron/api-transport.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/backend-health.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/bootstrap-failure-copy.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/connection-config.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/dashboard-token.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/desktop-remote-route.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/desktop-uninstall.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/hardening.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/host-backend-singleton.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/main.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/managed-ssh-update.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/mcp-oauth-callback-ipc.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/minimize-to-tray.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/native-auth-decisions.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/native-oauth-login.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/notification-ipc.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/notification-linux.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/primary-remote-startup.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/quick-entry.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/quit-guard.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/remote-lifecycle.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/remote-liveness.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/renderer-load-error-page.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/source-backend.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/ssh-connection.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/update-handoff-report.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/update-marker-gate.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/update-stop-remedy.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater-process.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/app-installer.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/checkout.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/mac.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/updater/store.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/window-below.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/windows-hermes-path.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/windows-remote-lifecycle.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |

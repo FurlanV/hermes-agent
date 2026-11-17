@@ -1,3 +1,4 @@
+import { brandText } from './athena/brand-text'
 import { isMissingHealthEndpointError } from './backend-health'
 
 export const REMOTE_LIVENESS_TIMEOUT_MS = 10_000
@@ -468,7 +469,9 @@ export async function revalidateRemoteConnection<TConnection extends RemoteConne
 
     if (!failure.shouldReset) {
       log(
-        `Cached remote Hermes backend failed liveness probe (${failure.failures}/${REMOTE_LIVENESS_FAILURE_LIMIT}); keeping connection for retry.`
+        brandText(
+          `Cached remote Hermes backend failed liveness probe (${failure.failures}/${REMOTE_LIVENESS_FAILURE_LIMIT}); keeping connection for retry.`
+        )
       )
 
       return { ok: true, rebuilt: false }

@@ -5,6 +5,8 @@
 // R01 slice 26: before all of that, a binary opened without its launcher hands the launch over and exits
 // (launcher-handoff-install.ts). It is this module's first import, so it runs before anything else in main.
 import './launcher-handoff-install'
+// F14 slice 06: the brand pass is on before main shows any text.
+import './brand-text-install'
 
 import { ipcMain } from 'electron'
 

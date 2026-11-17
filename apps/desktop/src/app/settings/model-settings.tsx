@@ -4,6 +4,7 @@ import { useStore } from '@nanostores/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 
+import { brandText } from '@/athena/brand-text'
 import { useFeatureEntry } from '@/athena/managed/features'
 import { AthenaLocalModelsSettings } from '@/athena/managed/local-models-settings'
 import { managedEffortValues, REASONING_UNAVAILABLE, useManagedReasoning } from '@/athena/managed/model-reasoning'
@@ -1189,7 +1190,9 @@ export function ModelSettings({ onMainModelChanged, scopeProfile, subpage }: Mod
             <p className="mt-2 text-xs text-muted-foreground">
               {selectedProviderRow?.auth_type === 'api_key'
                 ? `${selectedProviderRow?.name} needs an API key — set it up to choose a model.`
-                : `${selectedProviderRow?.name} signs in through your browser — Hermes runs the flow for you.`}
+                : brandText(
+                    `${selectedProviderRow?.name} signs in through your browser — Hermes runs the flow for you.`
+                  )}
             </p>
           )}
           {config && mainModel && (reasoningSupported || fastSupported || ultrafastSupported) && (

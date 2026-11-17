@@ -27,6 +27,7 @@ import { PRIMARY_SESSION_VIEW } from '@/app/chat/session-view'
 import { openSession, type OpenSessionIntent } from '@/app/open-session'
 import { syncWorkspaceRoute } from '@/app/routes'
 import type { ClientSessionState } from '@/app/types'
+import { brandText } from '@/athena/brand-text'
 import {
   $newSessionTabAction,
   $paneVisible,
@@ -1253,7 +1254,7 @@ export const host = {
       const openTab = $newSessionTabAction.get()
 
       if (!openTab) {
-        notify({ kind: 'error', message: 'Update Hermes Desktop to open another bot chat.' })
+        notify({ kind: 'error', message: brandText('Update Hermes Desktop to open another bot chat.') })
 
         return
       }
@@ -1679,6 +1680,9 @@ export {
 } from '@/app/shell/model-menu-row-decorations'
 export type { StatusbarItem } from '@/app/shell/statusbar-controls'
 export type { TitlebarTool } from '@/app/shell/titlebar-controls'
+/** Athena (F14 slice 05): `text` as the running build names the app. In the Athena build "Hermes" becomes
+ *  "Athena" under the naming rules; in a stock build the text is returned unchanged. */
+export { brandText } from '@/athena/brand-text'
 /** Canonical raw message renderer: applies Desktop message transforms (including
  * `MEDIA:` delivery directives) and the same rich Markdown/media components as
  * core chat. Prefer this over raw Streamdown for transcript-style messages. */

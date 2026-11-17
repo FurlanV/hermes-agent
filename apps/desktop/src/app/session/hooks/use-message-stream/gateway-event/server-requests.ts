@@ -14,6 +14,7 @@ import {
 } from '@/app/chat/right-rail/preview-typing-abort'
 import { readActiveTerminal } from '@/app/right-sidebar/terminal/buffer'
 import { pendingClarifyToolPayload } from '@/app/session/hooks/use-session-actions/restore-pending-clarify'
+import { brandText } from '@/athena/brand-text'
 import { translateNow } from '@/i18n'
 import { restorePendingClarifyToolCall } from '@/lib/chat-messages'
 import { hostHas } from '@/lib/host-capabilities'
@@ -740,7 +741,7 @@ const previewAct: Handler = ({ deps, isActiveSession, request, sessionId }) => {
  *  agent relays it instead of retrying a call that can never succeed. */
 const BROWSER_WINDOW_READ_REFUSAL = {
   error:
-    'read_window_below needs the Hermes desktop app: this session is in a browser tab, which cannot see the OS windows around it.',
+    brandText('read_window_below needs the Hermes desktop app: this session is in a browser tab, which cannot see the OS windows around it.'),
   platform: 'browser'
 }
 
