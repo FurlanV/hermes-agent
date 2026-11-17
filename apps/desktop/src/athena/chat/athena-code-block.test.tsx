@@ -139,7 +139,13 @@ describe('the Athena code block (layout on)', () => {
     // Monospace at 0.86em, no wrapping (the body scrolls sideways).
     const body = block.querySelector<HTMLElement>(BODY)!
 
-    expect(getComputedStyle(body).fontSize).toBe('0.86em')
+    // The type scale's code step (slice 08): 0.86em of the message text.
+    expect(getComputedStyle(body).fontSize).toBe('var(--athena-text-code)')
+    expect(
+      getComputedStyle(container.querySelector('[data-slot="aui_thread-content"]')!).getPropertyValue(
+        '--athena-text-code'
+      )
+    ).toBe('0.86em')
     expect(body.classList.contains('font-mono')).toBe(true)
 
     for (const el of block.querySelectorAll<HTMLElement>('pre, code')) {
@@ -259,7 +265,7 @@ describe('the Athena code block (layout on)', () => {
     expect(fenceEl.textContent).toBe('print("hi")\n')
     expect(getComputedStyle(fenceEl).whiteSpace).toBe('pre')
     expect(getComputedStyle(fenceEl).overflowX).toBe('auto')
-    expect(getComputedStyle(fenceEl).fontSize).toBe('0.86em')
+    expect(getComputedStyle(fenceEl).fontSize).toBe('var(--athena-text-code)')
   })
 
   test('a user fence with no language has no header', async () => {

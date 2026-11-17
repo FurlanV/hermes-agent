@@ -1208,6 +1208,19 @@ is upstream's.
   off, stock build) every fence renders exactly as upstream.
   `chat/upstream-code-shell-suite.tsx` runs upstream's markdown, highlighter
   and user-text test files unchanged with the shell provided.
+- Type scale (`chat/chat.css`, slice 08): the chat uses the theme font
+  (`--dt-font-sans`; under the Athena skin, branding.json `fontStack`). One
+  scale, declared on the thread content from upstream's final conversation
+  sizes (which already carry the chat text size setting, `--chat-text-scale`):
+  `--athena-text-small` (caption size: labels, table headers, the code
+  header), `-body` (user text, agent paragraphs, lists, quotes, tables),
+  `-h4` to `-h1` (body times 1, 1.075, 1.15, 1.25), and `-code` (0.86em of the
+  text around it: code blocks and inline code). It covers the agent's reply
+  markdown (`aui_assistant-message-content > .aui-md`); thinking and tool
+  scaffolding keep their own type. Tables keep upstream's sideways scroller
+  (`.aui-md-table`, `markdown-table.tsx`), with `--chat-code-border` rules and
+  the header row on `--chat-code-surface` in `--chat-code-label`. No upstream
+  file changed for this.
 - Upstream behaviour tests run unchanged against the Athena components:
   `chat/upstream-<name>.test.tsx` imports upstream's `thread/<name>.test.tsx`
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which

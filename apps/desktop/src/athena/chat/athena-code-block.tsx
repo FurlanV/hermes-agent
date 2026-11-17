@@ -32,7 +32,8 @@ import { type CodeBlockShellProps, copyableCodeText } from '@/components/chat/sh
 import { CopyButton } from '@/components/ui/copy-button'
 import { useI18n } from '@/i18n'
 
-const COPY_CLASS = 'h-6 gap-1 rounded-md px-1.5 text-[length:var(--conversation-caption-font-size)] leading-none'
+// The header's text size (chat.css, the type scale's small step) applies to the button too.
+const COPY_CLASS = 'h-6 gap-1 rounded-md px-1.5 leading-none'
 
 function CodeShell({ children, code, copy, language, streaming }: CodeBlockShellProps & { copy: boolean }) {
   const { t } = useI18n()
