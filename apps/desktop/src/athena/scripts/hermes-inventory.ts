@@ -29,6 +29,47 @@ export interface TranslationRow {
   why: string
 }
 
+/**
+ * Grammar the mechanical swap does not fix (F14 decision 4): an article or contraction that agrees with a
+ * masculine "Hermes" stays in front of "Athena".
+ */
+const GAPS: Array<{ locale: string; pattern: RegExp; what: string }> = [
+  { locale: 'de', pattern: /\b(der|den|dem|des) Hermes\b/i, what: 'masculine article (der, den, dem, des)' },
+  { locale: 'es', pattern: /\b(el|del|al) Hermes\b/i, what: 'masculine article or contraction (el, del, al)' },
+  { locale: 'fr', pattern: /\b(du|au) Hermes\b/i, what: 'masculine contraction (du, au)' }
+]
+
+/** Leaves of a message tree as [key, text], function messages by their placeholder output. */
+function leavesOf(tree: unknown, key = ''): Array<[string, string]> {
+  if (typeof tree === 'string') {
+    return [[key, tree]]
+  }
+
+  if (typeof tree === 'function') {
+    return [[key, sampleMessage(tree as (...args: unknown[]) => unknown)]]
+  }
+
+  if (tree && typeof tree === 'object') {
+    return Object.entries(tree).flatMap(([child, next]) => leavesOf(next, key ? `${key}.${child}` : child))
+  }
+
+  return []
+}
+
+/** Known gaps per language: app catalog keys, and plugin bundle lines as `file:line`. */
+export function grammarGaps(plugin: SourceRow[]): Array<{ keys: string[]; locale: string; what: string }> {
+  return GAPS.map(({ locale, pattern, what }) => ({
+    keys: [
+      ...leavesOf((TRANSLATIONS as Record<string, unknown>)[locale])
+        .filter(([, text]) => pattern.test(text))
+        .map(([key]) => key),
+      ...plugin.filter(row => pattern.test(row.text)).map(row => `${row.file}:${row.line}`)
+    ],
+    locale,
+    what
+  }))
+}
+
 /** Every leaf of every bundled catalog that mentions the bare word. */
 export function translationRows(): TranslationRow[] {
   const rows: TranslationRow[] = []
@@ -189,6 +230,18 @@ export function renderInventory(): string {
     onlyElsewhere.length
       ? onlyElsewhere.map(key => `- ${key}`).join('\n')
       : 'None: every key that says Hermes in another language says it in English too.',
+    '',
+    '## Known gaps (other languages)',
+    '',
+    'The other languages get the name swap only (F14 decision 4). Possessives (English, German) and French',
+    'elisions (de, que, le, la) are fixed; these forms are not, and read with a masculine article before',
+    '"Athena". They are listed, not fixed.',
+    '',
+    '| Language | Form | Messages | Examples |',
+    '|---|---|---|---|',
+    ...grammarGaps(plugin).map(
+      gap => `| ${gap.locale} | ${gap.what} | ${gap.keys.length} | ${cell(gap.keys.slice(0, 4).join(', '), 200)} |`
+    ),
     '',
     '## Renderer source',
     '',

@@ -15,6 +15,8 @@ import { useStore } from '@nanostores/react'
 import { atom } from 'nanostores'
 import { useCallback } from 'react'
 
+import { brandCatalog } from '@/athena/brand-text'
+
 import { useI18n } from './context'
 import { type AppLocaleRegistration, registerAppLocale } from './registry'
 import { getRuntimeI18nLocale, subscribeRuntimeI18nLocale, translateFrom } from './runtime'
@@ -91,7 +93,9 @@ export function registerPluginLocales(pluginId: string, bundles: PluginLocaleBun
     }
 
     const prev = byLocale.get(locale)
-    byLocale.set(locale, prev ? mergeMessages(prev, messages) : messages)
+    // Athena (F14 slice 04): a plugin's messages name Athena in the Athena build; unchanged in a stock build.
+    const branded = brandCatalog(messages, locale)
+    byLocale.set(locale, prev ? mergeMessages(prev, branded) : branded)
   }
 
   $version.set($version.get() + 1)

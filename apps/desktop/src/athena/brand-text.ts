@@ -12,7 +12,7 @@ import { athenaStrings } from './strings'
 
 let override: boolean | null = null
 
-/** True in the Athena build: the preload's client-config snapshot says `variant: 'athena'`. */
+/** True in the Athena build: the preload has a client-config snapshot whose variant is not `stock`. */
 export function athenaBrandActive(): boolean {
   if (override !== null) {
     return override
@@ -25,7 +25,9 @@ export function athenaBrandActive(): boolean {
   const snapshot = (window as { athenaDesktop?: { clientConfig?: { snapshot?: unknown } } }).athenaDesktop?.clientConfig
     ?.snapshot
 
-  return Boolean(snapshot && typeof snapshot === 'object' && (snapshot as { variant?: unknown }).variant === 'athena')
+  // Same reading as the managed client: a snapshot is the Athena build's unless it says `stock` (an older
+  // snapshot carries no variant). No snapshot at all (no bridge, tests) is a stock build.
+  return Boolean(snapshot && typeof snapshot === 'object' && (snapshot as { variant?: unknown }).variant !== 'stock')
 }
 
 /** Test seam: force the pass on or off; `null` reads the bridge again. */

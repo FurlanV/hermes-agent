@@ -402,6 +402,18 @@ also says Hermes; they follow the English action.
 - settings.localModels.upToDateDetail
 - updates.availableBodyRelease
 
+## Known gaps (other languages)
+
+The other languages get the name swap only (F14 decision 4). Possessives (English, German) and French
+elisions (de, que, le, la) are fixed; these forms are not, and read with a masculine article before
+"Athena". They are listed, not fixed.
+
+| Language | Form | Messages | Examples |
+|---|---|---|---|
+| de | masculine article (der, den, dem, des) | 22 | boot.errors.backgroundExited, boot.errors.backgroundExitedDuringStartup, boot.causes.portInUse, boot.causes.installMissing |
+| es | masculine article or contraction (el, del, al) | 1 | profiles.remoteOverride.description |
+| fr | masculine contraction (du, au) | 0 |  |
+
 ## Renderer source
 
 | File | Text | Kind | Action | Route | Status |

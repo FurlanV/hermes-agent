@@ -3,9 +3,12 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
 import { TRANSLATIONS } from '@/i18n/catalog'
-import { resetAppLocaleRegistry, resolveTranslations } from '@/i18n/registry'
+import { registerPluginLocales, translatePlugin } from '@/i18n/plugin-i18n'
+import { registerAppLocale, resetAppLocaleRegistry, resolveTranslations } from '@/i18n/registry'
+import { BOTS_LOCALES } from '@/plugins/hermes-bots/i18n'
+import { KANBAN_LOCALES } from '@/plugins/kanban/i18n'
 
-import { brandText, setAthenaBrandForTests } from './brand-text'
+import { brandCatalog, brandText, setAthenaBrandForTests } from './brand-text'
 import { classifyMentions, KEEP_KEYS, renameHermes, sampleMessage } from './hermes-names'
 
 type Tree = Record<string, unknown>
@@ -119,6 +122,62 @@ describe('English interface text in the Athena build', () => {
   })
 })
 
+describe('other languages, language packs and plugins in the Athena build (F14 slice 04)', () => {
+  const locales = Object.keys(TRANSLATIONS) as Array<keyof typeof TRANSLATIONS>
+
+  test.each(locales)('bundled language %s says Hermes only in kept and pending names', locale => {
+    setAthenaBrandForTests(true)
+
+    expect(residue(resolveTranslations(locale))).toEqual([])
+  })
+
+  test('a backend language pack is renamed too', () => {
+    setAthenaBrandForTests(true)
+    registerAppLocale('pl', { translations: { 'updates.appName': 'Hermes po polsku' } }, 'backend')
+
+    expect(resolveTranslations('pl').updates.appName).toBe('Athena po polsku')
+  })
+
+  test("a plugin's bundle is renamed, its message arguments are not", () => {
+    setAthenaBrandForTests(true)
+
+    const dispose = registerPluginLocales('f14-test', {
+      en: { greet: (name: string) => `Hermes greets ${name}`, hello: 'Hermes says hello' },
+      ja: { hello: 'Hermes がこんにちはと言います' }
+    })
+
+    try {
+      expect(translatePlugin('f14-test', 'en', 'hello', [])).toBe('Athena says hello')
+      expect(translatePlugin('f14-test', 'en', 'greet', ['Hermes Fan'])).toBe('Athena greets Hermes Fan')
+      expect(translatePlugin('f14-test', 'ja', 'hello', [])).toBe('Athena がこんにちはと言います')
+    } finally {
+      dispose()
+    }
+  })
+
+  test.each([
+    ['hermes-bots', BOTS_LOCALES],
+    ['kanban', KANBAN_LOCALES]
+  ] as const)('the bundled %s plugin says Hermes only in kept and pending names', (_id, bundles) => {
+    setAthenaBrandForTests(true)
+
+    for (const [locale, messages] of Object.entries(bundles)) {
+      expect({ locale, residue: residue(brandCatalog(messages, locale)) }).toEqual({ locale, residue: [] })
+    }
+  })
+
+  test('a stock build registers plugin bundles unchanged', () => {
+    setAthenaBrandForTests(false)
+    const dispose = registerPluginLocales('f14-stock', { en: { hello: 'Hermes says hello' } })
+
+    try {
+      expect(translatePlugin('f14-stock', 'en', 'hello', [])).toBe('Hermes says hello')
+    } finally {
+      dispose()
+    }
+  })
+})
+
 describe('stock build', () => {
   test('every catalog resolves exactly as before', () => {
     setAthenaBrandForTests(false)
@@ -132,5 +191,27 @@ describe('stock build', () => {
 
   test('with no Athena snapshot on the bridge the pass is off', () => {
     expect(resolveTranslations('en')).toBe(TRANSLATIONS.en)
+  })
+})
+
+describe('reading the variant from the bridge', () => {
+  const withSnapshot = (snapshot: unknown, run: () => void) => {
+    const bridge = window as { athenaDesktop?: unknown }
+    const before = bridge.athenaDesktop
+    bridge.athenaDesktop = { clientConfig: { snapshot } }
+
+    try {
+      run()
+    } finally {
+      bridge.athenaDesktop = before
+    }
+  }
+
+  test.each([
+    ['an Athena snapshot', { variant: 'athena' }, 'Athena is working'],
+    ['a snapshot with no variant (older builds)', {}, 'Athena is working'],
+    ['a stock snapshot', { variant: 'stock' }, 'Hermes is working']
+  ])('%s', (_label, snapshot, expected) => {
+    withSnapshot(snapshot, () => expect(brandText('Hermes is working')).toBe(expected))
   })
 })
