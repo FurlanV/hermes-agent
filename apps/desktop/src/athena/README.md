@@ -1066,3 +1066,4 @@ Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
 |---|---|
 | `src/i18n/registry.ts` | `resolveTranslations` passes the merged catalog through `brandCatalog` (`src/athena/brand-text.ts`) and caches whether it did; a stock build gets the catalog unchanged (F14 slice 03) |
 | `src/i18n/plugin-i18n.ts` | `registerPluginLocales` passes each plugin bundle through `brandCatalog` before merging it; a stock build stores it unchanged (F14 slice 04) |
+| `src/app/settings/about-settings.tsx` | Mounts `AthenaAboutCredit` (`src/athena/about-credit.tsx`) under the version hero: the fork sentence, the upstream link and the MIT licence; Athena build only (F14 slice 09) |
