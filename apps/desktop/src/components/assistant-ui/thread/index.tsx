@@ -1,7 +1,12 @@
 import { useStore } from '@nanostores/react'
 import { createContext, memo, useCallback, useContext, useMemo, useRef, useState } from 'react'
 
-import { athenaMessageComponents, useAthenaChatLayout, useAthenaThreadRootProps } from '@/athena/chat/layout'
+import {
+  athenaMessageComponents,
+  athenaMessageType,
+  useAthenaChatLayout,
+  useAthenaThreadRootProps
+} from '@/athena/chat/layout'
 import { ChatEmptySlot } from '@/components/assistant-ui/chat-empty-slot'
 import { AssistantMessage } from '@/components/assistant-ui/thread/assistant-message'
 import { ThreadMessageList } from '@/components/assistant-ui/thread/list'
@@ -139,6 +144,12 @@ export const Thread = memo(function Thread({
   const hasDismissError = Boolean(onDismissError)
   const hasRestoreToMessage = Boolean(onRestoreToMessage)
 
+  // Athena (F15): the layout switch picks the message components (same identity until the layout flips) and marks the root.
+  // The user message type is picked here so the closure below keeps routing its callbacks through callbacksRef.
+  const athenaChat = useAthenaChatLayout()
+  const athenaRootProps = useAthenaThreadRootProps(athenaChat)
+  const UserMessageView = athenaMessageType(athenaChat, 'UserMessage', UserMessage)
+
   const upstreamMessageComponents = useMemo(
     () => ({
       AssistantMessage: () => (
@@ -156,18 +167,14 @@ export const Thread = memo(function Thread({
         return <UserEditComposer cwd={editCwd} gateway={editGateway} sessionId={editSessionId} />
       },
       UserMessage: () => (
-        <UserMessage
+        <UserMessageView
           onCancel={hasCancel ? () => callbacksRef.current.onCancel?.() : undefined}
           onRequestRestoreConfirm={hasRestoreToMessage ? requestRestoreConfirm : undefined}
         />
       )
     }),
-    [hasBranchInNewChat, hasCancel, hasDismissError, hasRestoreToMessage, requestRestoreConfirm]
+    [UserMessageView, hasBranchInNewChat, hasCancel, hasDismissError, hasRestoreToMessage, requestRestoreConfirm]
   )
-
-  // Athena (F15): the layout switch picks the message components (same identity until the layout flips) and marks the root.
-  const athenaChat = useAthenaChatLayout()
-  const athenaRootProps = useAthenaThreadRootProps(athenaChat)
 
   const messageComponents = useMemo(
     () => athenaMessageComponents(athenaChat, upstreamMessageComponents),

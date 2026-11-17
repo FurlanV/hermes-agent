@@ -245,7 +245,7 @@ const ProcessNotificationNote: FC<{ text: string }> = ({ text }) => {
   return <BackgroundResult process report={detail} text={headline} />
 }
 
-function isChipOnlyTurn(hasBody: boolean, attachmentRefs: readonly string[]): boolean {
+export function isChipOnlyTurn(hasBody: boolean, attachmentRefs: readonly string[]): boolean {
   return !hasBody && attachmentRefs.length > 0 && attachmentRefs.every(isAttachmentRef)
 }
 
@@ -263,7 +263,7 @@ interface UserBubbleActionsProps {
 /** Bottom-right cluster: when it was sent, then Stop or Restore. Its fill
  *  masks the last line's tail while shown. Touch has no hover, so Stop/Restore
  *  stay visible there and a cluster with neither is not rendered. */
-const UserBubbleActions: FC<UserBubbleActionsProps> = ({
+export const UserBubbleActions: FC<UserBubbleActionsProps> = ({
   fullText,
   messageId,
   onCancel,
@@ -346,7 +346,7 @@ interface TouchUserBubbleProps {
  *  below it instead of a tap on the bubble. A clamped prompt gets an explicit
  *  expand toggle in the same row. The row leaves room for the Stop/Restore
  *  cluster pinned over its end. */
-function TouchUserBubble({
+export function TouchUserBubble({
   children,
   className,
   editable,
@@ -406,7 +406,7 @@ function TouchUserBubble({
  *  not on every frame while the outer max-height animates open, and compare it
  *  with the clamp's own max-height so the fade and toggle only appear when
  *  text is actually hidden. */
-function useUserBubbleClamp(readOnly: boolean, touch: boolean) {
+export function useUserBubbleClamp(readOnly: boolean, touch: boolean) {
   const clampInnerRef = useRef<HTMLDivElement | null>(null)
   const [bodyClamped, setBodyClamped] = useState(false)
   const lastClampHeightRef = useRef(-1)

@@ -1,0 +1,29 @@
+/* F15: the Athena chat layout (src/athena/chat). Every rule is scoped under the thread marker
+   ([data-athena-chat], layout.ts), so with the layout off or in a stock build the upstream look is untouched.
+   The --chat-* tokens are painted on the same element (tokens.ts). Logical properties throughout, so the
+   layout mirrors under dir="rtl". */
+
+/* Slice 04: the user message (athena-user-message.tsx). Right-aligned, labelled "You" above. */
+[data-athena-chat] [data-slot='athena_user-message'] {
+  align-items: flex-end;
+}
+
+[data-athena-chat] [data-slot='athena_user-label'] {
+  color: var(--ui-text-secondary);
+}
+
+[data-athena-chat] [data-slot='athena_user-bubble'] {
+  /* Upstream's bubble and its Stop/Restore/time cluster both paint --dt-user-bubble; point it at the token. */
+  --dt-user-bubble: var(--chat-user-surface);
+  inline-size: fit-content;
+  max-inline-size: min(44rem, 80%);
+  min-inline-size: 0;
+  margin-inline-start: auto;
+}
+
+[data-athena-chat] [data-slot='athena_user-bubble'] .composer-human-message {
+  background-color: var(--chat-user-surface);
+  border-color: var(--chat-user-border);
+  border-radius: 16px;
+  border-end-end-radius: 4px;
+}

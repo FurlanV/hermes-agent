@@ -16,7 +16,11 @@ export const athenaStrings = {
   /** About text: SickKids as the maker, Hermes Agent credited under MIT. */
   copyright: branding.copyright,
   /** Nous-hosted services (Nous Portal sign-in, credits, trial) are switched off. */
-  hideNousServices: true
+  hideNousServices: true,
+  /** F15: who said it, above each message in the Athena chat layout (English only; plan open question 3). */
+  chat: {
+    userLabel: 'You'
+  }
 } as const
 
 /** OAuth provider ids that are Nous-hosted services. */

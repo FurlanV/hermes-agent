@@ -14,8 +14,9 @@ import type { ClientConfigSnapshot } from '../managed/client-config'
 import { $clientConfig } from '../managed/client-config'
 import { installFeaturePolicy } from '../managed/feature-policy'
 
+import { AthenaUserMessage } from './athena-user-message'
 import type * as layout from './layout'
-import { ATHENA_CHAT_ATTR, athenaMessageComponents, useAthenaChatLayout } from './layout'
+import { ATHENA_CHAT_ATTR, athenaMessageComponents, athenaMessageType, useAthenaChatLayout } from './layout'
 
 // Count the map the thread builds: the choke point calls this once per new map, so a call is a new identity.
 vi.mock('./layout', async importOriginal => {
@@ -121,7 +122,8 @@ describe('the thread at the choke point', () => {
 
     await waitFor(() => expect(screen.getByText('hello from the user')).toBeTruthy())
     expect(threadRoot(container)?.hasAttribute(ATHENA_CHAT_ATTR)).toBe(marked)
-    // Both sides still render the upstream components.
+    // The user message follows the switch (slice 04); the assistant message is still upstream's on both sides.
+    expect(container.querySelector('[data-slot="athena_user-message"]') !== null).toBe(marked)
     expect(screen.getByText('done')).toBeTruthy()
   })
 
@@ -163,6 +165,15 @@ describe('the thread at the choke point', () => {
       expect(screen.getByText('done')).toBe(assistant)
     }
   )
+})
+
+describe('athenaMessageType', () => {
+  test("picks Athena's user message while active and the given upstream type otherwise", () => {
+    const upstream = () => null
+
+    expect(athenaMessageType(true, 'UserMessage', upstream)).toBe(AthenaUserMessage)
+    expect(athenaMessageType(false, 'UserMessage', upstream)).toBe(upstream)
+  })
 })
 
 describe('athenaMessageComponents', () => {
