@@ -153,7 +153,16 @@ function sourceTable(rows: SourceRow[]): string[] {
     '| File | Text | Kind | Action | Route | Status |',
     '|---|---|---|---|---|---|',
     ...[...grouped.values()].map(({ n, row }) => {
-      const status = row.action !== 'replace' ? 'n/a' : row.route === 'direct' ? (row.done ? 'done' : 'open') : 'pass'
+      const status =
+        row.action !== 'replace'
+          ? 'n/a'
+          : row.route === 'direct'
+            ? row.done
+              ? 'done'
+              : 'open'
+            : row.route === 'deferred'
+              ? 'deferred'
+              : 'pass'
 
       return `| ${row.file} | ${cell(row.text)}${n > 1 ? ` (×${n})` : ''} | ${row.kind} | ${row.action} | ${row.route} | ${status} |`
     })
@@ -200,7 +209,8 @@ export function renderInventory(): string {
     '```',
     '',
     'Route (source rows): **direct** is wrapped in `brandText` on its own line; **error** is branded',
-    'where the app shows errors; **plugin** is branded by the plugin translation pass. Status: **open**',
+    'where the app shows errors; **plugin** is branded by the plugin translation pass; **deferred** is',
+    'left as written for now (Bot Mode code, see the F14 open questions). Status: **open**',
     '(still says Hermes in Athena), **done** (wrapped), **pass** (left to a pass), **n/a** (kept or flagged).',
     '',
     '## Summary',

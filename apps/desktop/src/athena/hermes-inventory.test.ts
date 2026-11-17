@@ -51,8 +51,11 @@ describe('source scan', () => {
     expect(at('src/plugins/kanban/i18n.ts', "title: 'Hermes will retry'")).toMatchObject({ route: 'plugin' })
   })
 
-  test('a line wrapped in brandText is done', () => {
+  test('a line wrapped in brandText is done, also when the literal sits on the next line', () => {
     expect(scanText('src/app/x.tsx', "label={brandText('Hermes is working')}")[0]).toMatchObject({ done: true })
+    expect(scanText('src/app/x.tsx', "const hint = brandText(\n  'Hermes is working'\n)")[0]).toMatchObject({
+      done: true
+    })
   })
 })
 

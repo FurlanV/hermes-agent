@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 
+import { brandText } from '@/athena/brand-text'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { DesktopRosterAgent } from '@/global'
 import { getProfiles, type ProfileScope, profileScopeKey } from '@/hermes'
@@ -126,7 +127,7 @@ export function useCapabilityScope({
 
     return (profilesData?.profiles ?? []).map(p => ({
       key: p.name,
-      label: p.is_default ? 'Hermes (default)' : p.name,
+      label: p.is_default ? brandText('Hermes (default)') : p.name,
       value: p.name
     }))
   }, [multiConnection, profilesData, rosterData])

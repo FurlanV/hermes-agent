@@ -7,9 +7,9 @@
  * - `kind` and `why`: what the text is;
  * - `action`: `replace`, `keep` or `flag` (F14 decision 3, `../hermes-names.ts`);
  * - `route`: how a `replace` row reaches Athena: `direct` (the line itself is wrapped in `brandText`),
- *   `error` (an error message, branded where the app shows errors) or `plugin` (a plugin's translations, branded
- *   by the plugin i18n pass).
- * - `done`: a `direct` row whose line already calls `brandText(`.
+ *   `error` (an error message, branded where the app shows errors), `plugin` (a plugin's translations, branded
+ *   by the plugin i18n pass) or `deferred` (Bot Mode code, left as written for now: see the F14 open questions).
+ * - `done`: a `direct` row whose line calls `brandText(`, or follows a line ending in `brandText(`.
  */
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -18,7 +18,7 @@ import path from 'node:path'
 import { classifyMentions, type MentionAction } from '../hermes-names'
 
 export type Surface = 'main' | 'renderer'
-export type Route = '-' | 'direct' | 'error' | 'plugin'
+export type Route = '-' | 'deferred' | 'direct' | 'error' | 'plugin'
 
 export interface SourceRow {
   action: MentionAction
@@ -90,6 +90,14 @@ const RULES: Rule[] = [
   ],
   // ── text a user reads ─────────────────────────────────────────────────────
   [
+    /^src\/plugins\/hermes-bots\/(?!(i18n|[\w-]*-locales|group-surface-[\w-]+)\.ts$)/,
+    null,
+    'Bot Mode code',
+    'auto',
+    'deferred',
+    'Bot Mode (off in Athena, row S123) can import only the plugin SDK, and its tests mock the SDK without brandText'
+  ],
+  [
     /^src\/plugins\/[^/]+\/(i18n|[\w-]*-locales|group-surface-[\w-]+)\.ts$/,
     null,
     'plugin translations',
@@ -104,6 +112,14 @@ const RULES: Rule[] = [
     'auto',
     'error',
     'shown where the app reports an error'
+  ],
+  [
+    /./,
+    /^\s*(export )?const [A-Z_]*(MESSAGE|ERROR|BACKEND)\b[^=]*= |^\s*['"`]Timed out /,
+    'error message',
+    'auto',
+    'error',
+    'an error constant or timeout message; code may compare it, so it is branded where it is shown'
   ],
   [/./, null, 'UI text', 'auto', 'direct', 'shown as written']
 ]
@@ -164,8 +180,12 @@ function classify(file: string, code: string): Omit<SourceRow, 'done' | 'file' |
 export function scanText(file: string, content: string): SourceRow[] {
   const rows: SourceRow[] = []
 
-  content.split('\n').forEach((raw, index) => {
+  const lines = content.split('\n')
+
+  lines.forEach((raw, index) => {
     const code = codeOf(raw)
+    // A long wrapped literal sits on the line after `brandText(` once formatted.
+    const wrappedAbove = index > 0 && /brandText\($/.test(lines[index - 1]!.trimEnd())
 
     if (code === null || !/\bHermes\b/.test(code)) {
       return
@@ -175,7 +195,7 @@ export function scanText(file: string, content: string): SourceRow[] {
 
     rows.push({
       ...row,
-      done: row.route === 'direct' && code.includes('brandText('),
+      done: row.route === 'direct' && (code.includes('brandText(') || wrappedAbove),
       file,
       line: index + 1,
       surface: file.startsWith('electron/') ? 'main' : 'renderer',

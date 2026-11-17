@@ -1067,3 +1067,24 @@ Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
 | `src/i18n/registry.ts` | `resolveTranslations` passes the merged catalog through `brandCatalog` (`src/athena/brand-text.ts`) and caches whether it did; a stock build gets the catalog unchanged (F14 slice 03) |
 | `src/i18n/plugin-i18n.ts` | `registerPluginLocales` passes each plugin bundle through `brandCatalog` before merging it; a stock build stores it unchanged (F14 slice 04) |
 | `src/app/settings/about-settings.tsx` | Mounts `AthenaAboutCredit` (`src/athena/about-credit.tsx`) under the version hero: the fork sentence, the upstream link and the MIT licence; Athena build only (F14 slice 09) |
+| `src/app/capabilities/scope-selector.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/chat/composer/hooks/use-voice-live-conversation.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/messaging/index.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/pet-overlay/pet-overlay-app.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/quick-entry/quick-entry-app.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/session/hooks/use-message-stream/gateway-event/server-requests.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/settings/computer-use-panel.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/settings/constants.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/app/settings/model-settings.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/components/assistant-ui/thread/message-reactions.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/components/assistant-ui/thread/status.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/components/chat/intro.tsx` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/contrib/runtime-loader.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/lib/boot-failure.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/lib/commit-changelog.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/lib/error-surface.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/plugins/kanban/transfer.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/sdk/index.ts` | Exports `brandText` for plugins (the plugin fence allows only the SDK); its bot-chat notice is wrapped (F14 slice 05) |
+| `src/store/notifications.ts` | `showNotification` brands a toast's title, message and detail, so error messages reach the user as Athena (F14 slice 05) |
+| `src/store/onboarding.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |
+| `src/store/quick-entry.ts` | Lines that say Hermes to the user are wrapped in `brandText` (F14 slice 05) |

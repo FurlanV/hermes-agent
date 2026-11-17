@@ -17,6 +17,8 @@
 
 import { atom } from 'nanostores'
 
+import { brandText } from '@/athena/brand-text'
+
 export interface QuickEntryState {
   enabled: boolean
   /** null before the first read; the settings row shows a skeleton until then. */
@@ -211,7 +213,7 @@ export function quickEntryResultEvent(result: QuickEntrySubmitResult, submitId: 
 
   if (result.code === 'timeout') {
     return {
-      message: result.message || 'Hermes has not confirmed the prompt yet — it may still be delivered.',
+      message: result.message || brandText('Hermes has not confirmed the prompt yet — it may still be delivered.'),
       submitId,
       type: 'submit-unknown'
     }

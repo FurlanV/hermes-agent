@@ -1,6 +1,7 @@
 import { EmojiPicker } from 'frimousse'
 import { type FC, useState } from 'react'
 
+import { brandText } from '@/athena/brand-text'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { triggerHaptic } from '@/lib/haptics'
@@ -197,7 +198,7 @@ export const ReactionBadge: FC<{
           <span
             className="reaction-pop leading-none"
             key={`${reaction.author}-${reaction.emoji}`}
-            title="Reacted by Hermes"
+            title={brandText('Reacted by Hermes')}
           >
             {reaction.emoji}
           </span>

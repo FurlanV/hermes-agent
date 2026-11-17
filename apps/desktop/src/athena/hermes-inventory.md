@@ -15,7 +15,8 @@ pnpm exec tsx --tsconfig tsconfig.json src/athena/scripts/hermes-inventory.ts --
 ```
 
 Route (source rows): **direct** is wrapped in `brandText` on its own line; **error** is branded
-where the app shows errors; **plugin** is branded by the plugin translation pass. Status: **open**
+where the app shows errors; **plugin** is branded by the plugin translation pass; **deferred** is
+left as written for now (Bot Mode code, see the F14 open questions). Status: **open**
 (still says Hermes in Athena), **done** (wrapped), **pass** (left to a pass), **n/a** (kept or flagged).
 
 ## Summary
@@ -423,57 +424,57 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | src/api/client.ts | closedErrorMessage: 'Hermes gateway connection closed', | error message | replace | error | pass |
 | src/api/client.ts | connectErrorMessage: 'Could not connect to Hermes gateway', | error message | replace | error | pass |
 | src/api/client.ts | console.warn(`[gateway] Hermes Desktop has no server-request registry for ${request.method} (${request.id})`), | developer log | keep | - | n/a |
-| src/api/dial-readiness.ts | export const GATEWAY_NOT_CONNECTED_MESSAGE = 'Hermes gateway is not connected' | UI text | replace | direct | open |
+| src/api/dial-readiness.ts | export const GATEWAY_NOT_CONNECTED_MESSAGE = 'Hermes gateway is not connected' | error message | replace | error | pass |
 | src/api/dial-readiness.ts | if (remaining <= 0) { throw new Error('Hermes gateway request timed out') } | error message | replace | error | pass |
 | src/api/dial-readiness.ts | dial.timer = setTimeout(() => this.settle(dial, new TimeoutError('Hermes gateway protocol readiness timed out… | error message | replace | error | pass |
 | src/api/dial-readiness.ts | this.settle(dial, new Error(dial.opened ? 'Hermes gateway connection closed before protocol readiness' : GATE… | error message | replace | error | pass |
 | src/api/plugins.ts | throw new Error('Hermes desktop bridge unavailable') | error message | replace | error | pass |
 | src/app/capabilities/catalog/catalog-detail.tsx | [c.requires, entry.requiresHermes ? `Hermes ${entry.requiresHermes}` : ''], | engine version | keep | - | n/a |
-| src/app/capabilities/scope-selector.tsx | label: p.is_default ? 'Hermes (default)' : p.name, | UI text | replace | direct | open |
-| src/app/chat/composer/hooks/use-voice-live-conversation.ts | session.speak(delegationId, 'Sorry, I could not reach Hermes for that request.') | UI text | replace | direct | open |
-| src/app/chat/composer/hooks/use-voice-live-conversation.ts | session.think(delegationId, `Hermes is working: ${tool}. Not done yet.`) | UI text | replace | direct | open |
-| src/app/chat/composer/hooks/use-voice-live-conversation.ts | session.think(delegationId, 'Hermes finished that request without a spoken result.') | UI text | replace | direct | open |
+| src/app/capabilities/scope-selector.tsx | label: p.is_default ? brandText('Hermes (default)') : p.name, | UI text | replace | direct | done |
+| src/app/chat/composer/hooks/use-voice-live-conversation.ts | session.speak(delegationId, brandText('Sorry, I could not reach Hermes for that request.')) | UI text | replace | direct | done |
+| src/app/chat/composer/hooks/use-voice-live-conversation.ts | session.think(delegationId, brandText(`Hermes is working: ${tool}. Not done yet.`)) | UI text | replace | direct | done |
+| src/app/chat/composer/hooks/use-voice-live-conversation.ts | session.think(delegationId, brandText('Hermes finished that request without a spoken result.')) | UI text | replace | direct | done |
 | src/app/chat/right-rail/preview-pane.tsx | 'window.print=function(){console.warn("[Hermes] Printing is disabled in the in-app preview. ' + | developer log | keep | - | n/a |
-| src/app/gateway/hooks/use-gateway-boot.ts | 'Timed out reconnecting to Hermes backend' (×2) | UI text | replace | direct | open |
+| src/app/gateway/hooks/use-gateway-boot.ts | 'Timed out reconnecting to Hermes backend' (×2) | error message | replace | error | pass |
 | src/app/gateway/hooks/use-gateway-boot.ts | request.fail(JSON_RPC_METHOD_NOT_FOUND, `Hermes Desktop cannot answer ${request.method}`) | error message | replace | error | pass |
 | src/app/gateway/hooks/use-gateway-boot.ts | throw new Error('Hermes gateway is not connected') | error message | replace | error | pass |
-| src/app/gateway/hooks/use-gateway-boot.ts | 'Timed out connecting to Hermes backend' | UI text | replace | direct | open |
-| src/app/gateway/hooks/use-gateway-request.ts | 'Timed out reconnecting to Hermes backend' | UI text | replace | direct | open |
+| src/app/gateway/hooks/use-gateway-boot.ts | 'Timed out connecting to Hermes backend' | error message | replace | error | pass |
+| src/app/gateway/hooks/use-gateway-request.ts | 'Timed out reconnecting to Hermes backend' | error message | replace | error | pass |
 | src/app/gateway/hooks/use-gateway-request.ts | throw new Error('Hermes gateway unavailable') | error message | replace | error | pass |
-| src/app/messaging/index.tsx | 'Run a signal-cli REST bridge somewhere reachable, then point Hermes at the URL and the registered phone numb… | UI text | replace | direct | open |
-| src/app/messaging/index.tsx | 'Start the WhatsApp bridge that ships with Hermes, scan the QR code on first run, then enable the platform.', | UI text | replace | direct | open |
-| src/app/messaging/index.tsx | 'Run BlueBubbles Server on a Mac with iMessage, expose its API, then point Hermes at the URL with the server … | UI text | replace | direct | open |
-| src/app/messaging/index.tsx | "Run `hermes gateway setup`, select Weixin, then scan and confirm the QR code with a personal WeChat account.… | UI text | replace | direct | open |
-| src/app/messaging/index.tsx | 'Expose Hermes as an OpenAI-compatible API. Set an auth key, then point Open WebUI / LobeChat / etc. at the h… | UI text | replace | direct | open |
-| src/app/pet-overlay/pet-overlay-app.tsx | aria-label="Open in Hermes" | UI text | replace | direct | open |
-| src/app/quick-entry/quick-entry-app.tsx | message: payload?.result?.message ?? 'Hermes could not deliver the prompt.', | UI text | replace | direct | open |
-| src/app/quick-entry/quick-entry-app.tsx | placeholder={state.connected ? 'Ask Hermes…' : 'Not connected — open Hermes to reconnect'} | UI text | replace | direct | open |
+| src/app/messaging/index.tsx | 'Run a signal-cli REST bridge somewhere reachable, then point Hermes at the URL and the registered phone numb… | UI text | replace | direct | done |
+| src/app/messaging/index.tsx | 'Start the WhatsApp bridge that ships with Hermes, scan the QR code on first run, then enable the platform.' | UI text | replace | direct | done |
+| src/app/messaging/index.tsx | 'Run BlueBubbles Server on a Mac with iMessage, expose its API, then point Hermes at the URL with the server … | UI text | replace | direct | done |
+| src/app/messaging/index.tsx | "Run `hermes gateway setup`, select Weixin, then scan and confirm the QR code with a personal WeChat account.… | UI text | replace | direct | done |
+| src/app/messaging/index.tsx | 'Expose Hermes as an OpenAI-compatible API. Set an auth key, then point Open WebUI / LobeChat / etc. at the h… | UI text | replace | direct | done |
+| src/app/pet-overlay/pet-overlay-app.tsx | aria-label={brandText('Open in Hermes')} | UI text | replace | direct | done |
+| src/app/quick-entry/quick-entry-app.tsx | message: payload?.result?.message ?? brandText('Hermes could not deliver the prompt.'), | UI text | replace | direct | done |
+| src/app/quick-entry/quick-entry-app.tsx | state.connected ? brandText('Ask Hermes…') : brandText('Not connected — open Hermes to reconnect') | UI text | replace | direct | done |
 | src/app/right-sidebar/terminal/terminal-session-attempt.ts | 'signed-out': 'Signed out of Hermes. Sign this browser in again, then press Enter to reconnect.' | Webapp only | keep | - | n/a |
 | src/app/session/hooks/use-message-stream/gateway-event/message-stream.ts | error: coerceGatewayText(payload.error).trim() \|\| finalText \|\| 'Hermes reported an error', | error message | replace | error | pass |
-| src/app/session/hooks/use-message-stream/gateway-event/server-requests.ts | 'read_window_below needs the Hermes desktop app: this session is in a browser tab, which cannot see the OS wi… | UI text | replace | direct | open |
+| src/app/session/hooks/use-message-stream/gateway-event/server-requests.ts | brandText('read_window_below needs the Hermes desktop app: this session is in a browser tab, which cannot see… | UI text | replace | direct | done |
 | src/app/session/hooks/use-message-stream/gateway-event/status.ts | const errorMessage = payload?.message \|\| 'Hermes reported an error' | error message | replace | error | pass |
 | src/app/session/hooks/use-message-stream/index.ts | const error = errorMessage.trim() \|\| 'Hermes reported an error' | error message | replace | error | pass |
 | src/app/session/hooks/use-prompt-actions/browser-manage-refusal.ts | ? `/browser ${action} isn't available in the Webapp — it manages a Chromium-family browser on the machine run… | Webapp only | keep | - | n/a |
-| src/app/settings/computer-use-panel.tsx | Grants attach to CuaDriver&apos;s own identity (com.trycua.driver), not Hermes — so the dialog is | UI text | replace | direct | open |
+| src/app/settings/computer-use-panel.tsx | Grants attach to CuaDriver&apos;s own identity (com.trycua.driver), not {brandText('Hermes')} — so the | UI text | replace | direct | done |
 | src/app/settings/constants.ts | description: 'Hosted Hermes & Nous-trained models', | Nous service | keep | - | n/a |
-| src/app/settings/constants.ts | "Local browsing uses your real logins. Hermes copies your default browser's profile (cookies, logins, prefere… | UI text | replace | direct | open |
-| src/app/settings/constants.ts | maxTurns: 'Upper bound for tool-calling turns before Hermes stops a run.' | UI text | replace | direct | open |
-| src/app/settings/constants.ts | fileReadMaxChars: 'Maximum characters Hermes can read from one file request.', | UI text | replace | direct | open |
-| src/app/settings/constants.ts | mode: 'How Hermes handles commands that need explicit approval.', | UI text | replace | direct | open |
-| src/app/settings/constants.ts | 'chained: speech-to-text → Hermes → text-to-speech with the providers below. gpt-live: one full-duplex OpenAI… | UI text | replace | direct | open |
-| src/app/settings/constants.ts | 'Extra sentences for the live voice persona (tone, pace, language). Hermes keeps its own system prompt.' | UI text | replace | direct | open |
+| src/app/settings/constants.ts | "Local browsing uses your real logins. Hermes copies your default browser's profile (cookies, logins, prefere… | UI text | replace | direct | done |
+| src/app/settings/constants.ts | maxTurns: brandText('Upper bound for tool-calling turns before Hermes stops a run.') | UI text | replace | direct | done |
+| src/app/settings/constants.ts | fileReadMaxChars: brandText('Maximum characters Hermes can read from one file request.'), | UI text | replace | direct | done |
+| src/app/settings/constants.ts | mode: brandText('How Hermes handles commands that need explicit approval.'), | UI text | replace | direct | done |
+| src/app/settings/constants.ts | 'chained: speech-to-text → Hermes → text-to-speech with the providers below. gpt-live: one full-duplex OpenAI… | UI text | replace | direct | done |
+| src/app/settings/constants.ts | 'Extra sentences for the live voice persona (tone, pace, language). Hermes keeps its own system prompt.' | UI text | replace | direct | done |
 | src/app/settings/constants.ts | 'When Hermes updates itself from the app (no terminal prompt), keep local source edits (stash) or throw them … | error message | replace | error | pass |
-| src/app/settings/model-settings.tsx | : `${selectedProviderRow?.name} signs in through your browser — Hermes runs the flow for you.`} | UI text | replace | direct | open |
-| src/components/assistant-ui/thread/message-reactions.tsx | title="Reacted by Hermes" | UI text | replace | direct | open |
-| src/components/assistant-ui/thread/status.tsx | label={active ? hint \|\| 'Hermes is working' : ''} | UI text | replace | direct | open |
-| src/components/chat/intro.tsx | headline: 'What should Hermes look at?', | UI text | replace | direct | open |
-| src/components/chat/intro.tsx | headline: `What does ${label} Hermes need to see?`, | UI text | replace | direct | open |
-| src/components/chat/intro.tsx | headline: `What should ${label} Hermes tackle?`, | UI text | replace | direct | open |
+| src/app/settings/model-settings.tsx | `${selectedProviderRow?.name} signs in through your browser — Hermes runs the flow for you.` | UI text | replace | direct | done |
+| src/components/assistant-ui/thread/message-reactions.tsx | title={brandText('Reacted by Hermes')} | UI text | replace | direct | done |
+| src/components/assistant-ui/thread/status.tsx | label={active ? hint \|\| brandText('Hermes is working') : ''} | UI text | replace | direct | done |
+| src/components/chat/intro.tsx | headline: brandText('What should Hermes look at?'), | UI text | replace | direct | done |
+| src/components/chat/intro.tsx | headline: brandText(`What does ${label} Hermes need to see?`), | UI text | replace | direct | done |
+| src/components/chat/intro.tsx | headline: brandText(`What should ${label} Hermes tackle?`), | UI text | replace | direct | done |
 | src/contrib/plugin-files.ts | const unavailable = { ok: false as const, error: 'unavailable', message: 'This Hermes Desktop build has no pl… | error message | replace | error | pass |
-| src/contrib/runtime-loader.ts | "plugin.js exceeds this shell's 512 KiB read limit — update Hermes Desktop to load larger plugins" | UI text | replace | direct | open |
+| src/contrib/runtime-loader.ts | brandText("plugin.js exceeds this shell's 512 KiB read limit — update Hermes Desktop to load larger plugins") | UI text | replace | direct | done |
 | src/contrib/runtime-loader.ts | return { ok: false, error: 'this Hermes Desktop build cannot remove desktop plugins — delete the folder by ha… | error message | replace | error | pass |
 | src/lib/boot-failure.ts | console.error('Hermes failed to load', error) | developer log | keep | - | n/a |
-| src/lib/boot-failure.ts | heading.textContent = 'Hermes couldn’t load' | UI text | replace | direct | open |
+| src/lib/boot-failure.ts | heading.textContent = brandText('Hermes couldn’t load') | UI text | replace | direct | done |
 | src/lib/browser-bridge-stubs.ts | message: 'Hermes browser-hosted desktop is ready', | Webapp only | keep | - | n/a |
 | src/lib/browser-notifications.ts | const title = payload.title \|\| 'Hermes' | Webapp only | keep | - | n/a |
 | src/lib/browser-saved-connections.ts | throw new Error('Hermes did not return the saved connections') | Webapp only | keep | - | n/a |
@@ -484,32 +485,32 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | src/lib/browser-transport.ts | throw new Error(`Hermes API returned HTML for ${request.path}`) | Webapp only | keep | - | n/a |
 | src/lib/browser-transport.ts | if (!ticket) {throw new Error('Hermes did not return a file ticket')} | Webapp only | keep | - | n/a |
 | src/lib/browser-transport.ts | if (!ticket) {throw new Error(`Hermes did not return a ticket for ${path}`)} | Webapp only | keep | - | n/a |
-| src/lib/commit-changelog.ts | const lines: string[] = ['=== Hermes Update Changelog ==='] | UI text | replace | direct | open |
+| src/lib/commit-changelog.ts | const lines: string[] = [brandText('=== Hermes Update Changelog ===')] | UI text | replace | direct | done |
 | src/lib/desktop-fs.ts | throw new Error('Hermes Desktop bridge is unavailable') | error message | replace | error | pass |
 | src/lib/desktop-git.ts | throw new Error('Hermes Desktop bridge is unavailable') | error message | replace | error | pass |
 | src/lib/desktop-slash-commands.ts | { name: '/profile', description: 'Switch the active Hermes profile', surface: action('profile') }, | UI text | flag | - | n/a |
-| src/lib/error-surface.ts | '── Hermes error details ──', | UI text | replace | direct | open |
+| src/lib/error-surface.ts | brandText('── Hermes error details ──'), | UI text | replace | direct | done |
 | src/lib/keybinds/plugin-actions.ts | : refuse(pluginId, 'unknown', `${label} is not a Hermes app action. See ctx.listActions() for the allowed ids… | error message | replace | error | pass |
-| src/lib/mcp-dashboard-oauth.ts | const UPDATE_BACKEND = 'Update the Hermes backend to support Desktop MCP OAuth callbacks.' | UI text | replace | direct | open |
+| src/lib/mcp-dashboard-oauth.ts | const UPDATE_BACKEND = 'Update the Hermes backend to support Desktop MCP OAuth callbacks.' | error message | replace | error | pass |
 | src/lib/mcp-dashboard-oauth.ts | throw new Error('Update Hermes Desktop to support MCP OAuth callbacks.') | error message | replace | error | pass |
 | src/lib/plugin-catalog.ts | return withTimeout(opened, timeoutMs, 'Hermes backend did not connect', () => stop()).then(send) | error message | replace | error | pass |
 | src/lib/provider-setup-errors.ts | /No (?:inference\|Hermes\|LLM) provider(?: is)? configured\|no_provider_configured\|set an API key\|is set in conf… | pattern | keep | - | n/a |
 | src/lib/sibling-ws-url.ts | throw new Error('Hermes Desktop connection bridge unavailable') | error message | replace | error | pass |
 | src/lib/yolo-session.ts | throw new Error('Hermes gateway unavailable') | error message | replace | error | pass |
 | src/main.tsx | document.title = 'Hermes HUD' | UI text | flag | - | n/a |
-| src/plugins/hermes-bots/canonical-chat.ts | throw new Error('This Hermes Desktop version cannot open stored sessions') | error message | replace | error | pass |
-| src/plugins/hermes-bots/canonical-chat.ts | const connectionLabel = bot.connectionLabel \|\| bot.connectionId \|\| 'Hermes' | UI text | replace | direct | open |
-| src/plugins/hermes-bots/canonical-chat.ts | 'Update Hermes Desktop to chat with bots on other connections.' | UI text | replace | direct | open |
-| src/plugins/hermes-bots/canonical-groups.ts | (member.name.trim().toLowerCase() === 'default' ? 'Hermes' : member.name) | UI text | replace | direct | open |
-| src/plugins/hermes-bots/data.ts | getPluginCtx()?.i18n?.t('bot.openAnotherChatUnsupported') ?? 'Update Hermes Desktop to open another bot chat.' (×2) | UI text | replace | direct | open |
-| src/plugins/hermes-bots/group-chat.ts | const label = title \|\| (profile.toLowerCase() === 'default' ? 'Hermes' : profile) | UI text | replace | direct | open |
-| src/plugins/hermes-bots/group-chat.ts | return isDefault ? 'Hermes' : trimmed | UI text | replace | direct | open |
-| src/plugins/hermes-bots/labels.ts | return 'Hermes' | UI text | replace | direct | open |
-| src/plugins/hermes-bots/roster-pane-dialogs.tsx | {' and its associated Hermes profile at '} | UI text | flag | - | n/a |
-| src/plugins/kanban/transfer.ts | const ARCHIVE_FILTERS = [{ extensions: ['tar.gz', 'tgz'], name: 'Hermes board' }] | UI text | replace | direct | open |
+| src/plugins/hermes-bots/canonical-chat.ts | throw new Error('This Hermes Desktop version cannot open stored sessions') | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/canonical-chat.ts | const connectionLabel = bot.connectionLabel \|\| bot.connectionId \|\| 'Hermes' | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/canonical-chat.ts | 'Update Hermes Desktop to chat with bots on other connections.' | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/canonical-groups.ts | (member.name.trim().toLowerCase() === 'default' ? 'Hermes' : member.name) | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/data.ts | getPluginCtx()?.i18n?.t('bot.openAnotherChatUnsupported') ?? 'Update Hermes Desktop to open another bot chat.' (×2) | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/group-chat.ts | const label = title \|\| (profile.toLowerCase() === 'default' ? 'Hermes' : profile) | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/group-chat.ts | return isDefault ? 'Hermes' : trimmed | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/labels.ts | return 'Hermes' | Bot Mode code | replace | deferred | deferred |
+| src/plugins/hermes-bots/roster-pane-dialogs.tsx | {' and its associated Hermes profile at '} | Bot Mode code | flag | - | n/a |
+| src/plugins/kanban/transfer.ts | const ARCHIVE_FILTERS = [{ extensions: ['tar.gz', 'tgz'], name: brandText('Hermes board') }] | UI text | replace | direct | done |
 | src/sdk/index.ts | throw new Error('This Desktop build has no connection registry. Update Hermes Desktop.') | error message | replace | error | pass |
 | src/sdk/index.ts | throw new Error('This Desktop build cannot enumerate multi-source agents. Update Hermes Desktop.') | error message | replace | error | pass |
-| src/sdk/index.ts | notify({ kind: 'error', message: 'Update Hermes Desktop to open another bot chat.' }) | UI text | replace | direct | open |
+| src/sdk/index.ts | notify({ kind: 'error', message: brandText('Update Hermes Desktop to open another bot chat.') }) | UI text | replace | direct | done |
 | src/sdk/index.ts | throw new Error('Hermes Desktop connection routing unavailable') | error message | replace | error | pass |
 | src/sdk/index.ts | throw new Error('Hermes gateway unavailable') | error message | replace | error | pass |
 | src/store/browser-tab-title.ts | const APP_NAME = 'Hermes' | Webapp only | keep | - | n/a |
@@ -517,21 +518,21 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | src/store/gateway.ts | throw new Error(`Hermes gateway unavailable for profile "${route.key}"`) | error message | replace | error | pass |
 | src/store/gateway.ts | throw new Error('This Desktop build cannot dial registry connections. Update Hermes Desktop.') (×3) | error message | replace | error | pass |
 | src/store/onboarding-scope.ts | throw new Error('This Desktop build cannot dial registry connections. Update Hermes Desktop.') | error message | replace | error | pass |
-| src/store/onboarding.ts | "The local model server isn't serving. Start it from the Hermes desktop app or `hermes model` in a terminal, … | UI text | replace | direct | open |
-| src/store/onboarding.ts | notify({ kind: 'success', title: 'Hermes is ready', message: `${provider} connected.` }) | UI text | replace | direct | open |
-| src/store/onboarding.ts | onFail(error instanceof Error ? error.message : 'Hermes could not save the selected model.') | UI text | replace | direct | open |
-| src/store/onboarding.ts | ? `Connected, but Hermes still cannot resolve a usable provider. ${detail}` | UI text | replace | direct | open |
-| src/store/onboarding.ts | : 'Connected, but Hermes still cannot resolve a usable provider.' | UI text | replace | direct | open |
-| src/store/onboarding.ts | 'Hermes Desktop could not verify the running backend on startup. Some features may be unavailable until the g… | UI text | replace | direct | open |
-| src/store/onboarding.ts | `Hermes still cannot reach ${provider.name}. Run \`${provider.cli_command}\` in a terminal first.` | UI text | replace | direct | open |
-| src/store/onboarding.ts | return { ok: false, message: detail \|\| `Saved, but Hermes still cannot reach ${resolvedUrl}.` } | UI text | replace | direct | open |
+| src/store/onboarding.ts | "The local model server isn't serving. Start it from the Hermes desktop app or `hermes model` in a terminal, … | UI text | replace | direct | done |
+| src/store/onboarding.ts | notify({ kind: 'success', title: brandText('Hermes is ready'), message: `${provider} connected.` }) | UI text | replace | direct | done |
+| src/store/onboarding.ts | onFail(error instanceof Error ? error.message : brandText('Hermes could not save the selected model.')) | UI text | replace | direct | done |
+| src/store/onboarding.ts | ? brandText(`Connected, but Hermes still cannot resolve a usable provider. ${detail}`) | UI text | replace | direct | done |
+| src/store/onboarding.ts | : brandText('Connected, but Hermes still cannot resolve a usable provider.') | UI text | replace | direct | done |
+| src/store/onboarding.ts | 'Hermes Desktop could not verify the running backend on startup. Some features may be unavailable until the g… | UI text | replace | direct | done |
+| src/store/onboarding.ts | brandText(`Hermes still cannot reach ${provider.name}. Run \`${provider.cli_command}\` in a terminal first.`) | UI text | replace | direct | done |
+| src/store/onboarding.ts | return { ok: false, message: detail \|\| brandText(`Saved, but Hermes still cannot reach ${resolvedUrl}.`) } | UI text | replace | direct | done |
 | src/store/profile-share.ts | const ARCHIVE_FILTERS = [{ extensions: ['tar.gz', 'tgz'], name: 'Hermes profile' }] | UI text | flag | - | n/a |
 | src/store/projects.ts | throw new Error('Hermes gateway is not connected') | error message | replace | error | pass |
 | src/store/projects.ts | throw new Error('Active Hermes profile changed while connecting') | error message | flag | - | n/a |
 | src/store/prompts.ts | throw new Error('Hermes gateway is not connected') | error message | replace | error | pass |
-| src/store/quick-entry.ts | message: result.message \|\| 'Hermes has not confirmed the prompt yet — it may still be delivered.', | UI text | replace | direct | open |
+| src/store/quick-entry.ts | message: result.message \|\| brandText('Hermes has not confirmed the prompt yet — it may still be delivered.'), | UI text | replace | direct | done |
 | src/store/send-diagnostics.ts | throw new Error('Hermes gateway unavailable') | error message | replace | error | pass |
-| src/store/session-no-reply.ts | const NO_REPLY_ERROR = 'Hermes ended this turn without a reply.' | UI text | replace | direct | open |
+| src/store/session-no-reply.ts | const NO_REPLY_ERROR = 'Hermes ended this turn without a reply.' | error message | replace | error | pass |
 | src/store/wake-word.ts | throw new Error('Hermes gateway unavailable') | error message | replace | error | pass |
 | src/themes/presets.ts | label: 'Classic Hermes', | UI text | flag | - | n/a |
 | src/themes/skin.ts | description: 'Hermes skin', | UI text | flag | - | n/a |
@@ -545,7 +546,7 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/backend-health.ts | 'Remote Hermes gateway uses OAuth, but you are not signed in. ' + | UI text | replace | direct | open |
 | electron/backend-health.ts | throw new Error(`Hermes backend did not become ready: ${(error as Error).message}`) | error message | replace | error | pass |
 | electron/backend-health.ts | throw new Error(`Hermes backend did not become ready: ${detail}`) | error message | replace | error | pass |
-| electron/backend-ready.ts | `Timed out waiting for Hermes backend port announcement (${timeoutMs}ms)${deadline ? ' while an update comple… | UI text | replace | direct | open |
+| electron/backend-ready.ts | `Timed out waiting for Hermes backend port announcement (${timeoutMs}ms)${deadline ? ' while an update comple… | error message | replace | error | pass |
 | electron/backend-ready.ts | reject(new Error(`Hermes backend: exited before port announcement (${signal \|\| code})${describeOutputTail()}`… (×2) | error message | replace | error | pass |
 | electron/backend-ready.ts | reject(new Error(`Timed out waiting for Hermes backend port announcement (${timeoutMs}ms)`)) | error message | replace | error | pass |
 | electron/bootstrap-failure-copy.ts | ['repository', 'Hermes source code'], | UI text | replace | direct | open |

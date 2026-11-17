@@ -7,9 +7,12 @@ import { registerPluginLocales, translatePlugin } from '@/i18n/plugin-i18n'
 import { registerAppLocale, resetAppLocaleRegistry, resolveTranslations } from '@/i18n/registry'
 import { BOTS_LOCALES } from '@/plugins/hermes-bots/i18n'
 import { KANBAN_LOCALES } from '@/plugins/kanban/i18n'
+import { $notifications, clearNotifications, notify } from '@/store/notifications'
 
 import { brandCatalog, brandText, setAthenaBrandForTests } from './brand-text'
 import { classifyMentions, KEEP_KEYS, renameHermes, sampleMessage } from './hermes-names'
+import { DESKTOP } from './scripts/hermes-inventory'
+import { scanSources } from './scripts/hermes-scan'
 
 type Tree = Record<string, unknown>
 
@@ -175,6 +178,46 @@ describe('other languages, language packs and plugins in the Athena build (F14 s
     } finally {
       dispose()
     }
+  })
+})
+
+describe('hard-coded renderer text (F14 slice 05)', () => {
+  test('every renderer line marked replace is wrapped in brandText or left to the error pass', () => {
+    const open = scanSources(DESKTOP).filter(
+      row => row.surface === 'renderer' && row.action === 'replace' && row.route === 'direct' && !row.done
+    )
+
+    expect(open.map(row => `${row.file}:${row.line} ${row.text}`)).toEqual([])
+  }, 60_000)
+
+  test('the chat status and the quick-entry placeholder name Athena', () => {
+    setAthenaBrandForTests(true)
+
+    expect(brandText('Hermes is working')).toBe('Athena is working')
+    expect(brandText('Ask Hermes…')).toBe('Ask Athena…')
+    expect(brandText('Run `hermes gateway setup`, then Hermes connects')).toBe(
+      'Run `hermes gateway setup`, then Athena connects'
+    )
+  })
+
+  test('toasts, error toasts included, name Athena', () => {
+    setAthenaBrandForTests(true)
+    notify({ detail: 'Hermes gateway unavailable', kind: 'error', message: 'Hermes could not save', title: 'Hermes' })
+
+    expect($notifications.get()[0]).toMatchObject({
+      detail: 'Athena gateway unavailable',
+      message: 'Athena could not save',
+      title: 'Athena'
+    })
+    clearNotifications()
+  })
+
+  test('a stock build shows toasts as written', () => {
+    setAthenaBrandForTests(false)
+    notify({ kind: 'info', message: 'Hermes could not save' })
+
+    expect($notifications.get()[0]).toMatchObject({ message: 'Hermes could not save' })
+    clearNotifications()
   })
 })
 
