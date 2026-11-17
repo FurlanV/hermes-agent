@@ -1064,3 +1064,4 @@ Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
 
 | File | Change |
 |---|---|
+| `src/i18n/registry.ts` | `resolveTranslations` passes the merged catalog through `brandCatalog` (`src/athena/brand-text.ts`) and caches whether it did; a stock build gets the catalog unchanged (F14 slice 03) |

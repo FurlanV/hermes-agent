@@ -7,6 +7,8 @@
 import branding from './branding.json'
 
 export const athenaStrings = {
+  /** The product and the agent, wherever upstream text says Hermes (F14). */
+  product: branding.display,
   /** Who makes and publishes the app. */
   organization: branding.organization,
   /** Where docs, support and release-note links point instead of Nous / GitHub. */

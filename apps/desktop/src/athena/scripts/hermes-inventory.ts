@@ -12,7 +12,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { TRANSLATIONS } from '../../i18n/catalog'
-import { classifyMentions, KEEP_KEYS, type MentionAction } from '../hermes-names'
+import { classifyMentions, KEEP_KEYS, type MentionAction, sampleMessage } from '../hermes-names'
 
 import { scanSources, type SourceRow } from './hermes-scan'
 
@@ -29,26 +29,13 @@ export interface TranslationRow {
   why: string
 }
 
-/** A function message's output for placeholder arguments; the same under every TypeScript transform. */
-export function sample(message: (...args: unknown[]) => unknown): string {
-  const args = Array.from({ length: Math.max(message.length, 1) }, (_, index) => `‹${index + 1}›`)
-
-  try {
-    const out = message(...args)
-
-    return typeof out === 'string' ? out : ''
-  } catch {
-    return ''
-  }
-}
-
 /** Every leaf of every bundled catalog that mentions the bare word. */
 export function translationRows(): TranslationRow[] {
   const rows: TranslationRow[] = []
 
   const walk = (value: unknown, key: string, locale: string): void => {
     if (typeof value === 'string' || typeof value === 'function') {
-      const text = typeof value === 'string' ? value : sample(value as (...args: unknown[]) => unknown)
+      const text = typeof value === 'string' ? value : sampleMessage(value as (...args: unknown[]) => unknown)
       const named = classifyMentions(text)
 
       if (named === null) {
