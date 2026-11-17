@@ -490,7 +490,7 @@
 /* Slice 10: a tool call (athena-tool-block.tsx). One row on the page: icon, name, a muted summary of the arguments
    and the state chip, inside a hairline box on the code border; open, the input and output sit below on the code
    surface. Not faded like upstream's scaffolding (no data-conversation-scaffold), so the chip keeps its contrast. */
-[data-athena-chat] [data-athena-tool-row] {
+[data-athena-chat] :is([data-athena-tool-row], [data-slot='athena_tool-group-header']) {
   border: 1px solid var(--chat-code-border);
   border-radius: 0.5rem;
   color: var(--ui-text-primary);
@@ -498,27 +498,34 @@
   line-height: var(--athena-line-small);
 }
 
-[data-athena-chat] [data-athena-tool-row]:hover {
+[data-athena-chat] :is([data-athena-tool-row], [data-slot='athena_tool-group-header']):hover {
   border-color: var(--chat-note-rule);
 }
 
-[data-athena-chat] :is([data-slot='athena_tool-toggle'], [data-slot='athena_tool-dismiss']) {
+[data-athena-chat]
+  :is([data-slot='athena_tool-toggle'], [data-slot='athena_tool-dismiss'], [data-slot='athena_tool-group-toggle']) {
   border-radius: calc(0.5rem - 1px);
 }
 
-[data-athena-chat] :is([data-slot='athena_tool-toggle'], [data-slot='athena_tool-dismiss']):focus-visible {
+[data-athena-chat]
+  :is(
+    [data-slot='athena_tool-toggle'],
+    [data-slot='athena_tool-dismiss'],
+    [data-slot='athena_tool-group-toggle']
+  ):focus-visible {
   outline: 2px solid var(--chat-agent-label);
   outline-offset: 2px;
 }
 
-/* The muted parts of the header, in the note text (4.5:1 on the page). */
+/* The muted parts of a header, in the note text (4.5:1 on the page). */
 [data-athena-chat]
-  [data-slot='athena_tool-header']
+  :is([data-slot='athena_tool-header'], [data-slot='athena_tool-group-header'])
   :is(
     [data-slot='athena_tool-summary'],
     [data-slot='athena_tool-icon'],
     [data-slot='timeline-timestamp'],
-    [data-slot='athena_tool-dismiss']
+    [data-slot='athena_tool-dismiss'],
+    [data-slot='athena_tool-group-count']
   ) {
   color: var(--chat-note-text);
 }
@@ -581,4 +588,19 @@
   --athena-tool-state: var(--chat-state-error);
   --athena-tool-state-surface: var(--chat-state-error-surface);
   --athena-tool-state-text: var(--chat-state-error-text);
+}
+
+/* Slice 11: a group of consecutive tool calls (athena-tool-block.tsx, AthenaToolRun). Its summary line is a header
+   like a row's; open, its rows hang below it, indented under a hairline on the code border. A run of one call has
+   no header and no indent: the row alone. */
+[data-athena-chat] [data-slot='athena_tool-group-header'] {
+  color: var(--ui-text-primary);
+  font-size: var(--athena-text-small);
+  line-height: var(--athena-line-small);
+}
+
+[data-athena-chat] [data-athena-tool-group] > [data-slot='athena_tool-group-body'] {
+  margin-inline-start: 0.75rem;
+  padding-inline-start: 0.5rem;
+  border-inline-start: 1px solid var(--chat-code-border);
 }

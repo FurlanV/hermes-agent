@@ -24,12 +24,14 @@
  */
 import { useAuiState } from '@assistant-ui/react'
 import { useStore } from '@nanostores/react'
-import { type FC, useId, useMemo } from 'react'
+import { type FC, type PropsWithChildren, useId, useMemo } from 'react'
 
+import { useSessionView } from '@/app/chat/session-view'
 import { AnsiText } from '@/components/assistant-ui/ansi-text'
 import { MarkdownImage } from '@/components/assistant-ui/markdown-text'
 import { failedCallNeedsUser } from '@/components/assistant-ui/thread/message-parts'
 import { TimelineTimestamp } from '@/components/assistant-ui/thread/timeline-timestamp'
+import { isApprovalActivity, isCurrentTurnMessage } from '@/components/assistant-ui/tool/approval-activity'
 import { prettyTechnicalValue, type ToolLayout, useRecordToolPreview } from '@/components/assistant-ui/tool/fallback'
 import {
   buildToolView,
@@ -43,6 +45,7 @@ import {
   type ToolPart,
   type ToolView
 } from '@/components/assistant-ui/tool/fallback-model'
+import { isToolCallPart, summarizeToolRun } from '@/components/assistant-ui/tool/run-summary'
 import { FileDiffPanel } from '@/components/chat/diff-lines'
 import { Codicon } from '@/components/ui/codicon'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -53,8 +56,9 @@ import { useI18n } from '@/i18n'
 import { AlertCircle, CheckCircle2, Loader2 } from '@/lib/icons'
 import { toolResultRecord } from '@/lib/tool-result-metadata'
 import { cn } from '@/lib/utils'
+import { sessionApprovalRequest } from '@/store/prompts'
 import { $toolRowDismissed, dismissToolRow } from '@/store/tool-dismiss'
-import { $hideCodeDiffs, $toolDisclosureOpen, setToolDisclosureOpen } from '@/store/tool-view'
+import { $anyToolDisclosureOpen, $hideCodeDiffs, $toolDisclosureOpen, setToolDisclosureOpen } from '@/store/tool-view'
 
 import { athenaStrings } from '../strings'
 
@@ -348,5 +352,128 @@ const AthenaToolDetails: FC<{
   )
 }
 
-/** The Athena layout's tool leaves, provided to upstream's `ToolFallback` through `ToolLayoutContext`. */
-export const ATHENA_TOOL_LAYOUT: ToolLayout = Object.freeze({ Row: AthenaToolRow })
+/** What a run's summary line needs, read in one selector as a string so a stream delta re-renders nothing. */
+interface RunSnapshot {
+  approvalActivity: boolean
+  completedAt?: number
+  count: number
+  entryIds: string[]
+  key: string
+  startedAt?: number
+  state: ChatState
+  summary: string
+}
+
+/** The worst state of a run's calls: running if any runs, failed if any failed, otherwise done. */
+const worstState = (states: readonly ChatState[]): ChatState =>
+  states.includes('running') ? 'running' : states.includes('error') ? 'error' : 'done'
+
+/**
+ * Slice 11: one run of consecutive tool calls (`ToolLayoutContext.Run`), in place of upstream's `ToolRun`. Upstream's
+ * `ToolGroupSlot` still splits a range into cards and runs (`splitRunItems`) and keys each run on its start index; a
+ * file edit or a card stays in place between two runs. A run of two or more calls is a group: a one-line summary
+ * (upstream's `summarizeToolRun`, which also counts failed calls, then the number of calls and the run's state chip)
+ * that opens to the rows. A run of one is the row alone, with no group around it.
+ *
+ * The group starts closed and stays as the user left it: its open state lives in upstream's persisted disclosure store
+ * under the run's first call, so new calls joining while the turn streams, a re-render or a remount keep it. A row
+ * the user opened inside it opens it too (upstream's rule), so a row being read never disappears into a group when a
+ * second call arrives. While a pending approval stands in for a run of commands in the current turn, the run is
+ * hidden, as upstream's is.
+ */
+export const AthenaToolRun: FC<PropsWithChildren<{ endIndex: number; startIndex: number }>> = ({
+  children,
+  endIndex,
+  startIndex
+}) => {
+  const { locale } = useI18n()
+  const bodyId = useId()
+
+  const snapshot = useAuiState(state => {
+    const parts = state.message.parts
+    const tools = parts.slice(Math.max(0, startIndex), endIndex + 1).filter(isToolCallPart)
+    const running = selectMessageRunning(state)
+    // Upstream's live run: the turn works and nothing came after it (the summary narrates it in the present tense).
+    const live = running && endIndex >= parts.length - 1
+
+    const times = tools as readonly Pick<ToolPart, 'completedAt' | 'timestamp'>[]
+    const started = times.flatMap(tool => (tool.timestamp === undefined ? [] : [tool.timestamp]))
+    const completed = times.flatMap(tool => (tool.completedAt === undefined ? [] : [tool.completedAt]))
+
+    const value: RunSnapshot & { locale: string } = {
+      approvalActivity: tools.length > 0 && tools.every(isApprovalActivity),
+      // The run's lifecycle range, as upstream's summary shows it when timeline timestamps are on.
+      completedAt: completed.length ? Math.max(...completed) : undefined,
+      count: tools.length,
+      entryIds: tools.map(tool => toolEntryDisclosureId(state.message.id, tool)),
+      key: `${state.message.id}:${tools[0]?.toolCallId ?? ''}`,
+      locale,
+      startedAt: started.length ? Math.min(...started) : undefined,
+      state: worstState(tools.map(tool => athenaToolState(tool, running))),
+      summary: summarizeToolRun(tools, live)
+    }
+
+    return JSON.stringify(value)
+  })
+
+  const run = useMemo(() => JSON.parse(snapshot) as RunSnapshot, [snapshot])
+  const disclosureId = `athena-tool-run:${run.key}`
+  const persistedOpen = useStore($toolDisclosureOpen(disclosureId))
+  const rowOpen = useStore(useMemo(() => $anyToolDisclosureOpen(run.entryIds), [run.entryIds]))
+  const sessionId = useStore(useSessionView().$runtimeId)
+  const approval = useStore(useMemo(() => sessionApprovalRequest(sessionId), [sessionId]))
+  const currentTurn = useAuiState(state => isCurrentTurnMessage(state.thread.messages, state.message.id))
+  const grouped = run.count > 1
+  const expanded = !grouped || (persistedOpen ?? rowOpen)
+  const represented = Boolean(approval) && currentTurn && run.approvalActivity && !rowOpen && !persistedOpen
+
+  return (
+    <div
+      aria-hidden={represented || undefined}
+      className={cn('min-w-0 max-w-full', represented ? 'hidden' : 'grid gap-(--tool-row-gap)')}
+      data-athena-tool-group={grouped ? '' : undefined}
+      data-slot="tool-block"
+      data-tool-group={grouped ? '' : undefined}
+      hidden={represented}
+      inert={represented}
+    >
+      {grouped && (
+        <div data-slot="athena_tool-group-header" data-tool-summary="">
+          <button
+            aria-controls={bodyId}
+            aria-expanded={expanded}
+            className={HEADER_CLASS}
+            data-slot="athena_tool-group-toggle"
+            onClick={() => setToolDisclosureOpen(disclosureId, !expanded)}
+            type="button"
+          >
+            <span aria-hidden="true" className="flex shrink-0 items-center" data-slot="athena_tool-icon">
+              <ToolIcon name="tools" size="0.875rem" />
+            </span>
+            <span className="min-w-0 truncate font-medium" data-slot="athena_tool-group-summary">
+              {run.summary}
+            </span>
+            <span className="shrink-0" data-slot="athena_tool-group-count">
+              {copy.calls(run.count)}
+            </span>
+            <TimelineTimestamp className="ms-auto shrink-0" completedAt={run.completedAt} timestamp={run.startedAt} />
+            <AthenaToolStateChip className="ms-auto" state={run.state} />
+            <DisclosureCaret aria-hidden="true" className="shrink-0" open={expanded} size="0.625rem" />
+          </button>
+        </div>
+      )}
+      {/* The rows' container is there for one call too, so a row keeps its place when a second call joins. */}
+      <div
+        className={cn('min-w-0 max-w-full', expanded ? 'grid gap-(--tool-row-gap)' : 'hidden')}
+        data-slot="athena_tool-group-body"
+        hidden={!expanded}
+        id={bodyId}
+      >
+        {expanded && children}
+      </div>
+    </div>
+  )
+}
+
+/** The Athena layout's tool leaves, for upstream's `ToolFallback` and `ToolGroupSlot` (`ToolLayoutContext`). */
+export const ATHENA_TOOL_LAYOUT: ToolLayout = Object.freeze({ Row: AthenaToolRow, Run: AthenaToolRun })

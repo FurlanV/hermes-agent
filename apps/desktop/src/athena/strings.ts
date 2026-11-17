@@ -22,13 +22,15 @@ export const athenaStrings = {
     userLabel: 'You',
     /** The agent is the product: its name from branding.json. */
     agentLabel: branding.display,
-    /** A tool call's row (slice 10): its state chip and the headings of what it opens to. */
+    /** A tool call's row (slice 10): its state chip and the headings of what it opens to; a group's count. */
     tools: {
       state: { running: 'Running', done: 'Done', error: 'Failed' },
       input: 'Input',
       output: 'Output',
       waiting: 'Waiting for the result',
-      noOutput: 'No output'
+      noOutput: 'No output',
+      /** How many calls a group of consecutive tool calls holds (slice 11). */
+      calls: (count: number) => (count === 1 ? '1 call' : `${count} calls`)
     }
   }
 } as const

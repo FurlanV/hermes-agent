@@ -1263,6 +1263,20 @@ is upstream's.
   hide-code-diffs summary-only edit, timeline timestamps and the preview
   artifact (`useRecordToolPreview`). Not faded like upstream's scaffolding, so
   the chip keeps its contrast.
+- Consecutive tool calls (`AthenaToolRun` in `chat/athena-tool-block.tsx`,
+  slice 11): `ToolGroupSlot` still splits a range into cards and runs
+  (`splitRunItems`, keyed on the run's start index) and renders the Athena run
+  through `ToolLayoutContext.Run`. Two or more calls are a group: a one-line
+  summary button (upstream's `summarizeToolRun`, which also says how many
+  calls failed, then "N calls", the run's lifecycle time when timestamps are
+  on, and the chip for the worst state: Running if any runs, Failed if any
+  failed, else Done) that opens to the rows, indented under a hairline. One
+  call is the row alone. The group starts closed; its open state is in the
+  persisted disclosure store under the run's first call
+  (`athena-tool-run:<message>:<call>`), so new calls joining, re-renders and
+  remounts keep it, and a row the user opened opens its group (upstream's
+  rule). A run a pending approval stands in for is hidden, as upstream's is.
+  Upstream's live one-line ticker is not used: a running group says Running.
 - Upstream behaviour tests run unchanged against the Athena components:
   `chat/upstream-<name>.test.tsx` imports upstream's `thread/<name>.test.tsx`
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which
@@ -1283,5 +1297,5 @@ Every row is reviewed by a person before merge (hermes change policy).
 | `src/components/assistant-ui/thread/status.tsx` | Behaviour-preserving seam: new exported `TurnStatusLineContext` (default none) and `TurnStatusLine` (`{ lead }`). With a line provided (the Athena agent message, slice 09), `TurnActivityIndicator` skips the quiet window (active when `working && !awaitingInput && !toolNarrating`) and times the whole turn from its start, and `ResponseLoadingIndicator` and `TurnActivityRow` render `lead` after the pulse. No provider: the rows, their rules and their DOM are unchanged (F15 slice 09) |
 | `src/components/assistant-ui/thread/user-message.tsx` | Export-only: `isChipOnlyTurn`, `UserBubbleActions`, `TouchUserBubble`, `useUserBubbleClamp`, for the Athena user message (F15 slice 04) |
 | `src/components/assistant-ui/thread/user-message-text.tsx` | Behaviour-preserving seam: `UserMessageText` reads `CodeBlockShellContext` (from `components/chat/shiki-highlighter.tsx`) and, when a shell is provided, wraps each fence's unchanged `<pre>` in it (with the fence's text and language). No provider: the same `<pre>` as before (F15 slice 07) |
-| `src/components/assistant-ui/tool/fallback.tsx` | Behaviour-preserving seam: new exported `ToolLayoutContext` (default none) and `ToolLayout` (`{ Row }`); `ToolFallback` renders the provided `Row` with the part it already builds, in place of `ToolEntry`. No provider: `ToolEntry`, the same element, unchanged DOM. Export-only: `prettyTechnicalValue`. Behaviour-preserving move: `ToolEntry`'s preview-artifact effect moved unchanged into an exported hook `useRecordToolPreview(messageId, status, previewTarget)`, which `ToolEntry` now calls, so the Athena tool row feeds the composer the same way (F15 slice 10) |
+| `src/components/assistant-ui/tool/fallback.tsx` | Behaviour-preserving seam: new exported `ToolLayoutContext` (default none) and `ToolLayout` (`{ Row }`); `ToolFallback` renders the provided `Row` with the part it already builds, in place of `ToolEntry`. No provider: `ToolEntry`, the same element, unchanged DOM. Export-only: `prettyTechnicalValue`. Behaviour-preserving move: `ToolEntry`'s preview-artifact effect moved unchanged into an exported hook `useRecordToolPreview(messageId, status, previewTarget)`, which `ToolEntry` now calls, so the Athena tool row feeds the composer the same way (F15 slice 10). `ToolLayout` gains an optional `Run`; `ToolGroupSlot` renders it in place of `ToolRun` for each run of activity, with the same split, key (`run:<start>`) and children. No provider, or no `Run`: `ToolRun`, unchanged (F15 slice 11) |
 | `src/components/chat/shiki-highlighter.tsx` | Behaviour-preserving seam: new exported `CodeBlockShellContext` (default none) and `CodeBlockShellProps`. `SyntaxHighlighter` reads it; when a shell is provided it renders the shell around its unchanged body (`CodeCardBody` > `ExpandableBlock` > highlighter) instead of its own `CodeCard` and corner `CopyButton`. The body JSX moved into a local `body` constant; with no provider the DOM is identical (F15 slice 07) |

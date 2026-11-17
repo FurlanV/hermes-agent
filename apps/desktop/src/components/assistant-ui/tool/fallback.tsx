@@ -92,13 +92,18 @@ const ToolEmbedContext = createContext(false)
 const ToolRunDisclosureContext = createContext<string | null>(null)
 
 /**
- * F15 seam: a chat layout's own generic tool row. None provided (the default):
- * `ToolFallback` renders upstream's `ToolEntry`, unchanged. A layout that
- * provides one (the Athena chat layout, src/athena/chat, as a module constant)
- * gets every generic row in its place; the routing in front of it (cards, todo,
- * delivery notices, reactions, display.tool_progress) stays as it is.
+ * F15 seam: a chat layout's own generic tool row and run container. None
+ * provided (the default): `ToolFallback` renders upstream's `ToolEntry` and
+ * `ToolGroupSlot` upstream's `ToolRun`, unchanged. A layout that provides one
+ * (the Athena chat layout, src/athena/chat, as a module constant) gets every
+ * generic row, and every run of activity between cards, in their place; the
+ * routing in front of them (cards, todo, delivery notices, reactions,
+ * display.tool_progress) and the split into cards and runs stay as they are.
  */
-export type ToolLayout = Readonly<{ Row: FC<{ part: ToolPart }> }>
+export type ToolLayout = Readonly<{
+  Row: FC<{ part: ToolPart }>
+  Run?: FC<PropsWithChildren<{ endIndex: number; startIndex: number }>>
+}>
 
 export const ToolLayoutContext = createContext<ToolLayout | null>(null)
 
@@ -1118,6 +1123,8 @@ export const ToolGroupSlot: FC<PropsWithChildren<{ endIndex: number; startIndex:
   startIndex
 }) => {
   const showToolActivity = useStore($showToolActivity)
+  // A chat layout's own run container (ToolLayoutContext, F15), else upstream's.
+  const Run = useContext(ToolLayoutContext)?.Run ?? ToolRun
 
   // Joined rather than returned as an array: assistant-ui compares selector
   // results with `Object.is` and re-runs them on every store update, so a
@@ -1145,9 +1152,9 @@ export const ToolGroupSlot: FC<PropsWithChildren<{ endIndex: number; startIndex:
         item.kind === 'card' ? (
           <Fragment key={`card:${item.index}`}>{rows[item.index]}</Fragment>
         ) : (
-          <ToolRun endIndex={startIndex + item.end} key={`run:${item.start}`} startIndex={startIndex + item.start}>
+          <Run endIndex={startIndex + item.end} key={`run:${item.start}`} startIndex={startIndex + item.start}>
             {rows.slice(item.start, item.end + 1)}
-          </ToolRun>
+          </Run>
         )
       )}
     </ToolEmbedContext.Provider>
