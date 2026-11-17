@@ -1295,6 +1295,17 @@ is upstream's.
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which
   also fails if an upstream user bubble, agent message or note mounts, or no
   Athena one of the kind the file is about does.
+- Long transcripts (slice 14): the list's virtualisation is upstream's and
+  unchanged. It has no height estimates in JS; the render budget counts
+  message parts, and every row keeps upstream's `contain-intrinsic-size: auto
+  37.5rem` (a placeholder for rows never rendered; `auto` keeps the real size
+  once one is), so the Athena layout gives it no value of its own.
+  `chat/athena-long-transcript.test.tsx` checks 300 turns of prompts, code,
+  tools and notes against upstream: the same mounted window and virtualised
+  rows, stick-to-bottom while streaming, scroll restore across a switch,
+  timeline positions from the outer rows, the sticky prompt clip, kept-alive
+  panes across a switch, and the same commits and message renders per mount,
+  streamed delta and switch (`ATHENA_PERF_LOG=1` prints the Profiler numbers).
 
 ### Upstream files touched (F15)
 
