@@ -15,12 +15,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { Profiler, type ProfilerOnRenderCallback } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import {
-  createdAt,
-  stubThreadEnvironment,
-  stubThreadViewportSize,
-  userMessage
-} from '@/components/assistant-ui/test-utils'
+import { stubThreadEnvironment, stubThreadViewportSize } from '@/components/assistant-ui/test-utils'
 import { Thread } from '@/components/assistant-ui/thread'
 import { createTimelinePositionReader } from '@/components/assistant-ui/thread/timeline-position'
 import type * as messageReactions from '@/components/assistant-ui/thread/use-message-reactions'
@@ -29,10 +24,17 @@ import { rescopeConnectionScopedStores } from '@/lib/connection-scoped'
 import { setActiveProfile } from '@/store/profile'
 import { requestScrollToBottom, saveThreadScrollPosition } from '@/store/thread-scroll'
 
-import type { ClientConfigSnapshot } from '../managed/client-config'
-import { $clientConfig } from '../managed/client-config'
 import { installFeaturePolicy } from '../managed/feature-policy'
 
+import {
+  agent,
+  backgroundNote,
+  call,
+  clearBuild,
+  selectBuild,
+  text,
+  userMessage
+} from './fixtures/acceptance-transcript'
 import type * as layout from './layout'
 import { ATHENA_CHAT_ATTR, athenaMessageComponents } from './layout'
 
@@ -78,26 +80,11 @@ beforeAll(async () => {
 
 // ---- the layout ----
 
-const snapshot = (features: Record<string, string>): ClientConfigSnapshot => ({
-  config: { features },
-  configVersion: 1,
-  devOverridesActive: false,
-  error: null,
-  role: 'researcher',
-  source: 'server',
-  variant: 'athena',
-  verifiedAt: '2026-11-17T00:00:00Z'
-})
-
-type Bridge = { athenaDesktop?: unknown }
 type Layout = 'athena' | 'upstream'
 
 /** The Athena variant with row F15 on (the Athena layout) or off (upstream's layout). */
 function selectLayout(name: Layout) {
-  const features: Record<string, string> = name === 'athena' ? {} : { F15: 'off' }
-
-  ;(window as Bridge).athenaDesktop = { clientConfig: { snapshot: snapshot(features) } }
-  $clientConfig.set(snapshot(features))
+  selectBuild('athena', name === 'athena' ? {} : { F15: 'off' })
 }
 
 let uninstall: () => void
@@ -115,40 +102,15 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   uninstall()
-  $clientConfig.set(null)
-  delete (window as Bridge).athenaDesktop
+  clearBuild()
 })
 
 // ---- the fixed transcript ----
 
-type Part = ThreadMessage['content'][number]
-
 const TURNS = 300
 const DELIVERY = 'Message from 🤖 Scout (@scout): the build is green'
-const metadata = () => ({ unstable_state: null, unstable_annotations: [], unstable_data: [], steps: [], custom: {} })
-const text = (value: string) => ({ type: 'text', text: value }) as Part
-
-const agent = (id: string, content: Part[], status: ThreadMessage['status'] = { type: 'complete', reason: 'stop' }) =>
-  ({ id, role: 'assistant', content, status, createdAt, metadata: metadata() }) as unknown as ThreadMessage
-
-const readFile = (id: string, path: string) =>
-  ({
-    type: 'tool-call',
-    toolCallId: id,
-    toolName: 'read_file',
-    args: { path },
-    argsText: JSON.stringify({ path }),
-    result: { content: 'ok' }
-  }) as Part
-
-const note = (id: string) =>
-  ({
-    id,
-    role: 'system',
-    content: [text('1 background agent finished')],
-    createdAt,
-    metadata: { custom: { asyncResult: 'the report' } }
-  }) as unknown as ThreadMessage
+const readFile = (id: string, path: string) => call(id, 'read_file', { path }, { content: 'ok' })
+const note = (id: string) => backgroundNote(id)
 
 /** Turn `i` of session `key`: a prompt (some with code; every 25th an inter-agent delivery, a note), an agent reply
  *  with a code fence and two tool calls, and every 10th turn a background-result note. */

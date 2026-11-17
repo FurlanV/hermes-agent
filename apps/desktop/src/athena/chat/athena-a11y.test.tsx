@@ -13,12 +13,7 @@ import { cleanup, queryAllByRole, render, screen, waitFor, within } from '@testi
 import { MemoryRouter } from 'react-router'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import {
-  createdAt,
-  stubThreadEnvironment,
-  stubThreadViewportSize,
-  userMessage
-} from '@/components/assistant-ui/test-utils'
+import { stubThreadEnvironment, stubThreadViewportSize } from '@/components/assistant-ui/test-utils'
 import { Thread } from '@/components/assistant-ui/thread'
 import { __resetElapsedTimerRegistryForTests } from '@/components/chat/activity-timer'
 import { en } from '@/i18n/en'
@@ -28,11 +23,18 @@ import { $activeSessionId, $busy, $turnStartedAt } from '@/store/session'
 import { clearDismissedToolRows } from '@/store/tool-dismiss'
 import { $toolDisclosureStates } from '@/store/tool-view'
 
-import type { ClientConfigSnapshot } from '../managed/client-config'
-import { $clientConfig } from '../managed/client-config'
 import { installFeaturePolicy } from '../managed/feature-policy'
 import { athenaStrings } from '../strings'
 
+import {
+  agent,
+  backgroundNote,
+  call,
+  clearBuild,
+  selectBuild,
+  text,
+  userMessage
+} from './fixtures/acceptance-transcript'
 import { ATHENA_CHAT_ATTR } from './layout'
 
 stubThreadViewportSize()
@@ -54,51 +56,12 @@ beforeAll(() => {
 
 afterAll(() => sheet.remove())
 
-const snapshot = (variant: 'athena' | 'stock', features: Record<string, string> = {}): ClientConfigSnapshot => ({
-  config: { features },
-  configVersion: 1,
-  devOverridesActive: false,
-  error: null,
-  role: 'researcher',
-  source: 'server',
-  variant,
-  verifiedAt: '2026-11-17T00:00:00Z'
-})
-
-type Bridge = { athenaDesktop?: unknown }
-
-/** The preload's snapshot (the variant) and the live client config (the rows). */
-function build(features: Record<string, string> = {}) {
-  ;(window as Bridge).athenaDesktop = { clientConfig: { snapshot: snapshot('athena', features) } }
-  $clientConfig.set(snapshot('athena', features))
-}
-
 const LAYOUTS = {
-  athena: () => build(),
-  upstream: () => build({ F15: 'off' })
+  athena: () => selectBuild('athena'),
+  upstream: () => selectBuild('athena', { F15: 'off' })
 }
 
 // ---- the fixed transcript ----
-
-type Part = ThreadMessage['content'][number]
-
-const metadata = () => ({ unstable_state: null, unstable_annotations: [], unstable_data: [], steps: [], custom: {} })
-
-function agent(id: string, content: Part[], status: ThreadMessage['status'] = { type: 'complete', reason: 'stop' }) {
-  return { id, role: 'assistant', content, status, createdAt, metadata: metadata() } as unknown as ThreadMessage
-}
-
-const call = (toolCallId: string, toolName: string, args: Record<string, unknown>, result?: unknown) =>
-  ({
-    type: 'tool-call',
-    toolCallId,
-    toolName,
-    args,
-    argsText: JSON.stringify(args),
-    ...(result === undefined ? {} : { result })
-  }) as Part
-
-const text = (value: string) => ({ type: 'text', text: value }) as Part
 
 const TURN: ThreadMessage[] = [
   userMessage('u1', 'try this:\n```py\nprint("hi")\n```\nthanks'),
@@ -109,13 +72,7 @@ const TURN: ThreadMessage[] = [
     text('And one command.'),
     call('t1', 'terminal', { command: 'false' }, { exit_code: 1, stderr: 'boom' })
   ]),
-  {
-    id: 's1',
-    role: 'system',
-    content: [{ type: 'text', text: '1 background agent finished' }],
-    createdAt,
-    metadata: { custom: { asyncResult: 'the report' } }
-  } as unknown as ThreadMessage,
+  backgroundNote('s1'),
   userMessage('u2', 'again please'),
   agent('a2', [], { type: 'incomplete', reason: 'error', error: 'HTTP 500: upstream exploded' })
 ]
@@ -275,8 +232,7 @@ afterEach(() => {
   cleanup()
   uninstall()
   clearAllPrompts()
-  $clientConfig.set(null)
-  delete (window as Bridge).athenaDesktop
+  clearBuild()
   $reactionsEnabled.set(false)
   $busy.set(false)
   $turnStartedAt.set(null)

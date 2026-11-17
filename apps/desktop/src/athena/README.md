@@ -1306,6 +1306,23 @@ is upstream's.
   timeline positions from the outer rows, the sticky prompt clip, kept-alive
   panes across a switch, and the same commits and message renders per mount,
   streamed delta and switch (`ATHENA_PERF_LOG=1` prints the Profiler numbers).
+- Acceptance (slice 15): `chat/fixtures/acceptance-transcript.ts` is the one
+  fixed transcript (user text, agent text, code, a table, a group of tools, a
+  finished, a failed and a running tool, a background note, a hard error and a
+  streaming reply; the live turn at two moments, a tool running or text
+  streaming) and the shared message builders. `chat/athena-acceptance.test.tsx`
+  finds each element by structure alone (slots, roles, labels, chip words, the
+  token that paints it) in light and dark; with row `F15` off and in a stock
+  build (no snapshot, or a `stock` one) finds no Athena slot, marker or token,
+  only upstream's; and holds every `--chat-*` colour `chat.css` paints with
+  (followed through its own custom properties) to a pair in
+  `chatContrastChecks`, the code border being the one decorative token.
+  `chat/f15-upstream-files.test.ts` checks the F15 table itself lists every
+  upstream file the branch changed. `chat/__screenshots__/` holds light and
+  dark shots of the transcript (and the row-off one): the rendered DOM as a
+  static page with the built stylesheet, shot in Chromium; the steps to
+  regenerate them are at the top of `chat/athena-acceptance-screens.test.tsx`
+  (skipped unless `ATHENA_F15_SCREENS` is set).
 
 ### Upstream files touched (F15)
 
