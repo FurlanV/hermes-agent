@@ -1,5 +1,5 @@
 // @vitest-environment node
-// Diff scope (F02, F14): inside apps/desktop an Athena branch touches only the
+// Diff scope (F02, F14, F15): inside apps/desktop an Athena branch touches only the
 // upstream files listed in src/athena/README.md › "Upstream files touched (Fnn)" tables,
 // plus the Athena folders. Outside apps/desktop, hermes itself may change under
 // ADR 0009 (athena docs/adr: hermes changes are allowed without regressions, e.g.
@@ -79,6 +79,12 @@ describe('upstream-files tables', () => {
 
     expect(real).toMatch(/^### Upstream files touched \(F02\)$/m)
     expect(real).toMatch(/^### Upstream files touched \(F14\)$/m)
+  })
+
+  test('the real README has the F15 table', () => {
+    const real = readFileSync(path.join(desktop, 'src/athena/README.md'), 'utf8')
+
+    expect(real).toMatch(/^### Upstream files touched \(F15\)$/m)
   })
 })
 

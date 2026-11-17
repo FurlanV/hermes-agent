@@ -1124,3 +1124,20 @@ Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
 | `electron/window-below.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
 | `electron/windows-hermes-path.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
 | `electron/windows-remote-lifecycle.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+
+## Chat layout (F15)
+
+F15 gives the Athena build its own chat message components in `src/athena/chat/`:
+a labelled user bubble, a labelled agent block, centred notes, and restyled code,
+tool, status and error states. They reuse upstream's thread logic by importing it.
+Feature row `F15` switches the layout; with it off, or in a stock build, the chat
+is upstream's.
+
+### Upstream files touched (F15)
+
+Keep the F15 diff to these, plus `src/athena/**` and `electron/athena/**`.
+`managed/diff-scope.test.ts` reads this table as well as the F02 and F14 ones.
+Every row is reviewed by a person before merge (hermes change policy).
+
+| File | Change |
+|---|---|
