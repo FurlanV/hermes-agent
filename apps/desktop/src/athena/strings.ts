@@ -21,7 +21,15 @@ export const athenaStrings = {
   chat: {
     userLabel: 'You',
     /** The agent is the product: its name from branding.json. */
-    agentLabel: branding.display
+    agentLabel: branding.display,
+    /** A tool call's row (slice 10): its state chip and the headings of what it opens to. */
+    tools: {
+      state: { running: 'Running', done: 'Done', error: 'Failed' },
+      input: 'Input',
+      output: 'Output',
+      waiting: 'Waiting for the result',
+      noOutput: 'No output'
+    }
   }
 } as const
 

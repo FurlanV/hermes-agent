@@ -486,3 +486,99 @@
     animation: none;
   }
 }
+
+/* Slice 10: a tool call (athena-tool-block.tsx). One row on the page: icon, name, a muted summary of the arguments
+   and the state chip, inside a hairline box on the code border; open, the input and output sit below on the code
+   surface. Not faded like upstream's scaffolding (no data-conversation-scaffold), so the chip keeps its contrast. */
+[data-athena-chat] [data-athena-tool-row] {
+  border: 1px solid var(--chat-code-border);
+  border-radius: 0.5rem;
+  color: var(--ui-text-primary);
+  font-size: var(--athena-text-small);
+  line-height: var(--athena-line-small);
+}
+
+[data-athena-chat] [data-athena-tool-row]:hover {
+  border-color: var(--chat-note-rule);
+}
+
+[data-athena-chat] :is([data-slot='athena_tool-toggle'], [data-slot='athena_tool-dismiss']) {
+  border-radius: calc(0.5rem - 1px);
+}
+
+[data-athena-chat] :is([data-slot='athena_tool-toggle'], [data-slot='athena_tool-dismiss']):focus-visible {
+  outline: 2px solid var(--chat-agent-label);
+  outline-offset: 2px;
+}
+
+/* The muted parts of the header, in the note text (4.5:1 on the page). */
+[data-athena-chat]
+  [data-slot='athena_tool-header']
+  :is(
+    [data-slot='athena_tool-summary'],
+    [data-slot='athena_tool-icon'],
+    [data-slot='timeline-timestamp'],
+    [data-slot='athena_tool-dismiss']
+  ) {
+  color: var(--chat-note-text);
+}
+
+/* Upstream's dismiss shows on hover or keyboard focus, as upstream's does. */
+[data-athena-chat] [data-slot='athena_tool-dismiss'] {
+  opacity: 0;
+}
+
+[data-athena-chat] [data-athena-tool-row]:is(:hover, :focus-within) [data-slot='athena_tool-dismiss'] {
+  opacity: 1;
+}
+
+[data-athena-chat] [data-slot='athena_tool-body']:not([hidden]) {
+  border-top: 1px solid var(--chat-code-border);
+  border-end-start-radius: calc(0.5rem - 1px);
+  border-end-end-radius: calc(0.5rem - 1px);
+  background-color: var(--chat-code-surface);
+}
+
+[data-athena-chat] [data-slot='athena_tool-details'] :is(p, pre) {
+  color: var(--ui-text-primary);
+}
+
+[data-athena-chat] [data-slot='athena_tool-details'] p {
+  color: var(--chat-code-label);
+}
+
+/* The state chip: the state's fill, its edge and its text (tokens.ts: text 4.5:1 on the fill, edge 3:1 on the page).
+   The word and the icon carry the state; the colour only repeats it. */
+[data-athena-chat] [data-slot='athena_tool-chip'] {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.375rem;
+  border: 1px solid var(--athena-tool-state);
+  border-radius: 999px;
+  background-color: var(--athena-tool-state-surface);
+  color: var(--athena-tool-state-text);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.125rem;
+  white-space: nowrap;
+}
+
+[data-athena-chat] [data-athena-tool-state='running'] {
+  --athena-tool-state: var(--chat-state-running);
+  --athena-tool-state-surface: var(--chat-state-running-surface);
+  --athena-tool-state-text: var(--chat-state-running-text);
+}
+
+[data-athena-chat] [data-athena-tool-state='done'] {
+  --athena-tool-state: var(--chat-state-done);
+  --athena-tool-state-surface: var(--chat-state-done-surface);
+  --athena-tool-state-text: var(--chat-state-done-text);
+}
+
+[data-athena-chat] [data-athena-tool-state='error'] {
+  --athena-tool-state: var(--chat-state-error);
+  --athena-tool-state-surface: var(--chat-state-error-surface);
+  --athena-tool-state-text: var(--chat-state-error-text);
+}

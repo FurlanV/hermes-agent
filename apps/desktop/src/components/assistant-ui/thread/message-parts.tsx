@@ -144,7 +144,7 @@ const TOOL_CARDS: Record<CardToolName, FC<TimelineToolCallProps>> = {
 // this reads the body like the run summary does. A non-zero exit_code counts
 // too, matching the gateway's _tool_result_needs_user, which forwards terminal
 // {output, exit_code: 1, error: null} even with display.tool_progress off.
-const failedCallNeedsUser = (part: TimelineToolCallProps): boolean => {
+export const failedCallNeedsUser = (part: TimelineToolCallProps): boolean => {
   const exitCode = parseMaybeObject(part.result).exit_code
 
   return toolCallFailed(part) || (typeof exitCode === 'number' && exitCode !== 0)

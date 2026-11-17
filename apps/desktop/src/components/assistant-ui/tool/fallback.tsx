@@ -91,6 +91,17 @@ import { ToolRunTicker } from './run-ticker'
 const ToolEmbedContext = createContext(false)
 const ToolRunDisclosureContext = createContext<string | null>(null)
 
+/**
+ * F15 seam: a chat layout's own generic tool row. None provided (the default):
+ * `ToolFallback` renders upstream's `ToolEntry`, unchanged. A layout that
+ * provides one (the Athena chat layout, src/athena/chat, as a module constant)
+ * gets every generic row in its place; the routing in front of it (cards, todo,
+ * delivery notices, reactions, display.tool_progress) stays as it is.
+ */
+export type ToolLayout = Readonly<{ Row: FC<{ part: ToolPart }> }>
+
+export const ToolLayoutContext = createContext<ToolLayout | null>(null)
+
 // A search hit's title is result *content* inside an expanded row, not one of
 // the scaffolding lines, so it keeps the brighter secondary grey.
 const SEARCH_HIT_TITLE_CLASS =
@@ -160,7 +171,7 @@ interface ToolStatusCopy {
   statusRunning: string
 }
 
-function prettyTechnicalValue(value: unknown): string {
+export function prettyTechnicalValue(value: unknown): string {
   if (typeof value === 'string') {
     const trimmed = value.trim()
 
@@ -350,6 +361,37 @@ function useDisclosureOpen(disclosureId: string, fallbackOpen = false): boolean 
   return persistedOpen ?? fallbackOpen
 }
 
+/**
+ * Surface a successful row's previewable artifact (HTML file / localhost URL)
+ * in the composer status stack of the session whose transcript the row is in.
+ * Exported for the Athena chat layout's tool row (F15).
+ */
+export function useRecordToolPreview(messageId: string, status: ToolStatus, previewTarget: string | undefined) {
+  const {
+    $cwd: $sessionCwd,
+    $runtimeId: $sessionRuntimeId,
+    $storedId: $sessionStoredId,
+    $messages: $sessionMessages
+  } = useSessionView()
+
+  useEffect(() => {
+    if (status !== 'success' || !previewTarget || !isPreviewableTarget(previewTarget)) {
+      return
+    }
+
+    // Read (don't subscribe) session/cwd: this only fires when a previewable
+    // target appears, and subscribing re-rendered every tool row on any session
+    // or cwd change.
+    const sessionId = $sessionRuntimeId.get()
+
+    // A route switch can paint the previous assistant row while these atoms
+    // already describe the next chat. Only that chat's own messages may feed it.
+    if (sessionId && $sessionMessages.get().some(message => message.id === messageId)) {
+      recordPreviewArtifact(sessionId, previewTarget, $sessionCwd.get() || '', $sessionStoredId.get() ?? sessionId)
+    }
+  }, [$sessionCwd, $sessionRuntimeId, $sessionStoredId, $sessionMessages, messageId, previewTarget, status])
+}
+
 /** A running row's trailing meta: live MCP progress (`42% · message`, when the server sends it) + the timer. */
 function ToolRunningMeta({ seconds, toolCallId = '' }: { seconds: number; toolCallId?: string }) {
   const sessionId = useStore(useSessionView().$runtimeId) ?? ''
@@ -463,29 +505,7 @@ function ToolEntry({ part }: ToolEntryProps) {
   // The session whose transcript this row is IN, which is not necessarily the
   // primary one: a tool row inside a session tile must feed that tile's composer.
 
-  const {
-    $cwd: $sessionCwd,
-    $runtimeId: $sessionRuntimeId,
-    $storedId: $sessionStoredId,
-    $messages: $sessionMessages
-  } = useSessionView()
-
-  useEffect(() => {
-    if (view.status !== 'success' || !previewTarget || !isPreviewableTarget(previewTarget)) {
-      return
-    }
-
-    // Read (don't subscribe) session/cwd: this only fires when a previewable
-    // target appears, and subscribing re-rendered every tool row on any session
-    // or cwd change.
-    const sessionId = $sessionRuntimeId.get()
-
-    // A route switch can paint the previous assistant row while these atoms
-    // already describe the next chat. Only that chat's own messages may feed it.
-    if (sessionId && $sessionMessages.get().some(message => message.id === messageId)) {
-      recordPreviewArtifact(sessionId, previewTarget, $sessionCwd.get() || '', $sessionStoredId.get() ?? sessionId)
-    }
-  }, [$sessionCwd, $sessionRuntimeId, $sessionStoredId, $sessionMessages, messageId, previewTarget, view.status])
+  useRecordToolPreview(messageId, view.status, previewTarget)
 
   const detailSections = useMemo(() => {
     if (!view.detail) {
@@ -1155,6 +1175,9 @@ export const ToolFallback = ({
   toolResultMetadata,
   timestamp
 }: TimelineToolCallProps) => {
+  // A chat layout's own row (ToolLayoutContext, F15), else upstream's.
+  const Row = useContext(ToolLayoutContext)?.Row ?? ToolEntry
+
   const part: ToolPart = {
     args,
     completedAt,
@@ -1169,5 +1192,5 @@ export const ToolFallback = ({
     type: 'tool-call'
   }
 
-  return <ToolEntry part={part} />
+  return <Row part={part} />
 }
