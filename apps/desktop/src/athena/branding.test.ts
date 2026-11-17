@@ -14,8 +14,9 @@ import { PROVIDER_GROUPS } from '@/app/settings/constants'
 import { BUILTIN_THEMES, DEFAULT_SKIN_NAME } from '@/themes/presets'
 
 import branding from './branding.json'
+import { CHAT_STATE_HUES, CHAT_STATES, chatContrastFailures, chatTokens } from './chat/tokens'
 import { athenaStrings, isHiddenProvider } from './strings'
-import { athenaTheme } from './theme'
+import { athenaTheme, mix } from './theme'
 
 const desktop = path.resolve(import.meta.dirname, '../..')
 
@@ -190,6 +191,77 @@ describe('athena theme', () => {
     ]) {
       expect(contrast(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5)
     }
+  })
+})
+
+// F15: the chat colour tokens (src/athena/chat/tokens.ts), every pair of the plan's Check column.
+describe('athena chat colour tokens', () => {
+  const MODES = [
+    ['light', athenaTheme.colors, false],
+    ['dark', athenaTheme.darkColors!, true]
+  ] as const
+
+  test.each(MODES)('%s: every pair passes WCAG AA (text 4.5:1, borders and chip edges 3:1)', (_mode, colors, dark) => {
+    const tokens = chatTokens(colors, dark)
+    const page = colors.background
+
+    const pairs: (readonly [string, string, string, number])[] = [
+      ['text on the user surface', colors.foreground, tokens['chat-user-surface'], 4.5],
+      ['user border against the page', tokens['chat-user-border'], page, 3],
+      ['agent label against the page', tokens['chat-agent-label'], page, 4.5],
+      ['code text on the code surface', colors.foreground, tokens['chat-code-surface'], 4.5],
+      ...CHAT_STATES.flatMap(state => [
+        [`${state} chip text`, tokens[`chat-state-${state}-text`], tokens[`chat-state-${state}-surface`], 4.5] as const,
+        [`${state} chip edge against the page`, tokens[`chat-state-${state}`], page, 3] as const
+      ])
+    ]
+
+    for (const [name, ink, surface, min] of pairs) {
+      expect(contrast(ink, surface), `${name}: ${ink} on ${surface}`).toBeGreaterThanOrEqual(min)
+    }
+
+    expect(chatContrastFailures(tokens, colors)).toEqual([])
+  })
+
+  test.each(MODES)('%s: built from the branding seeds', (mode, colors, dark) => {
+    const seeds = branding.colors[mode]
+    const tokens = chatTokens(colors, dark)
+
+    expect(tokens['chat-agent-label']).toBe(
+      mode === 'light' ? branding.colors.brandPrimary : branding.colors.brandSecondary
+    )
+    expect(tokens['chat-agent-label']).toBe(seeds.accent)
+    expect(tokens['chat-user-surface']).toBe(mix(seeds.accent, seeds.background, dark ? 0.18 : 0.1))
+    expect(tokens['chat-code-surface']).toBe(mix(seeds.foreground, seeds.background, dark ? 0.08 : 0.04))
+  })
+
+  test('the running, done and error colours each pass on both the light and the dark page', () => {
+    for (const state of CHAT_STATES) {
+      for (const [mode, colors, dark] of MODES) {
+        expect(chatTokens(colors, dark)[`chat-state-${state}`]).toBe(CHAT_STATE_HUES[state])
+
+        for (const page of [athenaTheme.colors.background, athenaTheme.darkColors!.background]) {
+          expect(contrast(CHAT_STATE_HUES[state], page), `${state} (${mode} tokens) on ${page}`).toBeGreaterThanOrEqual(
+            3
+          )
+        }
+      }
+    }
+  })
+
+  test('a seed changed to a failing colour fails the check', () => {
+    // A pale accent on the light page: the agent label and the user border no longer stand out.
+    const pale = { ...athenaTheme.colors, primary: '#7fd4f0' }
+    const failures = chatContrastFailures(chatTokens(pale, false), pale)
+
+    expect(contrast(chatTokens(pale, false)['chat-agent-label'], pale.background)).toBeLessThan(4.5)
+    expect(failures.some(line => line.startsWith('chat-agent-label'))).toBe(true)
+    expect(failures.some(line => line.startsWith('chat-user-border'))).toBe(true)
+
+    // A dark page seed that leaves the foreground unreadable on the code surface.
+    const muddy = { ...athenaTheme.darkColors!, background: '#8a9bb0' }
+
+    expect(chatContrastFailures(chatTokens(muddy, true), muddy).some(line => line.startsWith('code text'))).toBe(true)
   })
 })
 

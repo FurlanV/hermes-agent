@@ -9,9 +9,14 @@
  */
 import { useStore } from '@nanostores/react'
 import { computed } from 'nanostores'
+import { type CSSProperties, useMemo } from 'react'
+
+import { useTheme } from '@/themes/context'
 
 import { athenaBrandActive } from '../brand-text'
 import { $featureFilter, isFeatureAllowed } from '../managed/features'
+
+import { chatTokens, chatTokenVars } from './tokens'
 
 /** The feature-registry entry behind row F15. */
 export const ATHENA_CHAT_ENTRY = 'chat:athena-layout'
@@ -41,12 +46,29 @@ export function athenaMessageComponents<M>(active: boolean, upstream: M): M {
   return upstream
 }
 
-export type AthenaThreadRootProps = Readonly<{ [ATHENA_CHAT_ATTR]?: '' }>
+export type AthenaThreadRootProps = Readonly<{ [ATHENA_CHAT_ATTR]?: ''; style?: CSSProperties }>
 
 const NO_ROOT_PROPS: AthenaThreadRootProps = Object.freeze({})
-const ACTIVE_ROOT_PROPS: AthenaThreadRootProps = Object.freeze({ [ATHENA_CHAT_ATTR]: '' })
 
-/** Props to spread on the thread root: the marker attribute while active, nothing otherwise. */
+/**
+ * Props to spread on the thread root. While active: the marker attribute and the chat colour tokens
+ * (`--chat-user-surface`, …; `tokens.ts`) derived from the skin and appearance actually painted, so they follow a
+ * skin or light/dark switch. Inactive: nothing, so the upstream root is unchanged.
+ */
 export function useAthenaThreadRootProps(active: boolean): AthenaThreadRootProps {
-  return active ? ACTIVE_ROOT_PROPS : NO_ROOT_PROPS
+  const { renderedMode, theme } = useTheme()
+  const { background, foreground, primary } = theme.colors
+
+  return useMemo(
+    () =>
+      active
+        ? {
+            [ATHENA_CHAT_ATTR]: '',
+            style: chatTokenVars(
+              chatTokens({ background, foreground, primary }, renderedMode === 'dark')
+            ) as CSSProperties
+          }
+        : NO_ROOT_PROPS,
+    [active, background, foreground, primary, renderedMode]
+  )
 }

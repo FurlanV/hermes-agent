@@ -1134,6 +1134,19 @@ tool, status and error states. They reuse upstream's thread logic by importing i
 Feature row `F15` switches the layout; with it off, or in a stock build, the chat
 is upstream's.
 
+- The switch (`chat/layout.ts`): `useAthenaChatLayout()` is the Athena variant
+  and entry `chat:athena-layout` (row F15), read live. The thread passes its
+  component map through `athenaMessageComponents` and spreads
+  `useAthenaThreadRootProps` on its root: the `data-athena-chat` marker, which
+  Athena chat CSS is scoped under, and the colour tokens.
+- The colour tokens (`chat/tokens.ts`): `chatTokens(colors, dark)` derives
+  `--chat-user-surface`, `--chat-user-border`, `--chat-agent-label`,
+  `--chat-code-surface`, `--chat-code-border` and, per state (running, done,
+  error), `--chat-state-<s>`, `-surface` and `-text` from the painted skin's
+  background, foreground and accent. `branding.test.ts` checks every pair at
+  WCAG AA for the Athena skin (`chatContrastFailures`); other skins get the
+  same derivation, untested.
+
 ### Upstream files touched (F15)
 
 Keep the F15 diff to these, plus `src/athena/**` and `electron/athena/**`.
