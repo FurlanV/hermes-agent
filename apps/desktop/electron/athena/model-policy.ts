@@ -12,6 +12,12 @@
 //   the Model gateway, unless the config says otherwise. `MODEL_PROVIDERS`
 //   maps that name to the hermes provider; an entry whose provider this build
 //   does not know is not on the list.
+// - A chat-only model (`provider: gateway-chat`, F13 slice 17) is a Model gateway
+//   model whose upstream serves no Responses API. Hermes fixes the API mode per
+//   provider, so it is on a second provider, `custom:athena-gateway-chat` (the
+//   gateway's address and token command on Chat Completions; athena's applier
+//   writes it). It is listed, picked, refused and recorded like any gateway model
+//   on its own provider, and it may be the default. A build before it leaves it out.
 // - A bridge model (`provider: bridge`, F05 slice 05) is a local model reached
 //   through the HPC bridge. The config may name several model servers (F05
 //   slice 12): the default one (`local_models.target_host`) and each entry of
@@ -34,10 +40,19 @@
 //   outside the list; `off` is stock. The model gateway enforces in every mode.
 // - `models.reasoning_control` (`on` | `off`, default on): `off` turns the
 //   reasoning-effort control off (under `enforce`).
+// - Under `enforce` a Model gateway model (`gateway`, `gateway-chat`) is on the list only once hermes managed scope
+//   declares it on its own provider (F13 slice 18): the Shipper rewrites managed scope a moment after it stores a
+//   new config, and hermes refuses a pick of an undeclared model. Main reads the managed file into each snapshot
+//   (`managedScope`, managed-scope.ts). The list is the config's list less the models not declared yet, so a
+//   removed model leaves at once; without the managed file (missing, unreadable) it is the config's list. Hidden
+//   entries (never listed, never declared) and bridge models (their own rule, above) are not filtered.
 
+import type { ClientConfigSnapshot, ManagedScopeModels } from './client-config-types'
 import { featureStates, managedMode } from './feature-registry'
 
 export const ATHENA_GATEWAY_PROVIDER = 'custom:athena-gateway'
+/** The Model gateway on its Chat Completions route, for chat-only models (athena's `managed.GATEWAY_CHAT_PROVIDER`). */
+export const ATHENA_GATEWAY_CHAT_PROVIDER = 'custom:athena-gateway-chat'
 /** The hermes provider of the default model server's bridge models (athena's `local_models.BRIDGE_PROVIDER`). */
 export const ATHENA_BRIDGE_PROVIDER = 'custom:athena-vllm'
 /** The hermes provider of any other model server is this plus the server's id (athena's `bridge_provider`). */
@@ -64,13 +79,16 @@ export interface ModelProviderInfo {
 export const DEFAULT_MODEL_PROVIDER = 'gateway'
 /** The client config's name for the provider of a bridge model. */
 export const BRIDGE_MODEL_PROVIDER = 'bridge'
+/** The client config's name for the provider of a chat-only Model gateway model (F13 slice 17). */
+export const GATEWAY_CHAT_MODEL_PROVIDER = 'gateway-chat'
 /** The feature row that, with the config's `local_models.enabled`, turns local models on. */
 export const LOCAL_MODELS_FEATURE = 'F05'
 
 /** The hermes provider behind each `models.allowed[].provider` name of the client config. */
 export const MODEL_PROVIDERS: Readonly<Record<string, ModelProviderInfo>> = Object.freeze({
   [DEFAULT_MODEL_PROVIDER]: { name: 'Athena gateway', slug: ATHENA_GATEWAY_PROVIDER },
-  [BRIDGE_MODEL_PROVIDER]: { name: 'Local models', slug: ATHENA_BRIDGE_PROVIDER }
+  [BRIDGE_MODEL_PROVIDER]: { name: 'Local models', slug: ATHENA_BRIDGE_PROVIDER },
+  [GATEWAY_CHAT_MODEL_PROVIDER]: { name: 'Athena gateway (chat)', slug: ATHENA_GATEWAY_CHAT_PROVIDER }
 })
 
 /** Hermes's reasoning ladder (`hermes_constants.VALID_REASONING_EFFORTS` plus `none`), weakest first. */
@@ -96,7 +114,10 @@ export interface ManagedModelEntry {
   /** The efforts users may pick for this model, in ladder order as the config lists them. */
   levels: readonly string[]
   note: null | string
-  /** The hermes provider that serves the model (`custom:athena-gateway` unless the config names another). */
+  /**
+   * The hermes provider that serves the model (`custom:athena-gateway` unless the config names another:
+   * `custom:athena-gateway-chat` for a chat-only model, a model server's provider for a bridge model).
+   */
   provider: string
   /** For a bridge model: the id of the model server it is on (`default` when the config names none). */
   server?: string
@@ -128,6 +149,11 @@ export interface ManagedModelsState {
    * alone, which is what a bridge record without a server list means.
    */
   serversUp?: readonly string[]
+  /**
+   * What hermes managed scope declares (F13 slice 18; a snapshot's `managedScope`). Absent or null: the managed file
+   * is missing or unreadable, and the config's list stands.
+   */
+  managedScope?: ManagedScopeModels | null
 }
 
 /** The bridge state of a snapshot's `hpcBridge` (client-config-types.ts), for `managedModels`. */
@@ -144,8 +170,24 @@ export function bridgeState(
   }
 }
 
+/** Everything a snapshot tells `managedModels` beside its config: the HPC bridge and hermes managed scope. */
+export const snapshotModelsState = (
+  snapshot: Pick<ClientConfigSnapshot, 'hpcBridge' | 'managedScope'>
+): ManagedModelsState => ({ ...bridgeState(snapshot.hpcBridge), managedScope: snapshot.managedScope ?? null })
+
+/** Whether managed scope declares a Model gateway model on the provider its entry names. */
+function declaredInScope(scope: ManagedScopeModels, entry: ManagedModelEntry): boolean {
+  return Object.entries(scope.declared).some(
+    ([key, ids]) => sameProvider(key, entry.provider) && ids.includes(entry.id)
+  )
+}
+
 export interface ManagedModels {
-  /** The role default (null when the config names none that is allowed). Never a bridge model while another is listed. */
+  /**
+   * The role default (null when the config names none that is allowed). Never a bridge model while another is
+   * listed. While managed scope does not declare the config's default yet, the one managed scope names (what hermes
+   * starts a session on now) when it is still on the list.
+   */
   default: null | string
   /** Every allowed entry, hidden ones included, in config order. Bridge models only while they can be called. */
   entries: readonly ManagedModelEntry[]
@@ -281,6 +323,9 @@ export function managedModels(config: unknown, state: ManagedModelsState = {}): 
   const seenConfigIds = new Set<string>()
   const entries: ManagedModelEntry[] = []
   const configured: ManagedModelEntry[] = []
+  const mode = managedMode(config, 'models')
+  // Only `enforce` narrows the pickers to the list; `report` and `off` list what hermes offers.
+  const scope = mode === 'enforce' ? (state.managedScope ?? null) : null
 
   for (const raw of Array.isArray(models.allowed) ? models.allowed : []) {
     const parsed = parseEntry(raw, local)
@@ -301,6 +346,9 @@ export function managedModels(config: unknown, state: ManagedModelsState = {}): 
       if (!on || !serversUp.includes(entry.server ?? DEFAULT_MODEL_SERVER)) {
         continue
       }
+    } else if (scope && !entry.hidden && !declaredInScope(scope, entry)) {
+      // A gateway model the Shipper has not declared to hermes yet: listed once it has (within a poll).
+      continue
     }
 
     seen.add(entry.id)
@@ -310,14 +358,21 @@ export function managedModels(config: unknown, state: ManagedModelsState = {}): 
 
   const wantedDefault = text(models.default)
   const visible = entries.filter(entry => !entry.hidden)
+
   // A bridge model answers only while this laptop's bridge is up: never the default (the server refuses one too).
-  const defaultEntry = entries.find(entry => entry.configId === wantedDefault && !isBridgeModel(entry))
+  const standing = (match: (entry: ManagedModelEntry) => boolean) =>
+    entries.find(entry => match(entry) && !isBridgeModel(entry))
+
+  // A new default not declared yet: the default hermes has now, rather than whichever model is listed first.
+  const defaultEntry =
+    standing(entry => entry.configId === wantedDefault) ??
+    (scope ? standing(entry => entry.id === scope.default) : undefined)
 
   return {
     default: defaultEntry?.id ?? (visible.find(entry => !isBridgeModel(entry)) ?? visible[0])?.id ?? null,
     entries,
     localModels: { bridgeUp, configured, leftOut, on, serversUp },
-    mode: managedMode(config, 'models'),
+    mode,
     reasoningControl: models.reasoning_control !== 'off',
     visible
   }
@@ -335,7 +390,10 @@ export const sameProvider = (a: string, b: string): boolean => providerKey(a) ==
 
 export const isGatewayProvider = (provider: string): boolean => sameProvider(provider, ATHENA_GATEWAY_PROVIDER)
 
-/** The Athena providers a Profile configures: the Model gateway's and the model servers' (`athena-vllm`, `athena-local-<id>`). */
+/**
+ * The Athena providers a Profile configures: the Model gateway's two (`athena-gateway`, `athena-gateway-chat`) and the
+ * model servers' (`athena-vllm`, `athena-local-<id>`).
+ */
 export const isAthenaProvider = (provider: string): boolean =>
   Object.values(MODEL_PROVIDERS).some(known => sameProvider(provider, known.slug)) || isBridgeProvider(provider)
 

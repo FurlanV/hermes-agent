@@ -53,7 +53,9 @@ describe('the managed list', () => {
     expect(managedModels(config('enforce', [SOL], { reasoning_control: 'off' })).reasoningControl).toBe(false)
     // A missing or unknown master switch reads as enforce; a stray default falls back to the first visible model.
     expect(managedModels({ models: { allowed: [MOCK, LUNA], default: 'gone' } })).toMatchObject({ default: 'gpt-6-luna', mode: 'enforce' })
-    expect(managedModels(bundled).visible.map(entry => entry.id)).toEqual(['gpt-6-luna'])
+    // The bundled default names no model (F13 slice 19): nothing listed, no default, still enforced.
+    expect(managedModels(bundled)).toMatchObject({ default: null, entries: [], mode: 'enforce', visible: [] })
+    expect(modelUseDecision(managedModels(bundled), { model: 'gpt-6-luna' }, 'rpc', 'config.set').allowed).toBe(false)
   })
 
   test('picker rows: the gateway row carries exactly the visible ids in config order; other providers drop', () => {

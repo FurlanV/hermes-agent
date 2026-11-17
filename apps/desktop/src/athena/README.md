@@ -247,8 +247,8 @@ a real filter.
   provider, dropped). Each entry carries the provider that serves it
   (F05 slice 02): `models.allowed[].provider`, default `gateway`, mapped to
   the hermes provider by `MODEL_PROVIDERS` (`gateway` → the Model gateway,
-  `bridge` → `custom:athena-vllm`); an entry whose provider the build does
-  not know is not on the list. A pick names the provider of its own entry or
+  `bridge` → `custom:athena-vllm`, `gateway-chat` → `custom:athena-gateway-chat`);
+  an entry whose provider the build does not know is not on the list. A pick names the provider of its own entry or
   none: a gateway model on `athena-vllm`, or a local model on the gateway, is
   refused.
   Custom ids are off, and `/model <id>` outside the list answers
@@ -260,6 +260,42 @@ a real filter.
   recorded (`kind: "model"`). `report`: nothing narrowed, each outside pick
   recorded `allowed_in_report`; `off`: stock. A new `config_version` drops
   the cached `model-options` queries.
+- Chat-only models (F13 slice 17): a gateway model whose upstream serves no
+  Responses API is `models.allowed[].provider: gateway-chat` (athena's admin
+  API sets it from the model registry). Hermes fixes the API mode per
+  provider, so athena's applier puts it on a second provider,
+  `custom:athena-gateway-chat`: the Profile gateway entry's address and
+  `key_cmd` on `chat_completions`. Here it is one more `MODEL_PROVIDERS` entry
+  ("Athena gateway (chat)"): its own picker row, a pick on its own provider
+  passes, a pick on `athena-gateway` or outside the list is refused and
+  recorded at both seams, and it may be the role default. A build before it
+  leaves the model out and keeps the others.
+  Tests: `electron/athena/model-gateway-chat.test.ts`; athena's
+  `tests/hook_sequence/test_chat_only_model.py` runs the hermes turns.
+- A gateway model is listed once managed scope declares it (F13 slice 18).
+  The Shipper stores a new signed config, then rewrites hermes managed scope
+  after its catalog and package syncs, and hermes refuses a pick of a gateway
+  model its provider does not declare. So main also reads the managed
+  `config.yaml` (`electron/athena/managed-scope.ts`; the folder is
+  `HERMES_MANAGED_DIR`, else `$HERMES_HOME/athena/managed`) with the other
+  inputs, every second, into each snapshot as `managedScope`: the ids declared
+  on `providers.athena-gateway.models` and `providers.athena-gateway-chat.models`
+  (dict keys, or an older applier's list) and `model.default`. Under
+  `managed.models: enforce` the role's list is the config's list less the
+  `gateway` / `gateway-chat` entries not declared on their own provider, in
+  the renderer and at main's REST seam alike (`snapshotModelsState`). So a new
+  model appears from the first poll after the applier wrote the file, a
+  removed one leaves with the config, a pick of an undeclared one is refused
+  and recorded like any model off the list, and hidden entries and bridge
+  models are not filtered. While the config's new default is not declared,
+  the default is managed scope's `model.default` (what hermes starts on)
+  if it is still listed. Without the file (missing, unparseable) the config's
+  list stands; `report` and `off` are not narrowed. A new declaration also
+  drops the cached model options. Tests: `electron/athena/managed-scope.test.ts`
+  (fixtures in `electron/athena/fixtures/managed-scope/`, written by athena's
+  applier), `managed/model-declared.test.ts`; athena's
+  `tests/hook_sequence/test_model_metadata.py` shows hermes refusing the pick
+  before the declaration and taking it right after.
 - Local models (F05 slice 05): a bridge model (`models.allowed[].provider:
   bridge`) is a model on a server only the laptop reaches, through the HPC
   bridge, on hermes's second provider `custom:athena-vllm`.

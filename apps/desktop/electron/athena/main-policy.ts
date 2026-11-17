@@ -12,7 +12,9 @@
 //   row turns on (the next snapshot after a sync);
 // - DevTools: refused while S65 is off;
 // - the Settings default model (`POST /api/model/set`): refused outside the
-//   role's list under `managed.models: enforce`, recorded under `report`.
+//   role's list under `managed.models: enforce`, recorded under `report`. The
+//   list is the renderer's: bridge models while their forward is up, gateway
+//   models once hermes managed scope declares them (F13 slice 18).
 // Decisions worth recording go to the policy-decisions file
 // (policy-decisions.ts) when one is configured.
 
@@ -26,7 +28,13 @@ import {
 } from './backend-policy'
 import type { ClientConfigSnapshot } from './client-config-types'
 import { FEATURE_ROW_BY_ID, featureEntryFilter, featureMode } from './feature-registry'
-import { bridgeState, managedModels, type ManagedModelsState, modelUseDecision, restModelChoice } from './model-policy'
+import {
+  managedModels,
+  type ManagedModelsState,
+  modelUseDecision,
+  restModelChoice,
+  snapshotModelsState
+} from './model-policy'
 import type { PolicyDecisionLog } from './policy-decisions'
 import { type MainPolicySeams, type RestRequestInfo, setMainPolicySeams } from './policy-seams'
 import { backendDecider } from './tool-install-policy'
@@ -65,7 +73,8 @@ export function recordFeatureDecision(record: FeatureDecisionRecord | null): voi
 
 /**
  * The main seams for one effective client config. The decider also refuses install paths under `managed.tools`
- * (slice 29). `state` says whether the HPC bridge is up: a local model is on the role's list only then (F05).
+ * (slice 29). `state` says whether the HPC bridge is up (a local model is on the role's list only then, F05) and
+ * what hermes managed scope declares (a gateway model is on it only once declared, F13 slice 18).
  */
 export function mainPolicySeams(
   config: unknown,
@@ -147,9 +156,11 @@ export function ignoredRemoveRows(config: unknown): string[] {
 }
 
 /** Install main's seams for a snapshot. The stock variant gets allow-all seams (variant.ts). */
-export function applyMainPolicies(snapshot: Pick<ClientConfigSnapshot, 'config' | 'hpcBridge' | 'variant'>): void {
+export function applyMainPolicies(
+  snapshot: Pick<ClientConfigSnapshot, 'config' | 'hpcBridge' | 'managedScope' | 'variant'>
+): void {
   setMainPolicySeams(
-    snapshot.variant === 'stock' ? null : mainPolicySeams(snapshot.config, undefined, bridgeState(snapshot.hpcBridge))
+    snapshot.variant === 'stock' ? null : mainPolicySeams(snapshot.config, undefined, snapshotModelsState(snapshot))
   )
 
   for (const listener of listeners) {

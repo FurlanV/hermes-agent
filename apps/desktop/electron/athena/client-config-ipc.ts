@@ -20,6 +20,7 @@ import { PRODUCT_IDENTITY } from '../product-identity'
 import { AthenaCatalogSource, installAthenaCatalogSource } from './catalog-source'
 import { AthenaClientConfig, type ClientConfigSnapshot, devOverridesFromEnv } from './client-config'
 import { applyMainPolicies, configureMainPolicies, ignoredRemoveRows } from './main-policy'
+import { managedDirFor } from './managed-scope'
 import { parsePolicyDecision, POLICY_DECISIONS_FILE, PolicyDecisionLog } from './policy-decisions'
 import { type DesktopVariant, desktopVariant } from './variant'
 
@@ -63,7 +64,8 @@ function warnIgnoredRemoveRows(snapshot: ClientConfigSnapshot, log: (line: strin
 }
 
 export function installAthenaClientConfig(options: InstallClientConfigOptions): AthenaClientConfig {
-  const devOverrides = devOverridesFromEnv(options.env ?? process.env, options.installStamp)
+  const env = options.env ?? process.env
+  const devOverrides = devOverridesFromEnv(env, options.installStamp)
   const variant = options.variant ?? desktopVariant(options.installStamp, PRODUCT_IDENTITY.appId)
   const warned = new Set<string>()
   const decisions = new PolicyDecisionLog({ file: path.join(options.athenaDir, POLICY_DECISIONS_FILE), log: options.log })
@@ -77,6 +79,8 @@ export function installAthenaClientConfig(options: InstallClientConfigOptions): 
     athenaDir: options.athenaDir,
     devOverrides,
     log: options.log,
+    // The folder the launcher gives the gateway daemon this app starts: what hermes reads managed scope from.
+    managedDir: managedDirFor(options.athenaDir, env),
     variant,
     onChange: snapshot => {
       for (const win of options.allWindows()) {

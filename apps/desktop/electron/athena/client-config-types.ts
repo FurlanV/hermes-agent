@@ -34,6 +34,21 @@ export interface HpcBridgeAddress {
   servers?: Record<string, number>
 }
 
+/**
+ * What the Profile's hermes managed scope declares about the Model gateway's models (F13 slice 18): what main read
+ * from `$HERMES_MANAGED_DIR/config.yaml`, the file athena's applier writes after each sync (managed-scope.ts).
+ */
+export interface ManagedScopeModels {
+  /** Its `model.default` (null when it names none): the model hermes starts a session on. */
+  default: null | string
+  /**
+   * The model ids declared on each Model gateway provider, by its `providers` key (`athena-gateway`,
+   * `athena-gateway-chat`): the keys of its `models` dict, or the items of an older applier's list. A provider the
+   * file has no entry for is absent: it declares nothing.
+   */
+  declared: Record<string, string[]>
+}
+
 /** What main hands the renderer. `config` is the effective document (bundled < chosen < dev override). */
 export interface ClientConfigSnapshot {
   config: ClientConfigDocument
@@ -46,6 +61,12 @@ export interface ClientConfigSnapshot {
    * part of the signed config; it rides the snapshot so pickers and the model gate change with the bridge.
    */
   hpcBridge?: HpcBridgeAddress
+  /**
+   * The Model gateway models hermes managed scope declares (F13 slice 18): absent while the managed file is missing
+   * or cannot be read. Not part of the signed config; under `managed.models: enforce` a gateway model is listed only
+   * once it is declared here, because hermes refuses a pick of one that is not (docs/hermes-findings.md 9.1).
+   */
+  managedScope?: ManagedScopeModels
   role: null | string
   source: ClientConfigSource
   /**

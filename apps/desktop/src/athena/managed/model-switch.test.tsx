@@ -16,7 +16,9 @@ import { clearNotifications, notify } from '@/store/notifications'
 import { $activeSessionId, $currentModel, $currentProvider } from '@/store/session'
 import { $sessionStates } from '@/store/session-states'
 
-import { $clientConfig, setClientConfigSnapshot } from './client-config'
+import { BUNDLED_DEFAULT_CONFIG } from '../../../electron/athena/bundled-config-data'
+
+import { $clientConfig, connectClientConfig, setClientConfigSnapshot } from './client-config'
 import { LUNA, managedSnapshot, MOCK, SOL } from './managed-models-fixture'
 import { installModelPolicy } from './model-policy'
 import {
@@ -188,6 +190,49 @@ describe('no model available', () => {
     act(() => setClientConfigSnapshot(managedSnapshot([LUNA], { configVersion: 9 })))
     expect(screen.queryByRole('alert')).toBeNull()
     expect(await runComposerMiddleware({ text: 'Hello' })).toEqual({ text: 'Hello' })
+    removeGate()
+  })
+
+  test('signed out, the bundled default names no model: blocked with the message; signing in lifts it live', async () => {
+    // F13 slice 19: the bundled default has no model until the server is reached. Main pushes the bundled
+    // snapshot, then the role's signed config once the user signs in (`athena:client-config:changed`).
+    let push: (snapshot: unknown) => void = () => {}
+
+    const bridge = {
+      get: () => new Promise<unknown>(() => {}),
+      onChanged: (callback: (snapshot: unknown) => void) => {
+        push = callback
+
+        return () => {}
+      },
+      snapshot: {
+        config: BUNDLED_DEFAULT_CONFIG,
+        configVersion: 0,
+        devOverridesActive: false,
+        error: 'missing',
+        role: null,
+        source: 'bundled',
+        verifiedAt: null
+      }
+    }
+
+    const removeGate = installNoModelGate()
+    const disconnect = connectClientConfig(bridge)
+    render(<Slot area="composer.top" />)
+
+    expect($clientConfig.get()?.source).toBe('bundled')
+    expect($noModelAvailable.get()).toBe(true)
+    expect(screen.getByRole('alert').textContent).toBe(NO_MODEL_MESSAGE)
+    expect(await runComposerMiddleware({ text: 'Summarise the study design.' })).toBeNull()
+    expect(toasts()).toEqual([NO_MODEL_MESSAGE])
+    expect(await runComposerMiddleware({ text: '/help' })).toEqual({ text: '/help' })
+
+    // Signed in: the role's models arrive through the change event, with no restart.
+    act(() => push(managedSnapshot([SOL, LUNA], { configVersion: 12 })))
+    expect($noModelAvailable.get()).toBe(false)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(await runComposerMiddleware({ text: 'Hello' })).toEqual({ text: 'Hello' })
+    disconnect()
     removeGate()
   })
 

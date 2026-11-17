@@ -33,6 +33,10 @@
 // Every snapshot also says whether this laptop's HPC bridge is up (`hpcBridge`, F05 slice 05): the Profile's
 // bridge record (hpc-bridge-record.ts), polled with the other inputs, so a bridge that comes or goes reaches
 // the model pickers and the model gate like a config change does.
+//
+// It also says which Model gateway models hermes managed scope declares (`managedScope`, F13 slice 18): the managed
+// `config.yaml` athena's applier writes after each sync (managed-scope.ts), polled the same way, so a model the
+// signed config offers before the Shipper has declared it reaches no picker until hermes can take it.
 
 import { type JsonWebKey, type KeyObject } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
@@ -48,6 +52,7 @@ import type {
 } from './client-config-types'
 import { bridgeAddress, readBridgeRecord } from './hpc-bridge-record'
 import { JwsError, trustedKeys, verifyCompactJws } from './jws'
+import { MANAGED_CONFIG_FILE, managedDirFor, readManagedScopeModels } from './managed-scope'
 import type { DesktopVariant } from './variant'
 
 export const CLIENT_CONFIG_TYP = 'athena-client-config+jws'
@@ -288,6 +293,8 @@ export interface ClientConfigSourceOptions {
   bundledDefault?: ClientConfigDocument
   devOverrides?: DevOverrides
   log?: (line: string) => void
+  /** The hermes managed-scope folder of the Profile (managed-scope.ts `managedDirFor`; default `<athenaDir>/managed`). */
+  managedDir?: string
   now?: () => number
   /** Called with each new snapshot (not for no-op refreshes). */
   onChange?: (snapshot: ClientConfigSnapshot) => void
@@ -324,6 +331,7 @@ export class AthenaClientConfig {
   private readonly bundledDefault: ClientConfigDocument
   private readonly devOverrides: DevOverrides
   private readonly log: (line: string) => void
+  private readonly managedDir: string
   private readonly now: () => number
   private readonly onChange?: (snapshot: ClientConfigSnapshot) => void
   private readonly trusted: ReadonlyMap<string, KeyObject>
@@ -343,6 +351,7 @@ export class AthenaClientConfig {
     this.bundledDefault = options.bundledDefault ?? BUNDLED_DEFAULT
     this.devOverrides = options.devOverrides ?? { allowed: false, file: defaultDevOverridesFile() }
     this.log = options.log ?? (() => {})
+    this.managedDir = options.managedDir ?? managedDirFor(options.athenaDir, {})
     this.now = options.now ?? Date.now
     this.onChange = options.onChange
     this.trusted = options.trusted ?? bundledTrustedKeys()
@@ -391,7 +400,10 @@ export class AthenaClientConfig {
     return next
   }
 
-  /** Poll the inputs (config, token, override file) and refresh when one changed, or once a minute for expiry. */
+  /**
+   * Poll the inputs (config, token, override file, bridge record, managed scope) and refresh when one changed, or
+   * once a minute for expiry.
+   */
   start(intervalMs = 1000): void {
     this.stop()
     this.signatures = this.inputSignatures()
@@ -422,6 +434,7 @@ export class AthenaClientConfig {
       fileSignature(this.configFile),
       fileSignature(path.join(this.athenaDir, TOKEN_FILE)),
       this.devOverrides.allowed ? fileSignature(this.devOverrides.file) : '',
+      fileSignature(path.join(this.managedDir, MANAGED_CONFIG_FILE)),
       // The record itself, not the file's stat: it also goes stale when the process that wrote it dies.
       JSON.stringify(readBridgeRecord(this.athenaDir))
     ].join('|')
@@ -488,6 +501,7 @@ export class AthenaClientConfig {
     config = withoutModelServerKeys(config)
 
     const hpcBridge = bridgeAddress(readBridgeRecord(this.athenaDir))
+    const managedScope = readManagedScopeModels(this.managedDir)
 
     return {
       config,
@@ -495,6 +509,7 @@ export class AthenaClientConfig {
       devOverridesActive: override !== null,
       error,
       ...(hpcBridge ? { hpcBridge } : {}),
+      ...(managedScope ? { managedScope } : {}),
       role: chosen && typeof chosen.config.role === 'string' ? chosen.config.role : null,
       source,
       variant: this.variant,
