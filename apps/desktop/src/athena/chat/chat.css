@@ -604,3 +604,110 @@
   padding-inline-start: 0.5rem;
   border-inline-start: 1px solid var(--chat-code-border);
 }
+
+/* Slice 12: an error (upstream's ErrorCard, thread/assistant-message.tsx, restyled in place; no Athena component).
+   A block with a red edge on the inline start (the error hue, 3:1 against the page), the square-alert icon in the
+   error text colour, the title and the one plain sentence in the full text colour, and the action; the details stay
+   behind upstream's disclosure. The icon and the words carry the error; the colour only repeats them, as on a failed
+   tool call's chip (slice 10, the same tokens). A degraded card (a limit or a soft fault the action fixes, which
+   upstream lets the user dismiss) is not a hard fault: a neutral edge (the note rule) on the page, the icon in the
+   note text. Every pair is checked in tokens.ts (text 4.5:1 on the error surface and on the page). Upstream's look
+   is var-driven (--err-*), so most of it follows by repointing those; the rest is logical properties for RTL. The
+   selectors carry the slot as well as the class, so they outrank upstream's whatever the stylesheet order. */
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] {
+  --err-ink: var(--dt-foreground);
+  --err-ink-muted: var(--chat-note-text);
+  --err-alert: var(--chat-state-error-text);
+  --athena-error-edge: var(--chat-state-error);
+  --athena-error-surface: var(--chat-state-error-surface);
+  --athena-error-action-edge: var(--chat-state-error-text);
+  max-inline-size: min(44rem, 100%);
+  margin-block-start: var(--conversation-turn-gap);
+  gap: 0.5rem;
+  border: 0;
+  border-inline-start: 3px solid var(--athena-error-edge);
+  border-radius: 0;
+  border-start-end-radius: 0.5rem;
+  border-end-end-radius: 0.5rem;
+  background: var(--athena-error-surface);
+  padding-block: 0.75rem;
+  padding-inline: 0.75rem 1rem;
+  font-size: var(--athena-text-body);
+  line-height: var(--athena-line-body);
+}
+
+[data-athena-chat] .aui-error-card[data-severity='degraded'] {
+  --athena-error-edge: var(--chat-note-rule);
+  --athena-error-surface: transparent;
+  --athena-error-action-edge: var(--chat-note-rule);
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-card-head {
+  gap: 0.5rem;
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-card-title {
+  font-weight: 600;
+}
+
+/* Upstream hangs the row and the details under the text with physical margins (icon 20px + gap). */
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] :is(.aui-error-card-row, .aui-error-details) {
+  margin-left: 0;
+  margin-inline-start: calc(20px + 0.5rem);
+}
+
+[data-athena-chat] .aui-error-card[data-severity='degraded'] .aui-error-card-text {
+  padding-right: 0;
+  padding-inline-end: 1.5rem;
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-card-close {
+  top: 0.5rem;
+  right: auto;
+  inset-inline-end: 0.5rem;
+  color: var(--chat-note-text);
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] :is(.aui-error-card-toggle, .aui-error-details-link) {
+  font-size: var(--athena-text-small);
+  line-height: var(--athena-line-small);
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-card-toggle {
+  text-align: end;
+}
+
+/* The action: the primary one is an outlined button (its edge 4.5:1 on the error surface, 3:1 on the page when
+   degraded), the second one an underlined text action, both in the full text colour. */
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-btn {
+  color: var(--err-ink);
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-btn-secondary {
+  border: 1px solid var(--athena-error-action-edge);
+  background: transparent;
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-btn-secondary:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-btn-ghost {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* A visible focus ring on every control, as on the rest of the Athena thread (3:1 on the error surface). The copy
+   glyph sits on the details' dark slab, so its ring is the slab's own text colour. */
+[data-athena-chat]
+  .aui-error-card[data-slot='aui_error-card']
+  :is(.aui-error-btn, .aui-error-card-toggle, .aui-error-card-close, .aui-error-details-link):focus-visible {
+  outline: 2px solid var(--chat-agent-label);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+[data-athena-chat] .aui-error-card[data-slot='aui_error-card'] .aui-error-copy-glyph:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

@@ -218,7 +218,11 @@ describe('athena chat colour tokens', () => {
       ...CHAT_STATES.flatMap(state => [
         [`${state} chip text`, tokens[`chat-state-${state}-text`], tokens[`chat-state-${state}-surface`], 4.5] as const,
         [`${state} chip edge against the page`, tokens[`chat-state-${state}`], page, 3] as const
-      ])
+      ]),
+      // The error card (slice 12): its text, details links and focus ring on the error surface.
+      ['error card text on the error surface', colors.foreground, tokens['chat-state-error-surface'], 4.5],
+      ['error card links on the error surface', tokens['chat-note-text'], tokens['chat-state-error-surface'], 4.5],
+      ['error card focus ring on the error surface', tokens['chat-agent-label'], tokens['chat-state-error-surface'], 3]
     ]
 
     for (const [name, ink, surface, min] of pairs) {

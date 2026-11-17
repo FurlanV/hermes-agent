@@ -19,6 +19,11 @@
  * | `chat-state-<s>-surface` | hue 12% on background | hue 20% | chip fill |
  * | `chat-state-<s>-text` | foreground 30% into the hue | same | ≥ 4.5 on the chip fill |
  *
+ * The error card (slice 12) sits on `chat-state-error-surface` with the error hue as its edge (the chip edge check):
+ * its title, sentence and action text (the foreground) and its details links (the note text) are held to 4.5:1 on
+ * that surface, its icon and its button edge are the error text (the chip text check), and the focus ring (the agent
+ * label) to 3:1 on it. A degraded card sits on the page, so its pairs are the page checks above.
+ *
  * The plan's starting point for the user border (accent 25% / 35%) gives about 1.5:1 / 2:1 against the page, so it
  * was raised to the least that passes. The note rule (slice 06) is held to the same 3:1, at the least amount (in 5%
  * steps) that passes. A state hue is the same in light and dark and clears 3:1 on both Athena pages (4.5:1 on both
@@ -159,6 +164,24 @@ export function chatContrastChecks(tokens: ChatTokens, colors: Pick<DesktopTheme
       { name: `chat-state-${state} chip edge against the page`, ink: tokens[`chat-state-${state}`], on: page, min: 3 }
     )
   }
+
+  const errorCard = tokens['chat-state-error-surface']
+
+  checks.push(
+    { name: 'error card text on chat-state-error-surface', ink: text, on: errorCard, min: 4.5 },
+    {
+      name: 'error card links (chat-note-text) on chat-state-error-surface',
+      ink: tokens['chat-note-text'],
+      on: errorCard,
+      min: 4.5
+    },
+    {
+      name: 'error card focus ring (chat-agent-label) on chat-state-error-surface',
+      ink: tokens['chat-agent-label'],
+      on: errorCard,
+      min: 3
+    }
+  )
 
   return checks
 }

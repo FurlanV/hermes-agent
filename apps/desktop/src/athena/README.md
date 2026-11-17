@@ -1277,6 +1277,19 @@ is upstream's.
   remounts keep it, and a row the user opened opens its group (upstream's
   rule). A run a pending approval stands in for is hidden, as upstream's is.
   Upstream's live one-line ticker is not used: a running group says Running.
+- Errors (slice 12): upstream's `ErrorCard` itself, restyled by `chat.css`
+  under the marker (no Athena component, no seam; its DOM is the same in both
+  layouts). A block with a 3px inline-start edge in `--chat-state-error` on
+  `--chat-state-error-surface`, the square-alert icon in
+  `--chat-state-error-text`, the title and sentence in the text colour, the
+  primary action outlined and the second underlined, a 2px focus ring on every
+  control; the details stay behind upstream's disclosure. A degraded card
+  (upstream's dismissable severity: a limit or a fault its action fixes) has a
+  neutral edge (`--chat-note-rule`) on the page and the icon in the note text,
+  so it does not read as a hard fault. Text, actions, dismissal and the F02
+  action filter (`error-action:<id>`) are upstream's. The error card's pairs
+  (text and links 4.5:1, focus ring 3:1 on the error surface) are in
+  `chatContrastChecks`.
 - Upstream behaviour tests run unchanged against the Athena components:
   `chat/upstream-<name>.test.tsx` imports upstream's `thread/<name>.test.tsx`
   through `runUpstreamSuiteInAthenaLayout` (`chat/upstream-suite.ts`), which
