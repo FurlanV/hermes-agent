@@ -5124,7 +5124,11 @@ def _resolve_named_custom_branch(req: _ResolveRequest) -> Optional[_ResolveResul
                                           is_oauth=anthropic_route_is_oauth(custom_base, custom_key)), final_model)
     client = _named_custom_openai_wire_client(custom_base, custom_key, entry_headers)
     # codex_responses, or auto-detect via _wrap_transport (which reads the task-level api_mode).
-    if entry_api_mode == "codex_responses":
+    # raw_codex (the main loop's fallback/route swap) takes the bare client: the wrapper mirrors only
+    # ``.api_key``, which is empty for a key_cmd entry, so the swap would lose the token source.
+    if entry_api_mode == "codex_responses" and req.raw_codex:
+        pass
+    elif entry_api_mode == "codex_responses":
         client = CodexAuxiliaryClient(client, final_model)
     else:
         client = _wrap_transport(req, client, final_model, custom_base, custom_key)

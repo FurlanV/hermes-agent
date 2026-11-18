@@ -633,3 +633,41 @@ class TestAuxInheritsCustomProviderExtraBody:
         # A custom endpoint no entry describes gets nothing.
         stray = _build_call_kwargs("custom", "some-model", msgs, base_url="https://stray.example/v1")
         assert "user" not in (stray.get("extra_body") or {})
+
+
+class TestRawCodexNamedCustomKeepsKeyCmd:
+    """A ``codex_responses`` named entry with ``key_cmd`` used as a fallback route: ``raw_codex=True``
+    must return the bare client, or the swap reads the wrapper's empty ``.api_key`` and the next
+    request fails with the SDK's "Missing credentials"."""
+
+    def _cfg(self):
+        import sys
+        return {
+            "model": {"provider": "custom:gw", "default": "main-model"},
+            "providers": {"gw": {
+                "base_url": "http://127.0.0.1:1/v1", "api_mode": "codex_responses",
+                "key_cmd": f'"{sys.executable}" -c "print(\'vk-test-1234\')"',
+            }},
+        }
+
+    def test_raw_codex_returns_bare_client_with_token_source(self, tmp_path):
+        from openai import OpenAI
+        _write_config(tmp_path, self._cfg())
+        from agent.auxiliary_client import CodexAuxiliaryClient, resolve_provider_client
+        client, _ = resolve_provider_client("custom:gw", model="fb-model", raw_codex=True)
+        assert isinstance(client, OpenAI)
+        assert callable(vars(client).get("_api_key_provider"))
+        wrapped, _ = resolve_provider_client("custom:gw", model="fb-model")
+        assert isinstance(wrapped, CodexAuxiliaryClient)
+
+    def test_fallback_swap_carries_the_token_source(self, tmp_path):
+        from types import SimpleNamespace
+        _write_config(tmp_path, self._cfg())
+        from agent.auxiliary_client import resolve_provider_client
+        from agent.client_lifecycle import _swap_fallback_clients
+        client, _ = resolve_provider_client("custom:gw", model="fb-model", raw_codex=True)
+        agent = SimpleNamespace()
+        with patch("agent.client_lifecycle.get_provider_request_timeout", return_value=None):
+            _swap_fallback_clients(agent, client, "custom:gw", "fb-model", str(client.base_url), "codex_responses")
+        assert callable(agent._client_kwargs["api_key"])
+        assert agent._client_kwargs["api_key"]() == "vk-test-1234"
