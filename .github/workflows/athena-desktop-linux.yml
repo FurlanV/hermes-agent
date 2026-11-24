@@ -1,0 +1,190 @@
+name: Athena Desktop Linux build
+
+# The Athena (SickKids) variant of the desktop app for Linux x64, as one tar of
+# the unpacked app folder (top folder Athena/, Athena/Athena). Not an AppImage:
+# that needs FUSE, which WSL and HPC nodes often lack. Unsigned: no secret is read.
+#
+# It fails when a bundled athena copy (catalog, trusted keys, default client
+# config, feature registry) differs from apps/desktop/src/athena/athena-copies.json,
+# or when the packed app does not carry the Athena name and icons. See
+# apps/desktop/src/athena/README.md › Linux build.
+#
+# Dispatch needs this file on the default branch; until then the push trigger is
+# what runs it on the Athena branches.
+
+on:
+  push:
+    branches: [feature/straightforward-install, 'release/**']
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/athena-desktop-linux.yml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Build version in the tar name, e.g. 0.1.0-friends.1 (default <desktop package version>-<short commit>)
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: athena-desktop-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Athena Desktop (Linux x64 tar)
+    # GitHub-hosted: the fork has none of upstream's Blacksmith or large-runner pools.
+    # The oldest hosted Ubuntu: node-pty and the X11 helper are compiled here and link
+    # this runner's glibc (2.35), so the folder runs on Ubuntu 22.04 and newer.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      HERMES_DESKTOP_VARIANT: athena
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # The newest glibc a binary in the folder may ask for (Ubuntu 22.04).
+      ATHENA_GLIBC_MAX: '2.35'
+    steps:
+      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Without the X11 headers the modifier-key helper is skipped with a warning
+      # (apps/desktop/scripts/build-hud-modifier-monitor.mjs) and the pack goes on without it.
+      - name: Install the X11 headers for the native helper
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libx11-dev libxi-dev
+
+      - name: Set up the locked Node, pnpm and Python
+        uses: ./.github/actions/setup-pm
+        with:
+          toolchain: all
+
+      - name: Check the bundled athena copies against the manifest
+        run: node apps/desktop/src/athena/scripts/athena-copies.mjs --check
+
+      - name: Name the build version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${INPUT_VERSION:-}"
+          if [ -z "$version" ]; then
+            version="$(node -p "require('./apps/desktop/package.json').version")-${GITHUB_SHA::7}"
+          fi
+          case "$version" in
+            '' | *[!0-9A-Za-z.+-]*) echo "::error::invalid version '$version'"; exit 1 ;;
+          esac
+          echo "ATHENA_TAR_VERSION=$version" >> "$GITHUB_ENV"
+          echo "version: $version"
+
+      # Full install (not --ignore-scripts): native addons need their lifecycle scripts
+      # (node-pty has no Linux prebuild and is compiled here).
+      - name: Install the locked workspace
+        uses: ./.github/actions/retry
+        with:
+          command: pnpm install --frozen-lockfile
+
+      - name: Build the desktop app
+        working-directory: apps/desktop
+        timeout-minutes: 20
+        run: pnpm run build
+
+      - name: Package the unpacked app (electron-builder --dir)
+        working-directory: apps/desktop
+        timeout-minutes: 30
+        run: pnpm run builder --dir --publish never --linux --x64
+
+      - name: Check the app is Athena, not Hermes
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          dirs=(apps/desktop/release/linux*unpacked)
+          if [ "${#dirs[@]}" -ne 1 ]; then
+            ls apps/desktop/release
+            echo "::error::expected one linux*unpacked folder under apps/desktop/release, found ${#dirs[@]}"
+            exit 1
+          fi
+          app="$(realpath "${dirs[0]}")"
+          # The binary is named Athena and no Hermes or electron binary is beside it, the packed
+          # package.json names Athena, the icon files are the Athena ones (not the stock Hermes
+          # icon), the install stamp says athena, and the built bundles carry the bundled trusted
+          # keys and catalog.
+          node apps/desktop/src/athena/scripts/check-packed-app.mjs "$app"
+          echo "ATHENA_APP_DIR=$app" >> "$GITHUB_ENV"
+
+      # The terminal pane needs node-pty's binding; a pack without it would start and then fail.
+      - name: Check the native binding and the glibc the folder needs
+        run: |
+          set -euo pipefail
+          display="$(node -p "require('./apps/desktop/src/athena/branding.json').display")"
+          modules="$ATHENA_APP_DIR/resources/app.asar.unpacked/dist/node_modules"
+          if [ -z "$(find "$modules/node-pty" -name pty.node -type f)" ]; then
+            echo "::error::node-pty's pty.node is missing from $modules/node-pty"
+            exit 1
+          fi
+          # Every ELF in the folder: the Electron binaries and the natives compiled on this runner.
+          glibc="$(find "$ATHENA_APP_DIR" -type f -exec sh -c 'head -c 4 "$1" | grep -q "^.ELF" && objdump -T "$1" 2>/dev/null' _ {} \; \
+            | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1 | cut -d_ -f2 || true)"
+          if [ -z "$glibc" ]; then echo "::error::no glibc symbol version found in $ATHENA_APP_DIR"; exit 1; fi
+          if [ "$(printf '%s\n' "$glibc" "$ATHENA_GLIBC_MAX" | sort -V | tail -n 1)" != "$ATHENA_GLIBC_MAX" ]; then
+            echo "::error::the folder needs glibc $glibc, newer than $ATHENA_GLIBC_MAX"
+            exit 1
+          fi
+          libraries="$(objdump -p "$ATHENA_APP_DIR/$display" | awk '$1 == "NEEDED" { print $2 }' | sort | tr '\n' ' ')"
+          echo "ATHENA_GLIBC=$glibc" >> "$GITHUB_ENV"
+          echo "ATHENA_LIBRARIES=$libraries" >> "$GITHUB_ENV"
+          echo "glibc $glibc; $display needs: $libraries"
+
+      - name: Tar the unpacked app
+        run: |
+          set -euo pipefail
+          display="$(node -p "require('./apps/desktop/src/athena/branding.json').display")"
+          # Next to the unpacked folder, so the move below is a rename on one volume.
+          stage="$(dirname "$ATHENA_APP_DIR")/athena-tar"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+          # The tar's one top folder is the app name: an installer extracts it to app/Athena/Athena.
+          mv "$ATHENA_APP_DIR" "$stage/$display"
+          name="$display-$ATHENA_TAR_VERSION-linux-x64.tar.gz"
+          tar="$RUNNER_TEMP/$name"
+          rm -f "$tar"
+          # No runner user or group in the archive; file modes (the executable bits) are kept.
+          tar --owner=0 --group=0 --numeric-owner -C "$stage" -czf "$tar" "$display"
+
+          binary="$display/$display"
+          entries="$(tar -tzf "$tar")"
+          if ! grep -qxF "$binary" <<<"$entries"; then echo "::error::$name has no $binary"; exit 1; fi
+          stray="$(grep -vE "^$display/" <<<"$entries" | head -n 1 || true)"
+          if [ -n "$stray" ]; then echo "::error::$name has entries outside $display/: $stray"; exit 1; fi
+          mode="$(tar -tvzf "$tar" "$binary" | cut -c1-10)"
+          case "$mode" in
+            -rwx*) ;;
+            *) echo "::error::$binary is not executable in $name ($mode)"; exit 1 ;;
+          esac
+
+          hash="$(sha256sum "$tar" | cut -d' ' -f1)"
+          size="$(stat -c %s "$tar")"
+          count="$(wc -l <<<"$entries" | tr -d ' ')"
+          echo "ATHENA_TAR=$tar" >> "$GITHUB_ENV"
+          {
+            echo "### $name"
+            echo
+            echo "- sha256: \`$hash\`"
+            echo "- size: $size bytes, $count entries"
+            echo "- binary: \`$binary\`"
+            echo "- glibc: $ATHENA_GLIBC or newer"
+            echo "- libraries: \`$ATHENA_LIBRARIES\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$name sha256 $hash ($size bytes)"
+
+      # archive: false uploads the tar itself; the artifact is named after the file.
+      - name: Upload the tar
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ env.ATHENA_TAR }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 30

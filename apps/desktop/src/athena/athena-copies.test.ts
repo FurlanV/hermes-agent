@@ -1,9 +1,19 @@
 // @vitest-environment node
 // The bundled athena copies match src/athena/athena-copies.json (scripts/athena-copies.mjs), and a packed app
 // is checked for the Athena name, icon, keys and catalog (scripts/check-packed-app.mjs). Both scripts run in
-// the Windows build workflow; they are spawned here the way CI runs them.
+// the Windows and Linux build workflows; they are spawned here the way CI runs them.
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
@@ -206,4 +216,58 @@ describe('packed app check', () => {
     },
     60_000
   )
+})
+
+/** A Linux unpacked folder: the binary, Electron's libffmpeg.so, the packed package.json and the icon files. */
+async function linuxApp({ product = BRANDING.display, binary = BRANDING.display, icon = 'assets/icon.png' } = {}) {
+  const app = packedApp({ windows: true })
+  const resources = path.join(app, 'resources')
+  const builder = realpathSync(path.join(desktop, 'node_modules/app-builder-lib'))
+  const asar = createRequire(path.join(builder, 'package.json'))('@electron/asar')
+  const source = temp()
+
+  writeFileSync(
+    path.join(source, 'package.json'),
+    JSON.stringify({
+      name: BRANDING.pascal,
+      productName: product,
+      desktopName: `${BRANDING.appIdPrefix}.${BRANDING.kebab}`
+    })
+  )
+  await asar.createPackage(source, path.join(resources, 'app.asar'))
+  writeFileSync(path.join(app, 'libffmpeg.so'), '')
+  writeFileSync(path.join(app, binary), '\x7fELF', 'latin1')
+  chmodSync(path.join(app, binary), 0o755)
+  cpSync(path.join(desktop, 'assets/icon.ico'), path.join(resources, 'icon.ico'))
+  cpSync(path.join(desktop, icon), path.join(resources, 'app.asar.unpacked', 'dist', 'apple-touch-icon.png'))
+
+  return app
+}
+
+describe('packed app check, Linux folder', () => {
+  test('a folder with the Athena binary, package name and icons passes', async () => {
+    expect(run(packedScript, [await linuxApp()])).toMatchObject({ status: 0 })
+  })
+
+  test('a Hermes binary, product name or window icon fails', async () => {
+    const binary = run(packedScript, [await linuxApp({ binary: 'Hermes' })])
+
+    expect(binary.status).toBe(1)
+    expect(binary.output).toContain('Hermes is in the app folder')
+    expect(binary.output).toContain(`${BRANDING.display} is missing`)
+
+    expect(run(packedScript, [await linuxApp({ product: 'Hermes' })]).output).toContain(
+      'package.json productName is Hermes'
+    )
+    expect(run(packedScript, [await linuxApp({ icon: 'assets/icon-dark.png' })]).output).toContain(
+      'apple-touch-icon.png is not assets/icon.png'
+    )
+  })
+
+  test('a stock install stamp fails', async () => {
+    const app = await linuxApp()
+
+    writeFileSync(path.join(app, 'resources', 'install-stamp.json'), JSON.stringify({ brand: 'hermes' }))
+    expect(run(packedScript, [app])).toMatchObject({ status: 1 })
+  })
 })

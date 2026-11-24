@@ -53,6 +53,38 @@ trusted signing certificate (P09).
 `check-packed-app.mjs` also takes a macOS app (without the exe checks):
 `node apps/desktop/src/athena/scripts/check-packed-app.mjs apps/desktop/release/mac-arm64/Athena.app`.
 
+## Linux build
+
+`.github/workflows/athena-desktop-linux.yml` ("Athena Desktop Linux build")
+builds the Athena variant for Linux x64 on a GitHub-hosted `ubuntu-22.04`
+runner. It runs on a push to `feature/straightforward-install` or `release/**`
+that touches `apps/desktop/**` or the workflow, and on dispatch once the file is
+on `main`. It is unsigned and reads no secret. It is not an AppImage, which
+needs FUSE that WSL and HPC nodes often lack.
+
+1. `scripts/athena-copies.mjs --check`, as in the Windows build.
+2. `pnpm run build`, then `pnpm run builder --dir --publish never --linux --x64`
+   with `HERMES_DESKTOP_VARIANT=athena`. It must run on Linux: node-pty has no
+   Linux prebuild and the packaging scripts refuse another OS's target.
+3. `scripts/check-packed-app.mjs apps/desktop/release/linux-unpacked`: the
+   folder holds an executable `Athena` (no `Hermes`, `hermes` or `electron`),
+   the packed `package.json` says name and productName `Athena` and desktopName
+   `ca.sickkids.athena`, `resources/icon.ico` and the window icon
+   (`resources/app.asar.unpacked/dist/apple-touch-icon.png`) are the Athena
+   ones, the install stamp says `brand: athena`, and the built bundles carry the
+   bundled trusted keys and catalog. An ELF binary has no version strings or
+   icon, so these stand in for the Windows exe checks.
+4. node-pty's `pty.node` is in the folder, and no binary in it needs a glibc
+   newer than 2.35 (Ubuntu 22.04).
+5. It uploads one file, `Athena-<version>-linux-x64.tar.gz`, with `<version>`
+   as in the Windows build. The tar holds one top folder, `Athena/`, with the
+   binary at `Athena/Athena`. The run summary lists its sha256, the glibc it
+   needs and the shared libraries the binary links.
+
+`Athena/chrome-sandbox` is not setuid in a tar a user extracts. Where the kernel
+refuses unprivileged user namespaces, the app starts only with `--no-sandbox`
+on its command line (`electron/linux-sandbox-relaunch.ts`).
+
 ## Bundled athena copies
 
 The build bundles four athena files: the catalog (`catalog/catalog.json`), the

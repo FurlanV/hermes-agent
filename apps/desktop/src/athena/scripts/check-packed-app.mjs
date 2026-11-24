@@ -2,6 +2,7 @@
 // Check that a packed Athena Desktop is the Athena variant, not stock Hermes:
 //
 //   node check-packed-app.mjs apps/desktop/release/win-unpacked             Windows unpacked folder
+//   node check-packed-app.mjs apps/desktop/release/linux-unpacked           Linux unpacked folder
 //   node check-packed-app.mjs apps/desktop/release/mac-arm64/Athena.app     macOS app (no exe checks)
 //
 // - the install stamp says `brand: athena`;
@@ -9,9 +10,12 @@
 //   bundled catalog (its version and every entry's sha256), the copies athena-copies.mjs checks;
 // - Windows: `<display>.exe` exists and no Hermes.exe or electron.exe; its version strings name Athena and
 //   SickKids (branding.json); its icon is exactly assets/icon.ico (image for image), and that file is not the
-//   stock Hermes icon.
+//   stock Hermes icon;
+// - Linux (an ELF has no version strings or icon): `<display>` is an executable ELF and there is no Hermes or
+//   electron binary; the packed package.json names Athena (name, productName, desktopName); resources/icon.ico
+//   is assets/icon.ico and the window icon is assets/icon.png, neither the stock Hermes icon.
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
+import { accessSync, constants, existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -21,15 +25,20 @@ const branding = JSON.parse(readFileSync(path.join(desktop, 'src/athena/branding
 
 // apps/desktop/assets/icon.ico before the Athena icons (upstream 071d31ffc69 and f9be9b5b6d^).
 export const STOCK_HERMES_ICON_SHA256 = '41bfca2371bc0e6159038c7c78dd39f29c6272038b4a2ce38be2a568203d5f98'
+// apps/desktop/assets/icon.png (and public/apple-touch-icon.png) at the same two commits.
+export const STOCK_HERMES_PNG_SHA256 = '2e69dd9a8a1d3f9e3f627efc37102aed416f703e22f599e31c5d86b212a4d6de'
 
 const RT_ICON = 3
 const sha256 = data => createHash('sha256').update(data).digest('hex')
 
-/** resedit, the PE resource library electron-builder itself uses (app-builder-lib's dependency). */
-function loadResedit() {
+/** A library electron-builder itself uses (app-builder-lib's dependency). */
+function loadBuilderLibrary(name) {
   const builder = realpathSync(path.join(desktop, 'node_modules/app-builder-lib'))
-  return createRequire(path.join(builder, 'package.json'))('resedit')
+  return createRequire(path.join(builder, 'package.json'))(name)
 }
+
+/** resedit, the PE resource library. */
+const loadResedit = () => loadBuilderLibrary('resedit')
 
 /** sha256 of each image in an .ico file, in directory order. */
 export function icoImageDigests(ico) {
@@ -64,6 +73,55 @@ function walk(dir) {
     const file = path.join(dir, entry.name)
     return entry.isDirectory() ? walk(file) : [file]
   })
+}
+
+function isExecutableElf(file) {
+  try {
+    accessSync(file, constants.X_OK)
+  } catch {
+    return false
+  }
+  return readFileSync(file).subarray(0, 4).equals(Buffer.from('\x7fELF', 'latin1'))
+}
+
+/** Problems with the name and icons of the Linux unpacked folder at `app`. */
+export function linuxIdentityProblems(app, resources) {
+  const problems = []
+  for (const stock of ['Hermes', 'hermes', 'electron']) {
+    if (existsSync(path.join(app, stock))) problems.push(`${stock} is in the app folder`)
+  }
+  const binary = path.join(app, branding.display)
+  if (!existsSync(binary)) problems.push(`${binary} is missing`)
+  else if (!isExecutableElf(binary)) problems.push(`${binary} is not an executable ELF`)
+
+  const packed = JSON.parse(
+    loadBuilderLibrary('@electron/asar').extractFile(path.join(resources, 'app.asar'), 'package.json').toString()
+  )
+  const expected = {
+    name: branding.pascal,
+    productName: branding.display,
+    desktopName: `${branding.appIdPrefix}.${branding.kebab}`
+  }
+  for (const [key, value] of Object.entries(expected)) {
+    if (packed[key] !== value) problems.push(`app.asar package.json ${key} is ${packed[key]}, not ${value}`)
+  }
+
+  // The icon files in the folder: resources/icon.ico and the PNG the window (and a menu entry) shows.
+  const icons = [
+    ['assets/icon.ico', path.join(resources, 'icon.ico'), STOCK_HERMES_ICON_SHA256],
+    [
+      'assets/icon.png',
+      path.join(resources, 'app.asar.unpacked', 'dist', 'apple-touch-icon.png'),
+      STOCK_HERMES_PNG_SHA256
+    ]
+  ]
+  for (const [source, packedIcon, stock] of icons) {
+    const digest = sha256(readFileSync(path.join(desktop, source)))
+    if (digest === stock) problems.push(`${source} is the stock Hermes icon`)
+    if (!existsSync(packedIcon)) problems.push(`${packedIcon} is missing`)
+    else if (sha256(readFileSync(packedIcon)) !== digest) problems.push(`${packedIcon} is not ${source}`)
+  }
+  return problems
 }
 
 /** Problems with the packed app at `app`. Empty means it is the Athena variant. */
@@ -102,6 +160,8 @@ export async function checkPackedApp(app) {
   }
 
   if (!windows) return problems
+  // Electron for Linux ships libffmpeg.so beside the binary (Windows: ffmpeg.dll).
+  if (existsSync(path.join(app, 'libffmpeg.so'))) return [...problems, ...linuxIdentityProblems(app, resources)]
 
   const exe = path.join(app, `${branding.display}.exe`)
   for (const stock of ['Hermes.exe', 'electron.exe']) {
