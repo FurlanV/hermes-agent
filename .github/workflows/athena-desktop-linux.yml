@@ -57,6 +57,11 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libx11-dev libxi-dev
 
+      # ubuntu-22.04 ships Python 3.10; the setup action's bootstrap needs 3.11 or newer (datetime.UTC).
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
       - name: Set up the locked Node, pnpm and Python
         uses: ./.github/actions/setup-pm
         with:
