@@ -31,7 +31,7 @@
       "athena": "shared/athena_schemas/src/athena_schemas/data/features.json",
       "copy": "apps/desktop/electron/athena/features.json",
       "compare": "bytes",
-      "sha256": "5e6485461048964c7ccaf48546192dcaebeadc5d8b34683cac3b0a6affab4a1d"
+      "sha256": "8d0eecfe444ed4e00f26f9898b61f17deaebad98f9a09bb8291ae153cf316359"
     }
   ]
 }

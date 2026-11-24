@@ -80,6 +80,7 @@ import {
   refuseRestRequest
 } from './athena/policy-seams'
 import { installAthenaToolPrefs } from './athena/tool-prefs'
+import { createUpstreamSetupGate } from './athena/upstream-setup'
 import { stopBackendChild as stopBackendChildImpl, waitForBackendExit } from './backend-child'
 import {
   execText,
@@ -5080,6 +5081,8 @@ async function ensureRuntime(
   }
 
   if (backend.kind === 'bootstrap-needed') {
+    // Athena (R02 slice 04): every path to the installer or the Windows recovery hand-off passes here.
+    athenaUpstreamSetup.exitIfRefused('the upstream installer was about to start')
     rememberLog('[bootstrap] no Hermes install found; starting first-launch bootstrap')
 
     if (await handOffWindowsBootstrapRecovery('bootstrap-needed')) {
@@ -11716,7 +11719,8 @@ async function startHermes(requestedProfile?: string, inheritsPrimary = false) {
       prepareLocalBackend: async () => {
         await advanceBootProgress('backend.runtime', brandText('Resolving Hermes runtime'), 28)
 
-        return resolveHermesBackend(backendArgs)
+        // Athena (R02 slice 04): no hermes means "run Athena Setup", said before the first-run choice screen.
+        return athenaUpstreamSetup.resolved(await resolveHermesBackend(backendArgs))
       },
       resolveRemote: () => {
         // Classify immediately before each throwing resolve. This callback runs
@@ -14242,6 +14246,13 @@ ipcMain.handle('hermes:bootstrap:reset', async () => {
   return { ok: true }
 })
 ipcMain.handle('hermes:bootstrap:repair', async (): Promise<{ ok: boolean; bundled?: boolean; error?: string }> => {
+  // Athena (R02 slice 04): repair re-runs the upstream installer; refused with the "run Athena Setup" message.
+  const athenaRepairRefusal = athenaUpstreamSetup.repairRefusal()
+
+  if (athenaRepairRefusal) {
+    return athenaRepairRefusal
+  }
+
   // A bundled install's payload is immutable and sealed at build time —
   // "repair" would re-run the installer against a separate
   // %LOCALAPPDATA%\hermes tree the app doesn't own. The only repair for a
@@ -15250,6 +15261,18 @@ installAthenaClientConfig({
   athenaDir: path.join(HERMES_HOME, 'athena'),
   installStamp: INSTALL_STAMP,
   ipcMain,
+  log: rememberLog
+})
+
+// Athena (R02 slice 04): in the Athena build the upstream setup (install script and clone from GitHub) is refused
+// while feature row R02 is off: a start that finds no hermes says "run Athena Setup" and exits.
+const athenaUpstreamSetup = createUpstreamSetupGate({
+  app,
+  appId: PRODUCT_IDENTITY.appId,
+  config: () => athenaClientConfig()?.snapshot().config,
+  dialog,
+  flushLog: flushDesktopLogBufferSync,
+  installStamp: INSTALL_STAMP,
   log: rememberLog
 })
 

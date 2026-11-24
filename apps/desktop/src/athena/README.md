@@ -20,9 +20,10 @@ publish). Signing and notarization are planned separately (P09).
 To run it against the pinned hermes, start it through the Athena launcher
 (`athena/client/installer/macos/dev/athena-desktop.sh`), which sets
 `HERMES_HOME` and `HERMES_DESKTOP_HERMES` and execs
-`Athena.app/Contents/MacOS/Athena`. A Finder launch inherits neither, and the
-app would then try the GitHub bootstrap. `build-mac-dev.sh --launch` does
-both steps when `ATHENA_REPO` (or `ATHENA_DESKTOP_LAUNCHER`) is set.
+`Athena.app/Contents/MacOS/Athena`. A Finder launch inherits neither; an app
+that then finds no hermes says "Athena is not installed on this computer. Run
+Athena Setup." and exits (R02 slice 04, below). `build-mac-dev.sh --launch`
+does both steps when `ATHENA_REPO` (or `ATHENA_DESKTOP_LAUNCHER`) is set.
 
 ## Windows build
 
@@ -1007,6 +1008,7 @@ override with `ATHENA_F02_BASE`).
 | `src/store/skill-deeplink-install.ts` | `requestSkillInstallFromDeepLink` asks `toolInstallAllowed('ui:skill-install')` (slice 29) |
 | `src/lib/plugin-catalog.ts` | `lookupPluginCatalogEntry` asks `toolInstallAllowed('ui:plugin-catalog-lookup')` before the lookup RPC or the feed fetch (slice 29) |
 | `electron/main.ts` | Installs the HPC bridge (`installAthenaHpcBridge`) after the tool switches, whose `applyConfig` it uses (F05 slice 06) |
+| `electron/main.ts` | Builds the upstream-setup gate (`createUpstreamSetupGate`) and asks it in `prepareLocalBackend`, in `ensureRuntime` and in `hermes:bootstrap:repair` (R02 slice 04) |
 | `src/app/session/hooks/use-model-controls.ts` | `selectModel` asks `offerLocalModelConnect` first: a local model that is not connected is not picked, the connection is offered (F05 slice 07) |
 | `src/app/contrib/wiring.tsx` | Mounts `AthenaLocalModelsDialog`, the sign-in for local models (F05 slice 07) |
 | `src/components/model-picker.tsx` | A local model's row shows `AthenaLocalModelStatus`: connected, connecting, or why not (F05 slice 08) |
@@ -1031,6 +1033,25 @@ for an app named Athena is the install root.
   bundle or a stock build is in no install root and starts as before.
 - Checked on macOS with the built bundle in a throwaway install root: exit 0, the launcher started with a clean
   environment, and nothing written to the default user data folder. Not run on Windows.
+
+## The upstream setup is refused (R02 slice 04)
+
+A stock Desktop that finds no hermes runs upstream's first-run setup: it downloads an install script from
+`raw.githubusercontent.com` and clones `NousResearch/hermes-agent` (`electron/bootstrap-runner.ts`). Athena is
+installed by Athena Setup, and the build's branch exists only on the fork, so in the Athena build that setup is off.
+
+- Feature row `R02` (`disable`, area "Install", no entries) is the switch. `electron/athena/upstream-setup.ts` asks
+  the row's own flag, not the `managed.features` master switch: `report` or `off` does not open the download.
+- Off (the build default): a start that finds no hermes shows one dialog, "Athena is not installed on this computer.
+  Run Athena Setup.", and exits with code 1. `main.ts` asks in `prepareLocalBackend`, before the first-run choice
+  screen, and again in `ensureRuntime`, before the Windows recovery hand-off and `runBootstrap`.
+- "Repair install" on the boot-failure screen (`hermes:bootstrap:repair`) answers `{ ok: false, error: <the same
+  message> }`, which the overlay shows; the app stays open and "Reload and retry" still works.
+- On (`features: { "R02": "on" }` in a dev override or the client config), and in a stock build, the gate does
+  nothing: upstream's setup and repair run as before.
+- `upstream-setup.test.ts` runs upstream's start path with every way out of the process trapped, and fails when
+  `main.ts` loses one of the three hooks (check them after an upstream merge).
+- Not run against a built app.
 
 ## A package that did not connect (R01 slice 27)
 

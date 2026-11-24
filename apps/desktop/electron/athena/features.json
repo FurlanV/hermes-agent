@@ -1112,6 +1112,14 @@
       "area": "Local models",
       "title": "Local models over the HPC bridge",
       "config_keys": []
+    },
+    {
+      "id": "R02",
+      "mark": "disable",
+      "default": "off",
+      "area": "Install",
+      "title": "Upstream first-run setup and Repair install (from GitHub)",
+      "config_keys": []
     }
   ]
 }

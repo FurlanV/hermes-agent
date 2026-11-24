@@ -28,7 +28,7 @@ const PLAN = path.join(
 )
 
 /** Rows added after the F02 audit, in registry order (the audit table does not list them). */
-const LATER_ROWS = ['F05']
+const LATER_ROWS = ['F05', 'R02']
 const AUDIT_ROWS = FEATURE_ROWS.filter(row => !LATER_ROWS.includes(row.id))
 
 const exported = () => `${JSON.stringify(exportedFeatureRegistry(), null, 2)}\n`
@@ -60,6 +60,12 @@ describe('the feature registry', () => {
 
     expect(allowed({})).toBe(false)
     expect(allowed({ features: { F05: 'on' } })).toBe(true)
+  })
+
+  test('R02, the upstream setup: off by default, switched on by its own flag, and no entry reaches it', () => {
+    expect(FEATURE_ROWS.find(row => row.id === 'R02')).toMatchObject({ area: 'Install', entries: [], mark: 'disable' })
+    expect(featureStates({}).flag('R02')).toBe(false)
+    expect(featureStates({ features: { R02: 'on' } }).flag('R02')).toBe(true)
   })
 
   // The plan's table is the source; this keeps the registry from drifting from it.

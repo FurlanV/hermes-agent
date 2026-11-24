@@ -623,7 +623,12 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   // F05: local models on a server the Athena server cannot reach, through an SSH forward the Desktop opens from the
   // user's own HPC account. Off by default; an admin turns it on per role, together with the client config's
   // `local_models.enabled`. While it is off the bridge's IPC channels are not registered.
-  row('F05', 'disable', 'Local models', 'Local models over the HPC bridge', [...ipc('athena:hpc-bridge:*')])
+  row('F05', 'disable', 'Local models', 'Local models over the HPC bridge', [...ipc('athena:hpc-bridge:*')]),
+  // R02 slice 04: upstream's first-run setup and "Repair install" download an install script and clone
+  // NousResearch/hermes-agent from GitHub. Athena is installed by Athena Setup, so while this row is off a Desktop
+  // that finds no hermes says so and exits, and repair answers the same (upstream-setup.ts). A developer turns it
+  // on to get upstream's setup back. No entries: main asks the row's own flag.
+  row('R02', 'disable', 'Install', 'Upstream first-run setup and Repair install (from GitHub)')
 ])
 
 export const FEATURE_ROW_BY_ID: ReadonlyMap<string, FeatureRow> = new Map(FEATURE_ROWS.map(r => [r.id, r]))
