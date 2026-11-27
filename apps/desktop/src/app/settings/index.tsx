@@ -11,10 +11,12 @@ import { Tip } from '@/components/ui/tooltip'
 import { getHermesConfigDefaults, getHermesConfigRecord, saveHermesConfig } from '@/hermes'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
+import { servedByHermesCloud } from '@/lib/hermes-cloud-host'
 import {
   Archive,
   BarChart3,
   Bell,
+  CloudUpload,
   Cpu,
   Download,
   Globe,
@@ -49,6 +51,7 @@ import { OverlayView } from '../overlays/overlay-view'
 
 import { AboutSettings } from './about-settings'
 import { AppearanceSettings } from './appearance-settings'
+import { BackupSettings } from './backup-settings'
 import { BILLING_VIEWS, BillingSettings, type BillingSubView } from './billing'
 import { deriveBillingView, useBillingState, useSubscriptionState } from './billing/use-billing-state'
 import { ConfigSettings } from './config-settings'
@@ -88,6 +91,7 @@ const SETTINGS_VIEWS: readonly SettingsViewId[] = [
   'notifications',
   'billing',
   'sessions',
+  'backup',
   'plugins',
   'about'
 ]
@@ -428,6 +432,14 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
             label: t.settings.nav.sessions,
             onSelect: () => setActiveView('sessions')
           },
+          // On a Webapp Hermes Cloud serves, the page is backup only: that tab IS a cloud agent.
+          {
+            active: activeView === 'backup',
+            icon: servedByHermesCloud() ? Archive : CloudUpload,
+            id: 'backup',
+            label: servedByHermesCloud() ? t.settings.nav.backupOnly : t.settings.nav.backup,
+            onSelect: () => setActiveView('backup')
+          },
           {
             active: activeView === 'plugins',
             children: pluginSettingsNavChildren(plugins.entries, plugins.target, plugins.open),
@@ -623,6 +635,8 @@ export function SettingsView({ onClose, onConfigSaved, onMainModelChanged }: Set
     />
   ) : activeView === 'vault' ? (
     <VaultSettings key={vaultOwnerKey(activeConnectionId, scopeProfile)} subpage={subpage} />
+  ) : activeView === 'backup' ? (
+    <BackupSettings key={vaultOwnerKey(activeConnectionId, scopeProfile)} />
   ) : (
     <SessionsSettings subpage={subpage} />
   )

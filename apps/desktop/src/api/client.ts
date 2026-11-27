@@ -1,4 +1,5 @@
 import {
+  type CanonicalClientIdentity,
   type ConnectionState,
   type GatewayEvent,
   type GatewayEventName,
@@ -10,6 +11,7 @@ import { map, type MapStore } from 'nanostores'
 
 import { assertRpcAllowed } from '@/athena/managed/rpc-seam'
 import type { HermesApiRequest } from '@/global'
+import { desktopClientIdentity } from '@/lib/client-identity'
 
 import { CanonicalDesktopProtocol, canonicalProfile, canonicalPromptParams, canonicalSessionKey, openGatewaySocket, recordCanonicalOwner, splitRewindSubmit } from './canonical-protocol'
 import { DialReadiness, GATEWAY_NOT_CONNECTED_MESSAGE, remainingRequestBudget } from './dial-readiness'
@@ -328,6 +330,10 @@ export class HermesGateway extends JsonRpcGatewayClient {
 
   protected override isDesktopLocal(): boolean {
     return this.nativeDial
+  }
+
+  protected override clientIdentity(): Promise<CanonicalClientIdentity> {
+    return desktopClientIdentity()
   }
 
   /** The session wire this connection negotiated; null until its readiness settles. */
