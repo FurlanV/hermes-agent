@@ -305,6 +305,10 @@ exports[`Settings lists with every feature allowed > the Settings nav is unchang
     "label": "Sessions",
   },
   {
+    "id": "backup",
+    "label": "Backup & Transfer",
+  },
+  {
     "id": "plugins",
     "label": "Plugins",
   },
@@ -412,6 +416,16 @@ exports[`Settings lists with every feature allowed > the command palette Setting
     "label": "About",
     "value": "set-about",
   },
+  {
+    "group": "Settings",
+    "label": "Back up this agent",
+    "value": "set-backup-agent",
+  },
+  {
+    "group": "Settings",
+    "label": "Transfer to Hermes Cloud",
+    "value": "set-transfer-to-cloud",
+  },
 ]
 `;
 
@@ -502,6 +516,16 @@ exports[`Settings lists with every feature allowed > the command palette Setting
     "label": "About",
     "value": "sp-about",
   },
+  {
+    "group": "Settings",
+    "label": "Back up this agent",
+    "value": "sp-backup-agent",
+  },
+  {
+    "group": "Settings",
+    "label": "Transfer to Hermes Cloud",
+    "value": "sp-transfer-to-cloud",
+  },
 ]
 `;
 
@@ -560,6 +584,7 @@ exports[`Settings lists with every feature allowed > the settings search catalog
     "setting:notifications.kind-background-done",
     "setting:notifications.kind-credits",
     "setting:notifications.kind-plugin",
+    "setting:notifications.phone-presence",
     "setting:notifications.mute-sounds",
     "setting:notifications.completion-sound",
     "setting:sessions.auto-archive",

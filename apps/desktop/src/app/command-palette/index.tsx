@@ -1377,8 +1377,10 @@ function CommandPaletteBody({ onExited }: { onExited: () => void }) {
       }
     }
 
-    return result
-  }, [go, search, settingsCatalog, settingsEntryItem, settingsSectionLabel, t])
+    // Athena (P10, v0.23.4): the feature policy prunes this page as it does the root, so upstream's Backup &
+    // Transfer rows (and any later sp- row a feature row lists) follow their flags here too.
+    return allowedPaletteGroups(result, featureFilter)
+  }, [featureFilter, go, search, settingsCatalog, settingsEntryItem, settingsSectionLabel, t])
 
   // Nested palette pages (VS Code-style submenus). Reusable: add an entry here
   // and point a root item at it via `to`.
