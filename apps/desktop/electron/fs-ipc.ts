@@ -8,9 +8,9 @@ import path from 'node:path'
 
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 
-import { guardedIpcMain } from './athena/policy-seams'
 import { PLUGIN_CATALOG_NAME_RE } from '../../shared/src/desktop-plugin-files'
 
+import { guardedIpcMain } from './athena/policy-seams'
 import { platformDefaultHermesHome } from './data-paths'
 import { installDesktopPluginFromGit, probePluginRepo } from './desktop-plugin-install'
 import { removeDesktopPlugin } from './desktop-plugin-remove'
