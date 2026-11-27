@@ -26,7 +26,6 @@ type Use =
 /** Every source naming a Nous host: shown as a link (opened only by a click) or fetched, and what keeps it shut. */
 const INVENTORY: Record<string, Use> = {
   'electron/backend-health.ts': { kind: 'link', why: 'recognises *.agents.nousresearch.com cloud backends; no request' },
-  'electron/hub-iframe-policy.ts': { gate: 'plugin:hermes-bots', kind: 'fetch', why: "Bot Mode's skills hub iframe" },
   'electron/portal-session.ts': { gate: 'ipc:hermes:cloud:login', kind: 'fetch', why: 'Hermes Cloud portal login (S84)' },
   'electron/remote-lifecycle.ts': { kind: 'link', why: 'an install hint printed for a remote SSH backend' },
   'electron/update-stop-remedy.ts': { kind: 'link', why: 'the updating guide, shown when an in-app update stops' },
@@ -50,12 +49,16 @@ const INVENTORY: Record<string, Use> = {
   'src/components/send-diagnostics-dialog.tsx': { gate: 'rpc:diagnostics.share_nous', kind: 'fetch', why: 'S117' },
   'src/components/update-status.tsx': { kind: 'link', why: 'the installer page link' },
   'src/lib/error-surface.ts': { kind: 'link', why: 'provider console links on error cards' },
+  'src/lib/hermes-cloud-agents.ts': {
+    gate: 'ipc:hermes:cloud:discover',
+    kind: 'link',
+    why: "Backup & Transfer's Nous Portal agents link; its cloud sign-in and agent discovery go over hermes:cloud:* (S84)"
+  },
   'src/lib/plugin-catalog.ts': {
     gate: 'rpc:plugins.catalog.lookup',
     kind: 'fetch',
     why: 'the plugin catalog lookup and its feed fallback, refused (with the lookup itself) under managed.tools (slice 29)'
   },
-  'src/plugins/hermes-bots/skills-hub.tsx': { gate: 'plugin:hermes-bots', kind: 'fetch', why: 'Bot Mode (S123, off)' },
   'src/store/shared-metrics.ts': { gate: 'rpc:shared_metrics.status', kind: 'fetch', why: 'usage stats to Nous (S49)' }
 }
 
