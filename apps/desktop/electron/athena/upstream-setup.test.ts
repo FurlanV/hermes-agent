@@ -256,8 +256,13 @@ describe('main.ts asks the gate', () => {
   }
 
   test('at startup, before the first-run choice', () => {
-    expect(between('prepareLocalBackend: async () => {', 'resolveRemote: () => {')).toContain(
-      'return athenaUpstreamSetup.resolved(await resolveHermesBackend(backendArgs))'
+    // Upstream v0.23.4 (#156727) runs the local backend through launchedProfiles.startLocally, so a
+    // profile a plugin runs elsewhere never resolves hermes here; the gate stays inside that callback.
+    const prepare = between('prepareLocalBackend: () =>', 'resolveRemote: () => {')
+
+    expect(prepare).toContain('launchedProfiles.startLocally(')
+    expect(prepare).toContain(
+      'return athenaUpstreamSetup.resolved(await resolveHermesBackend(backendArgs, advanceBootProgress))'
     )
   })
 
