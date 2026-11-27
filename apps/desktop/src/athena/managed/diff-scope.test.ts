@@ -6,7 +6,11 @@
 // F03 slice 06's auth_command): what this test enforces there is that no existing
 // hermes test is edited, renamed or removed (new tests are fine). The base is the
 // D05 branding branch (`feature/athena-demo`); set ATHENA_F02_BASE to compare elsewhere.
-import { execFileSync } from 'node:child_process'
+// After an upstream merge (P10: v0.23.4) the comparison is against that base merged with
+// the same upstream release, so only what Athena changed since the base counts, not what
+// upstream changed. The release is the newest stable tag in HEAD's history
+// (ATHENA_UPSTREAM_RELEASE overrides it); it is ignored while the base already has it.
+import { execFileSync, spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -25,6 +29,33 @@ function git(...args: string[]): string | null {
 }
 
 const mergeBase = git('merge-base', base, 'HEAD')?.trim() || null
+
+const release =
+  process.env.ATHENA_UPSTREAM_RELEASE ??
+  (git('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', '--exclude', '*+*', '--exclude', '*-*', 'HEAD')?.trim() ||
+    null)
+
+/** The base merged with the upstream release, as a tree: what HEAD would be had Athena changed nothing since
+ *  the base. A file both sides changed keeps git's conflict markers there, so it still differs from HEAD (and
+ *  any such file is one Athena touched before the base, hence listed). The base itself while it holds the
+ *  release already, or when there is none. */
+function upgradedBase(): null | string {
+  if (!mergeBase || !release || git('merge-base', '--is-ancestor', release, mergeBase) !== null) {
+    return mergeBase
+  }
+
+  // Exit 1 means conflicts, and the tree is still written: its id is the first line either way.
+  const merged = spawnSync('git', ['merge-tree', '--write-tree', mergeBase, release], { cwd: desktop, encoding: 'utf8' })
+  const tree = merged.status === 0 || merged.status === 1 ? merged.stdout.split('\n')[0]?.trim() : ''
+
+  if (!tree) {
+    throw new Error(`could not merge ${base} with ${release}: ${merged.stderr}`)
+  }
+
+  return tree
+}
+
+const baseline = upgradedBase()
 const repoRoot = git('rev-parse', '--show-toplevel')?.trim() ?? desktop
 const DESKTOP = 'apps/desktop/'
 
@@ -92,7 +123,7 @@ function changedPaths(since: string): string[] {
   return [...new Set(lines.split('\n').filter(Boolean))].sort()
 }
 
-describe.skipIf(!mergeBase)(`F02 diff scope against ${base}`, () => {
+describe.skipIf(!baseline)(`F02 diff scope against ${base}${baseline === mergeBase ? '' : ` + ${release}`}`, () => {
   const listed = new Set(listedUpstreamFiles(readFileSync(path.join(desktop, 'src/athena/README.md'), 'utf8')))
 
   test('the upstream-files list exists', () => {
@@ -100,7 +131,7 @@ describe.skipIf(!mergeBase)(`F02 diff scope against ${base}`, () => {
   })
 
   test('touches only listed upstream desktop files and the Athena folders', () => {
-    const outside = changedPaths(mergeBase!).filter(
+    const outside = changedPaths(baseline!).filter(
       file => file.startsWith(DESKTOP) && !listed.has(file) && !ATHENA_DIRS.some(dir => file.startsWith(dir))
     )
 
@@ -115,7 +146,7 @@ describe.skipIf(!mergeBase)(`F02 diff scope against ${base}`, () => {
         'diff',
         '--name-status',
         '--diff-filter=MDR',
-        mergeBase!,
+        baseline!,
         '--',
         'tests/',
         ':(glob)**/test_*.py'
