@@ -350,7 +350,7 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   ]),
 
   // ── Notifications ──
-  row('S75', 'keep', 'Notifications', 'Enable, test, per-kind alerts, permission, mute, completion sound', [
+  row('S75', 'keep', 'Notifications', 'Enable, test, per-kind alerts, permission, mute, completion sound, phone presence', [
     NOTIFICATIONS,
     'settings:notifications/alerts',
     'settings:notifications/sounds',
@@ -365,7 +365,9 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
       'kind-plugin',
       'browser-permission',
       'mute-sounds',
-      'completion-sound'
+      'completion-sound',
+      // v0.23.4: what this window tells hermes about the user being here, for a phone-notification plugin.
+      'phone-presence'
     )
   ]),
   row('S76', 'remove', 'Notifications', 'Credit alerts', st('notifications', 'kind-credits')),
@@ -426,9 +428,14 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
     'settings-control:gateway-mode-local',
     'statusbar:gateway-switcher'
   ]),
-  row('S84', 'remove', 'Gateways', 'Hermes Cloud (sign-in, org picker, agents)', [
+  row('S84', 'remove', 'Gateways', 'Hermes Cloud (sign-in, org picker, agents, transfer)', [
     'settings-control:gateway-mode-cloud',
-    ...ipc('hermes:cloud:*')
+    ...ipc('hermes:cloud:*'),
+    // v0.23.4 (80e7764720, 7473d5dd40): Settings › Backup & Transfer's "Transfer to Hermes Cloud" and the chunked
+    // routes it reads and writes through. Only this row lists them, so turning P10 on never brings them back.
+    'palette:set-transfer-to-cloud',
+    'palette:sp-transfer-to-cloud',
+    ...rest('/api/ops/backup/chunk', '/api/ops/transfer/*')
   ]),
   row('S85', 'disable', 'Gateways', 'Remote gateway (URL, auth, test)', [
     GATEWAY,
@@ -628,7 +635,16 @@ export const FEATURE_ROWS: readonly FeatureRow[] = Object.freeze([
   // NousResearch/hermes-agent from GitHub. Athena is installed by Athena Setup, so while this row is off a Desktop
   // that finds no hermes says so and exits, and repair answers the same (upstream-setup.ts). A developer turns it
   // on to get upstream's setup back. No entries: main asks the row's own flag.
-  row('R02', 'disable', 'Install', 'Upstream first-run setup and Repair install (from GitHub)')
+  row('R02', 'disable', 'Install', 'Upstream first-run setup and Repair install (from GitHub)'),
+  // P10 (v0.23.4 upgrade, 80e7764720): Settings › Backup & Transfer. "Back up this agent" downloads a zip of the whole
+  // profile: every conversation (state.db) and its credentials (.env, auth.json). Off by default; an admin turns it
+  // on per role. Its transfer half is S84's. Command Center › Maintenance has its own backup (POST /api/ops/backup),
+  // older than this row and not listed here.
+  row('P10', 'disable', 'Backup & Transfer', 'Settings › Backup & Transfer: back up this agent', [
+    'settings:backup',
+    'palette:set-backup-agent',
+    'palette:sp-backup-agent'
+  ])
 ])
 
 export const FEATURE_ROW_BY_ID: ReadonlyMap<string, FeatureRow> = new Map(FEATURE_ROWS.map(r => [r.id, r]))

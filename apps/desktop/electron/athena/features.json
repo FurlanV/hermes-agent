@@ -702,7 +702,7 @@
       "mark": "keep",
       "default": "on",
       "area": "Notifications",
-      "title": "Enable, test, per-kind alerts, permission, mute, completion sound",
+      "title": "Enable, test, per-kind alerts, permission, mute, completion sound, phone presence",
       "config_keys": []
     },
     {
@@ -774,7 +774,7 @@
       "mark": "remove",
       "default": null,
       "area": "Gateways",
-      "title": "Hermes Cloud (sign-in, org picker, agents)",
+      "title": "Hermes Cloud (sign-in, org picker, agents, transfer)",
       "config_keys": []
     },
     {
@@ -1119,6 +1119,14 @@
       "default": "off",
       "area": "Install",
       "title": "Upstream first-run setup and Repair install (from GitHub)",
+      "config_keys": []
+    },
+    {
+      "id": "P10",
+      "mark": "disable",
+      "default": "off",
+      "area": "Backup & Transfer",
+      "title": "Settings › Backup & Transfer: back up this agent",
       "config_keys": []
     }
   ]

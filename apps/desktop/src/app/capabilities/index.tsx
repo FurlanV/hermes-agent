@@ -174,6 +174,9 @@ function StockCapabilitiesView({
       onTabChange={id => setMode(id as CapabilityMode)}
       // Every tab renders the shared CapabilitySearch beside its own results.
       searchHidden
+      // The profile picker shares the tab row. Plugins scopes only its Agent
+      // half, so its picker lives in that column instead.
+      searchTrailingAction={mode !== 'plugins' && <CapabilityScopeSelector scope={scope} />}
       tabs={[
         { id: 'skills', label: t.skills.tabSkills, meta: skills?.length ?? null },
         { id: 'plugins', label: t.skills.tabPlugins },
@@ -182,10 +185,7 @@ function StockCapabilitiesView({
       ]}
       tabsAlign="start"
     >
-      <div className="flex h-full flex-col">
-        {mode !== 'plugins' && <CapabilityScopeSelector scope={scope} />}
-        <div className="flex min-h-0 flex-1 flex-col">{loadGate ?? tabContent[mode]()}</div>
-      </div>
+      <div className="flex h-full flex-col">{loadGate ?? tabContent[mode]()}</div>
     </PageSearchShell>
   )
 }

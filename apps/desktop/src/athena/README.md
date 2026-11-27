@@ -1177,3 +1177,6 @@ Keep the F14 diff to these, plus `src/athena/**` and `electron/athena/**`.
 | `electron/window-below.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
 | `electron/windows-hermes-path.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
 | `electron/windows-remote-lifecycle.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06) |
+| `electron/appimage-payload.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06; added with the v0.23.4 upgrade, P10) |
+| `electron/profile-backend-confirm.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06; added with the v0.23.4 upgrade, P10) |
+| `electron/profile-runs-elsewhere.ts` | Lines that say Hermes to the user are wrapped in the main `brandText` (`electron/athena/brand-text.ts`) (F14 slice 06; added with the v0.23.4 upgrade, P10) |

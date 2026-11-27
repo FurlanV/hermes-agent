@@ -23,11 +23,11 @@ left as written for now (Bot Mode code, see the F14 open questions). Status: **o
 
 | Surface | replace | keep | flag |
 |---|---|---|---|
-| Translations, English (keys) | 315 | 6 | 21 |
-| Translations, other languages (keys × languages) | 2438 | 45 | 139 |
-| Renderer source (lines) | 96 | 19 | 7 |
-| Main-process source (lines) | 146 | 36 | 12 |
-| Plugin translations (lines) | 248 | 0 | 4 |
+| Translations, English (keys) | 326 | 6 | 28 |
+| Translations, other languages (keys × languages) | 2526 | 45 | 195 |
+| Renderer source (lines) | 99 | 20 | 8 |
+| Main-process source (lines) | 161 | 36 | 12 |
+| Plugin translations (lines) | 244 | 0 | 4 |
 
 ## Translations (English)
 
@@ -128,6 +128,10 @@ also says Hermes; they follow the English action.
 | settings.notifications.kinds.input.description | Hermes asked a question or needs a password or secret. | replace |  | 8 |
 | settings.notifications.kinds.turnDone.description | A turn finished while Hermes was in the background. | replace |  | 8 |
 | settings.notifications.kinds.plugin.description | A desktop plugin sent a notification while Hermes was in the background. | replace |  | 8 |
+| settings.notifications.phonePresence.description | What this window tells Hermes about you being here. A phone notification plugin decides what to do with it. | replace |  | 8 |
+| settings.notifications.phonePresence.watchingComputer | (function) While a conversation is open in this window, Hermes is told when you last used this computer. Last input ‹1› … | replace |  | 8 |
+| settings.notifications.phonePresence.watchingWindow | (function) While a conversation is open in this window, Hermes is told when you last used this window. Last input ‹1› ag… | replace |  | 8 |
+| settings.notifications.phonePresence.watchingWindowNoInput | While a conversation is open in this window, Hermes is told when you last used this window. No input seen yet. | replace |  | 8 |
 | settings.notifications.testTitle | Hermes | replace |  | 8 |
 | settings.searchPlaceholder.about | About Hermes Desktop | replace |  | 8 |
 | settings.appearance.colorModeDesc | Pick a fixed mode or let Hermes follow your system setting. | replace |  | 7 |
@@ -149,6 +153,13 @@ also says Hermes; they follow the English action.
 | settings.uninstallSection.options.lite.description | Remove the app and the Hermes agent, but keep config, chats, and secrets for a future reinstall. | replace |  | 8 |
 | settings.uninstallSection.options.lite.consequence | the Chat GUI and the Hermes agent (config, chats, and secrets are kept) | replace |  | 8 |
 | settings.uninstallSection.options.full.consequence | EVERYTHING — the Chat GUI, the Hermes agent, and all of your config, chats, secrets, and logs | replace |  | 8 |
+| settings.backup.intro | Save this agent to a file, or carry it over to a Hermes Cloud agent. | flag | a pending name: the owner decides (F14 slice 07) | 8 |
+| settings.backup.transferCommand | Transfer to Hermes Cloud | flag | a pending name: the owner decides (F14 slice 07) | 8 |
+| settings.backup.transferTitle | Transfer to Hermes Cloud | flag | a pending name: the owner decides (F14 slice 07) | 8 |
+| settings.backup.transferHelp | Replace a Hermes Cloud agent with this one. Nothing on this computer changes. | flag | a pending name: the owner decides (F14 slice 07) | 8 |
+| settings.backup.signInTitle | Sign in to Hermes Cloud | flag | a pending name: the owner decides (F14 slice 07) | 8 |
+| settings.backup.keeps.2 | Hermes Cloud tools | flag | a pending name: the owner decides (F14 slice 07) | 8 |
+| settings.backup.gatewayDown | (function) The files arrived, but ‹1› did not start again, so its bots and scheduled jobs are not running. Restart it fr… | flag | a pending name: the owner decides (F14 slice 07) | 8 |
 | settings.memoryLayers.noProviderDesc | Hermes uses only the built-in layer below. Choose an external provider under Settings › Memory & Context to a… | replace |  | 8 |
 | settings.memoryLayers.providerUnknownDesc | (function) ‹1› is the saved provider; Hermes couldn't read whether it is ready. | replace |  | 8 |
 | settings.memoryLayers.builtinDesc | MEMORY.md and USER.md are Hermes’s own memory, separate from any external provider. Both load into sessions b… | replace |  | 8 |
@@ -209,6 +220,7 @@ also says Hermes; they follow the English action.
 | settings.model.subagents.routing.blockedDetail | This mode is saved, so Hermes refuses every subagent instead of quietly using Default. | replace |  | 8 |
 | settings.model.subagents.routing.blockedNotLoaded | Subagents will not start until Hermes loads Advanced Delegation. Restart Hermes to finish. | replace |  | 8 |
 | settings.localModels.runtimeInstalledDetail | (function) Build ‹1›, ‹2› backend. Hermes starts and manages the server for you. | replace |  | 8 |
+| settings.localModels.updateSameBuildDetail | (function) Hermes now packages llama.cpp ‹1› with files it needs to run. Updating downloads the engine again; models kee… | replace |  | 8 |
 | settings.billing.keepGoingOnCredits.description | Use your credits when included usage runs out. Off: Hermes waits for the reset. | replace |  | 8 |
 | settings.billing.errors.cliBillingDisabled.message | Remote spending is off for this account — a billing admin can turn it on from the portal's Hermes Agent page. | keep | names the engine (Hermes Agent) | 8 |
 | settings.providers.intro | Sign in with a subscription — no API key to copy. Hermes runs the browser sign-in for you, right here in the … | replace |  | 8 |
@@ -229,6 +241,7 @@ also says Hermes; they follow the English action.
 | commandCenter.nav.settings.detail | Configure Hermes desktop | replace |  | 8 |
 | commandCenter.hermesActiveSessions | (function) Hermes ‹1› · Active sessions ‹2› | replace |  | 8 |
 | commandCenter.updateHermes | Update Hermes | replace |  | 8 |
+| commandCenter.maintenance.debugShareConfirmDesc | Uploads a summary to a public paste service: Hermes, Python and OS versions, connected platform and toolset n… | replace |  | 8 |
 | messaging.restartFailedManual | Hermes couldn't restart to apply your messaging settings | replace |  | 1 |
 | messaging.relayLink.intro | (function) ‹1› reaches this agent through the shared Hermes bot. Link your ‹1› account to it and message the bot to talk… | replace |  | 8 |
 | messaging.telegramQr.subtitle | Both options connect a bot you control and save its credentials only to this Hermes installation. | replace |  | 8 |
@@ -361,6 +374,11 @@ also says Hermes; they follow the English action.
 | assistant.approval.gatewayDisconnected | Hermes is offline right now. The command is still waiting for your answer (until the approval timeout). Recon… | replace |  | 7 |
 | assistant.approval.timedOutSystemLine | Approval timed out — the command was not run. Ask Hermes to try again, or raise the limit in Settings → Safet… | replace |  | 8 |
 | assistant.approval.alwaysDescription | (function) This adds the “‹1›” pattern to your permanent allowlist (~/.hermes/config.yaml). Hermes won’t ask again for c… | replace |  | 7 |
+| assistant.approval.denyReasonPlaceholder | Tell Hermes why (optional) | replace |  | 8 |
+| assistant.approval.access.timedOut | (function) The request timed out — access to the folder ‹1› was not granted. Ask Hermes to try again. | replace |  | 8 |
+| assistant.approval.access.alwaysDescription | The folder is added to this profile’s sandbox. Hermes won’t ask again for it in any chat. | replace |  | 8 |
+| assistant.approval.network.timedOut | (function) The request timed out — access to ‹1› was not granted. Ask Hermes to try again. | replace |  | 8 |
+| assistant.approval.network.alwaysDescription | The site is added to this profile’s allowed sites. Hermes won’t ask again for it in any chat. | replace |  | 8 |
 | assistant.clarify.gatewayDisconnected | Hermes is offline right now. Reconnect, then send it again. | replace |  | 7 |
 | assistant.themePicker.basicDetail | For talking to Hermes. | replace |  | 8 |
 | assistant.catalogInstall.requiresHermes | (function) Hermes ‹1› | replace |  | 8 |
@@ -473,9 +491,11 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | src/contrib/plugin-files.ts | const unavailable = { ok: false as const, error: 'unavailable', message: 'This Hermes Desktop build has no pl… | error message | replace | error | pass |
 | src/contrib/runtime-loader.ts | brandText("plugin.js exceeds this shell's 512 KiB read limit — update Hermes Desktop to load larger plugins") | UI text | replace | direct | done |
 | src/contrib/runtime-loader.ts | return { ok: false, error: 'this Hermes Desktop build cannot remove desktop plugins — delete the folder by ha… | error message | replace | error | pass |
+| src/lib/agent-transfer.ts | throw new Error('This cloud agent needs a Hermes update before it can receive a transfer.') | error message | replace | error | pass |
 | src/lib/boot-failure.ts | console.error('Hermes failed to load', error) | developer log | keep | - | n/a |
 | src/lib/boot-failure.ts | heading.textContent = brandText('Hermes couldn’t load') | UI text | replace | direct | done |
 | src/lib/browser-bridge-stubs.ts | message: 'Hermes browser-hosted desktop is ready', | Webapp only | keep | - | n/a |
+| src/lib/browser-cloud.ts | const label = new URL(dashboardUrl).hostname.split('.')[0] \|\| 'Hermes Cloud' | Webapp only | keep | - | n/a |
 | src/lib/browser-notifications.ts | const title = payload.title \|\| 'Hermes' | Webapp only | keep | - | n/a |
 | src/lib/browser-saved-connections.ts | throw new Error('Hermes did not return the saved connections') | Webapp only | keep | - | n/a |
 | src/lib/browser-saved-connections.ts | throw new Error('Hermes did not return a relay ticket') | Webapp only | keep | - | n/a |
@@ -490,6 +510,8 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | src/lib/desktop-git.ts | throw new Error('Hermes Desktop bridge is unavailable') | error message | replace | error | pass |
 | src/lib/desktop-slash-commands.ts | { name: '/profile', description: 'Switch the active Hermes profile', surface: action('profile') }, | UI text | flag | - | n/a |
 | src/lib/error-surface.ts | brandText('── Hermes error details ──'), | UI text | replace | direct | done |
+| src/lib/hermes-cloud-agents.ts | throw new Error('Hermes desktop bridge unavailable') | error message | replace | error | pass |
+| src/lib/hermes-cloud-agents.ts | throw new Error('Sign-in to this agent did not finish. Sign in to Hermes Cloud again.') | error message | flag | - | n/a |
 | src/lib/keybinds/plugin-actions.ts | : refuse(pluginId, 'unknown', `${label} is not a Hermes app action. See ctx.listActions() for the allowed ids… | error message | replace | error | pass |
 | src/lib/mcp-dashboard-oauth.ts | const UPDATE_BACKEND = 'Update the Hermes backend to support Desktop MCP OAuth callbacks.' | error message | replace | error | pass |
 | src/lib/mcp-dashboard-oauth.ts | throw new Error('Update Hermes Desktop to support MCP OAuth callbacks.') | error message | replace | error | pass |
@@ -513,6 +535,7 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | src/sdk/index.ts | notify({ kind: 'error', message: brandText('Update Hermes Desktop to open another bot chat.') }) | UI text | replace | direct | done |
 | src/sdk/index.ts | throw new Error('Hermes Desktop connection routing unavailable') | error message | replace | error | pass |
 | src/sdk/index.ts | throw new Error('Hermes gateway unavailable') | error message | replace | error | pass |
+| src/sdk/profile-backend.ts | throw new Error('This build of Hermes Desktop cannot run a profile through a plugin.') | error message | replace | error | pass |
 | src/store/browser-tab-title.ts | const APP_NAME = 'Hermes' | Webapp only | keep | - | n/a |
 | src/store/gateway.ts | throw new Error('Hermes gateway unavailable') (×2) | error message | replace | error | pass |
 | src/store/gateway.ts | throw new Error(`Hermes gateway unavailable for profile "${route.key}"`) | error message | replace | error | pass |
@@ -542,6 +565,15 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | File | Text | Kind | Action | Route | Status |
 |---|---|---|---|---|---|
 | electron/api-transport.ts | `Expected JSON from ${url} but got HTML (status ${statusCode}). The endpoint is likely missing on the Hermes … | UI text | replace | direct | done |
+| electron/appimage-payload.ts | await host.progress?.('backend.payload', brandText('Preparing this Hermes version (first launch only)…'), 28) | UI text | replace | direct | done |
+| electron/appimage-payload.ts | throw new Error(`${build} exists without a completion marker; remove it to let Hermes copy the payload again`) | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error('Hermes API path must be a non-empty string.') | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error('Hermes API path must be a relative path starting with a single "/".') | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error('Hermes backend base URL is required.') | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error(`Invalid Hermes backend API URL: ${error?.message \|\| error}`) | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error(`Unsupported Hermes backend URL protocol: ${joined.protocol}`) | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error('Hermes API path must not change the backend origin.') | error message | replace | error | pass |
+| electron/backend-api-url.ts | throw new Error('Hermes API URL must not include userinfo.') | error message | replace | error | pass |
 | electron/backend-connection-state.ts | throw new Error('Hermes backend start was superseded by a newer connection attempt.') | error message | replace | error | pass |
 | electron/backend-health.ts | brandText('Remote Hermes gateway uses OAuth, but you are not signed in. ') + | UI text | replace | direct | done |
 | electron/backend-health.ts | throw new Error(`Hermes backend did not become ready: ${(error as Error).message}`) | error message | replace | error | pass |
@@ -579,7 +611,10 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/gateway-file-download-transport.ts | reject(new Error(`Timed out connecting to Hermes backend after ${timeoutMs}ms`)) | error message | replace | error | pass |
 | electron/gateway-file-download.ts | timer = setTimeout(() => res.destroy(new Error(`Hermes backend download stalled: no data for ${idleMs}ms`)), … | error message | replace | error | pass |
 | electron/git-worktree-ops.ts | 'user.name=Hermes', | identifier | keep | - | n/a |
+| electron/global-remote-session-route.ts | () => reject(new Error(`the app-global Hermes backend did not respond within ${budgetMs}ms`)), | error message | replace | error | pass |
+| electron/global-remote-session-route.ts | throw new Error('The app-global Hermes backend is not remote.') | error message | replace | error | pass |
 | electron/hardening.ts | 'Secure token storage is unavailable (no OS keyring service was found), so Hermes Desktop cannot save remote … | UI text | replace | direct | done |
+| electron/hardening.ts | const reason = brandText('Hermes credential stores are blocked.') | UI text | replace | direct | done |
 | electron/host-backend-singleton.ts | `Refusing to start a second local Hermes backend for "${poolKey}": one backend serves every profile on this h… | UI text | replace | direct | done |
 | electron/local-backend-lifecycle.ts | controller.abort(markExpectedTransition(new Error('Hermes Desktop is quitting.'))) | error message | replace | error | pass |
 | electron/local-gateway-python.ts | const fail = (detail: string) => reject(new Error(`Gateway ticket bootstrap could not resolve the installed H… | error message | replace | error | pass |
@@ -654,6 +689,9 @@ elisions (de, que, le, la) are fixed; these forms are not, and read with a mascu
 | electron/preview-signins.ts | resolve({ status: 'error', error: 'could not run the Hermes sign-in export' }) | error message | replace | error | pass |
 | electron/primary-remote-startup.ts | brandText(`Connecting to remote Hermes backend at ${remote.baseUrl}`), | UI text | replace | direct | done |
 | electron/primary-remote-startup.ts | message: brandText('Remote Hermes backend is ready'), | UI text | replace | direct | done |
+| electron/profile-backend-confirm.ts | `Chats in “${profile}” will run in a backend that ${plugin} ${verb} on this computer, instead of ${brandText(… | UI text | replace | direct | done |
+| electron/profile-backend-confirm.ts | detail: `Chats in “${profile}” will run in ${brandText("Hermes's own backend")} on this computer again.`, | UI text | replace | direct | done |
+| electron/profile-runs-elsewhere.ts | `Profile "${name}" ${runner}, but this app has no connection to it. ${brandText("Hermes won't start it on thi… | UI text | replace | direct | done |
 | electron/quick-entry.ts | message: brandText('Hermes has not confirmed the prompt yet — it may still be delivered.'), | UI text | replace | direct | done |
 | electron/quit-guard.ts | 'The agent keeps running on the gateway. Quitting only closes Hermes on this computer; reconnect later to see… | UI text | replace | direct | done |
 | electron/quit-guard.ts | ? brandText('Hermes is still working on 1 chat.') | UI text | replace | direct | done |
@@ -739,5 +777,5 @@ Message bundles bundled plugins register with plugin i18n; branded by the plugin
 | src/plugins/hermes-bots/group-surface-es.ts | 1 | 1 | 0 | 0 |
 | src/plugins/hermes-bots/group-surface-fr.ts | 1 | 1 | 0 | 0 |
 | src/plugins/hermes-bots/group-surface-ru.ts | 1 | 1 | 0 | 0 |
-| src/plugins/hermes-bots/i18n.ts | 64 | 60 | 0 | 4 |
+| src/plugins/hermes-bots/i18n.ts | 60 | 56 | 0 | 4 |
 | src/plugins/kanban/i18n.ts | 12 | 12 | 0 | 0 |

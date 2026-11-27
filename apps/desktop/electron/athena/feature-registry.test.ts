@@ -28,7 +28,7 @@ const PLAN = path.join(
 )
 
 /** Rows added after the F02 audit, in registry order (the audit table does not list them). */
-const LATER_ROWS = ['F05', 'R02']
+const LATER_ROWS = ['F05', 'R02', 'P10']
 const AUDIT_ROWS = FEATURE_ROWS.filter(row => !LATER_ROWS.includes(row.id))
 
 const exported = () => `${JSON.stringify(exportedFeatureRegistry(), null, 2)}\n`
@@ -66,6 +66,25 @@ describe('the feature registry', () => {
     expect(FEATURE_ROWS.find(row => row.id === 'R02')).toMatchObject({ area: 'Install', entries: [], mark: 'disable' })
     expect(featureStates({}).flag('R02')).toBe(false)
     expect(featureStates({ features: { R02: 'on' } }).flag('R02')).toBe(true)
+  })
+
+  test('P10, Backup & Transfer: backup off by default, on by its flag; the transfer to Hermes Cloud stays S84', () => {
+    expect(FEATURE_ROWS.find(row => row.id === 'P10')).toMatchObject({ area: 'Backup & Transfer', mark: 'disable' })
+    expect(rowsForEntry('settings:backup')).toEqual(['P10'])
+    expect(rowsForEntry('palette:set-transfer-to-cloud')).toEqual(['S84'])
+    expect(rowsForEntry('rest:/api/ops/transfer/restore')).toEqual(['S84'])
+
+    const off = featureEntryFilter({})
+    const on = featureEntryFilter({ features: { P10: 'on' } })
+
+    expect([off('settings:backup'), off('palette:set-backup-agent')]).toEqual([false, false])
+    expect([on('settings:backup'), on('palette:set-backup-agent')]).toEqual([true, true])
+    expect([off('palette:set-transfer-to-cloud'), on('palette:set-transfer-to-cloud')]).toEqual([false, false])
+    expect([on('palette:sp-backup-agent'), off('palette:sp-backup-agent'), on('palette:sp-transfer-to-cloud')]).toEqual([
+      true,
+      false,
+      false
+    ])
   })
 
   // The plan's table is the source; this keeps the registry from drifting from it.

@@ -13,7 +13,7 @@ import {
   type Server as TcpServer
 } from 'node:net'
 
-import { type Connection, Server as SshServer, utils } from 'ssh2'
+import { type AuthenticationType, type Connection, Server as SshServer, utils } from 'ssh2'
 
 export interface KeyPair {
   private: string
@@ -182,7 +182,7 @@ export async function startLoginNode(options: LoginNodeOptions): Promise<LoginNo
       node.auth.push({ method: context.method, username: context.username })
 
       const account = options.account
-      const offered = account ? ['publickey', account.ask ?? 'password'] : ['publickey']
+      const offered: AuthenticationType[] = account ? ['publickey', account.ask ?? 'password'] : ['publickey']
 
       const same = (given: string) =>
         Boolean(account) && context.username === account!.username && given === account!.password

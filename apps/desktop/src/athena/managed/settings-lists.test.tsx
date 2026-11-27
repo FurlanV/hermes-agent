@@ -224,6 +224,41 @@ describe('one denied entry id leaves every Settings list at once', () => {
     expect(settingsSubpages('gateway')).toEqual([])
   })
 
+  test('Backup & Transfer (P10): off in the Athena variant, back with P10 on; the cloud transfer row stays out', async () => {
+    const athena = (features: Record<string, string>) =>
+      filterForSnapshot({
+        config: { ...(BUNDLED_DEFAULT_CONFIG as Record<string, unknown>), features },
+        configVersion: null,
+        devOverridesActive: true,
+        error: null,
+        role: null,
+        source: 'bundled',
+        verifiedAt: null
+      })
+
+    const lists = async () => {
+      const nav = flatIds(await renderSettingsNav())
+      cleanup()
+      const root = (await renderPaletteSettingsRows(null)).map(row => row.value)
+      cleanup()
+      $commandPaletteOpen.set(false)
+      const page = (await renderPaletteSettingsRows('settings')).map(row => row.value)
+      cleanup()
+      $commandPaletteOpen.set(false)
+
+      return { nav, palette: [...root, ...page].filter(value => /-(backup-agent|transfer-to-cloud)$/.test(value)) }
+    }
+
+    setFeatureFilter(athena({}))
+    expect(await lists()).toMatchObject({ palette: [] })
+    expect((await lists()).nav).not.toContain('backup')
+
+    setFeatureFilter(athena({ P10: 'on' }))
+    const on = await lists()
+    expect(on.nav).toContain('backup')
+    expect(on.palette).toEqual(['set-backup-agent', 'sp-backup-agent'])
+  })
+
   test('a denied subpage (settings:about/updates) leaves nav, search and the subpage registry', async () => {
     setFeatureFilter(id => id !== 'settings:about/updates')
 
@@ -306,7 +341,8 @@ describe('with every master switch off (slice 19)', () => {
 
   // What the Athena variant leaves out (remove rows) of the D05 build's lists.
   const REMOVED_NAV = new Set(['billing', 'web-access', 'pview:accounts', 'pview:keys'])
-  const REMOVED_PALETTE = /^(set|sp)-(billing|web-access|providers&pview=(accounts|keys))/
+  // transfer-to-cloud: v0.23.4's Backup & Transfer row that S84 (Hermes Cloud, remove) lists.
+  const REMOVED_PALETTE = /^(set|sp)-(billing|web-access|transfer-to-cloud|providers&pview=(accounts|keys))/
 
   test('Settings nav and palette equal the D05 lists, less the removed features; Capabilities is the stock page', async () => {
     const d05Nav = await renderSettingsNav()
