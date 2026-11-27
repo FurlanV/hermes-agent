@@ -409,7 +409,7 @@ function relocatedCredentialStores(): string[] {
 }
 
 function hermesCredentialStoreReason(normalized: string): null | string {
-  const reason = 'Hermes credential stores are blocked.'
+  const reason = brandText('Hermes credential stores are blocked.')
 
   for (const home of hermesHomes) {
     const rel = credentialStoreRel(normalized, normalizeSensitivePath(home).replace(/\/+$/, ''))

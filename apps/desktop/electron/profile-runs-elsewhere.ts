@@ -10,6 +10,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { brandText } from './athena/brand-text'
+
 export const PROFILES_RUN_ELSEWHERE_DIR = 'profiles_run_elsewhere'
 
 const PROFILE_ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/
@@ -89,6 +91,6 @@ export function assertProfileMayRunLocally(hermesRoot: string, profile: null | s
   const runner = marker.plugin ? `runs through the ${marker.plugin} plugin` : 'runs through a plugin'
 
   throw new Error(
-    `Profile "${name}" ${runner}, but this app has no connection to it. Hermes won't start it on this computer.`
+    `Profile "${name}" ${runner}, but this app has no connection to it. ${brandText("Hermes won't start it on this computer.")}`
   )
 }

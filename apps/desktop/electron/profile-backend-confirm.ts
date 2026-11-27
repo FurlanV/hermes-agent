@@ -6,6 +6,8 @@
 // is only a detail line. A plugin may add a short purpose, shown as the
 // plugin's own words, never as the app's.
 
+import { brandText } from './athena/brand-text'
+
 export interface ProfileBackendConfirmCopy {
   buttons: [string, string]
   detail: string
@@ -58,7 +60,7 @@ export function setProfileBackendConfirm(input: {
   const verb = url ? 'runs' : 'starts'
 
   const lines = [
-    `Chats in “${profile}” will run in a backend that ${plugin} ${verb} on this computer, instead of Hermes's own backend.`,
+    `Chats in “${profile}” will run in a backend that ${plugin} ${verb} on this computer, instead of ${brandText("Hermes's own backend")}.`,
     ...(purpose ? [`${plugin} says: “${purpose}”`] : []),
     ...(url ? [`Address: ${url}`] : [])
   ]
@@ -76,7 +78,7 @@ export function clearProfileBackendConfirm(input: { plugin: string; profile: str
 
   return {
     buttons: ['Switch back', 'Cancel'],
-    detail: `Chats in “${profile}” will run in Hermes's own backend on this computer again.`,
+    detail: `Chats in “${profile}” will run in ${brandText("Hermes's own backend")} on this computer again.`,
     message: `Stop the ${plugin} plugin from running the “${profile}” profile?`
   }
 }

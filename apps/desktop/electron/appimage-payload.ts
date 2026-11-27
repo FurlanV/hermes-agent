@@ -11,6 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 
+import { brandText } from './athena/brand-text'
 import { isFallbackCommit } from './bundle-skew'
 import { removeBundleCliLinks } from './cli-provision'
 import { INSTALL_STAMP, type InstallStamp } from './install-stamp'
@@ -398,7 +399,7 @@ async function copyBuild(host: PayloadCopyHost, build: string, partial: string):
     throw new Error(`the copy needs ${gib(needed)} GiB free in ${root}, which has ${gib(free)} GiB`)
   }
 
-  await host.progress?.('backend.payload', 'Preparing this Hermes version (first launch only)…', 28)
+  await host.progress?.('backend.payload', brandText('Preparing this Hermes version (first launch only)…'), 28)
   host.log(`[payload] unpacking the AppImage payload (${gib(expected.bytes)} GiB) to ${build}`)
   const started: number = Date.now()
   const target: string = path.join(partial, PAYLOAD_DIR)
